@@ -8,115 +8,146 @@
 <script src="supabase.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; background: #f4f4f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: #111; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; background: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: #111; }
 
-/* TOP NAV */
-.topnav { background: #1e1e2e; height: 42px; display: flex; align-items: center; padding: 0 16px; gap: 10px; flex-shrink: 0; }
-.topnav-logo { display: flex; align-items: center; gap: 8px; }
+/* ── TOP NAV ── */
+.topnav { background: #1a1a2e; height: 44px; display: flex; align-items: center; padding: 0 14px; gap: 10px; flex-shrink: 0; }
+.topnav-logo { display: flex; align-items: center; gap: 7px; }
 .topnav-logomark { width: 26px; height: 26px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: #111; letter-spacing: -0.5px; }
-.topnav-name { color: #fff; font-weight: 600; font-size: 13px; }
-.topnav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.trainee-chip { background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.4); color: #c4b5fd; font-size: 11px; padding: 3px 9px; border-radius: 10px; }
-.signout-btn { color: #6b7280; font-size: 11px; cursor: pointer; padding: 3px 8px; border-radius: 5px; border: 1px solid #374151; background: none; font-family: inherit; }
-.signout-btn:hover { background: #374151; color: #ccc; }
+.topnav-name { color: #fff; font-weight: 700; font-size: 14px; }
+.topnav-inbox { display: flex; align-items: center; gap: 4px; color: #fff; font-weight: 600; font-size: 13px; margin-left: 6px; cursor: pointer; }
+.topnav-caret { color: #9ca3af; font-size: 9px; }
+.topnav-actions { display: flex; gap: 6px; margin-left: 8px; }
+.topnav-btn { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #e5e7eb; font-size: 12px; padding: 4px 11px; border-radius: 6px; cursor: pointer; font-family: inherit; }
+.topnav-btn:hover { background: rgba(255,255,255,0.14); }
+.topnav-btn kbd { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 3px; font-size: 9px; padding: 0 3px; color: #aaa; }
+.topnav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.topnav-icon { color: #9ca3af; font-size: 15px; cursor: pointer; }
+.topnav-icon:hover { color: #fff; }
+.topnav-avatar { width: 27px; height: 27px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 10px; cursor: pointer; }
 
-/* APP */
+/* ── APP ── */
 .app { display: flex; flex: 1; overflow: hidden; }
 
-/* LEFT NAV */
-.leftnav { width: 210px; min-width: 210px; background: #1e1e2e; display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
-.leftnav-section { padding: 16px 12px 6px; }
-.leftnav-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #4b5563; margin-bottom: 6px; }
-.nav-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 7px; cursor: pointer; color: #9ca3af; font-size: 12px; margin-bottom: 2px; transition: background 0.1s; }
-.nav-item:hover { background: rgba(255,255,255,0.06); color: #e5e7eb; }
-.nav-item.active { background: rgba(124,58,237,0.25); color: #c4b5fd; }
-.nav-item-left { display: flex; align-items: center; gap: 8px; }
-.nav-count { font-size: 10px; font-weight: 600; background: rgba(255,255,255,0.1); color: #9ca3af; padding: 1px 6px; border-radius: 8px; }
-.nav-item.active .nav-count { background: rgba(124,58,237,0.3); color: #c4b5fd; }
-.nav-locked { opacity: 0.35; cursor: not-allowed; }
-.nav-locked:hover { background: none !important; color: #9ca3af !important; }
-.nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 8px 12px; }
-.nav-category-badge { font-size: 9px; background: #7c3aed; color: #fff; padding: 1px 5px; border-radius: 4px; margin-left: 4px; }
-.leftnav-footer { margin-top: auto; padding: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
-.trainee-info { display: flex; align-items: center; gap: 9px; }
-.trainee-avatar { width: 30px; height: 30px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0; }
-.trainee-name-sm { font-size: 12px; font-weight: 600; color: #e5e7eb; }
-.trainee-email-sm { font-size: 10px; color: #6b7280; margin-top: 1px; }
+/* ── LEFT NAV ── */
+.leftnav { width: 220px; min-width: 220px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
+.leftnav-top { padding: 10px 10px 4px; }
+.nav-section-label { font-size: 11px; font-weight: 600; color: #6b7280; padding: 10px 10px 4px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.nav-section-label:hover { color: #374151; }
+.nav-section-caret { font-size: 9px; color: #9ca3af; }
+.nav-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: 6px; cursor: pointer; color: #374151; font-size: 12.5px; margin-bottom: 1px; }
+.nav-item:hover { background: #f3f4f6; }
+.nav-item.active { background: #ede9fe; color: #5b21b6; font-weight: 500; }
+.nav-item-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.nav-item-icon { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+.nav-item-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-count { font-size: 10px; font-weight: 600; background: #f3f4f6; color: #6b7280; padding: 1px 6px; border-radius: 8px; flex-shrink: 0; }
+.nav-item.active .nav-count { background: #ddd6fe; color: #5b21b6; }
+.nav-count.red { background: #fee2e2; color: #dc2626; }
+.nav-count.amber { background: #fef3c7; color: #d97706; }
+.nav-divider { height: 1px; background: #f3f4f6; margin: 6px 0; }
+.nav-sub { padding-left: 18px; }
+.nav-sub .nav-item { font-size: 12px; color: #6b7280; }
+.nav-sub .nav-item:hover { color: #374151; }
+.nav-locked { opacity: 0.45; cursor: default; }
+.nav-locked:hover { background: none !important; }
+.nav-active-badge { font-size: 9px; background: #7c3aed; color: #fff; padding: 1px 5px; border-radius: 4px; margin-left: 3px; flex-shrink: 0; }
+.leftnav-footer { margin-top: auto; padding: 10px 12px; border-top: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+.trainee-info { display: flex; align-items: center; gap: 8px; }
+.trainee-avatar { width: 28px; height: 28px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0; }
+.trainee-name-sm { font-size: 12px; font-weight: 600; color: #111; }
+.trainee-email-sm { font-size: 10px; color: #9ca3af; }
+.footer-icons { display: flex; gap: 8px; color: #9ca3af; font-size: 15px; }
+.footer-icons span { cursor: pointer; }
+.footer-icons span:hover { color: #374151; }
 
-/* TICKET LIST */
-.ticket-list-pane { width: 280px; min-width: 240px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; flex-shrink: 0; }
-.tlp-header { padding: 14px 16px 10px; border-bottom: 1px solid #f3f4f6; }
-.tlp-title { font-weight: 700; font-size: 14px; color: #111; display: flex; align-items: center; gap: 8px; }
-.tlp-count { background: #f3f4f6; color: #6b7280; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; }
-.tlp-subtitle { font-size: 11px; color: #9ca3af; margin-top: 3px; }
-.ticket-list { flex: 1; overflow-y: auto; }
-.tl-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: background 0.1s; }
-.tl-item:hover { background: #f9fafb; }
-.tl-item.active { background: #f5f3ff; border-left: 3px solid #7c3aed; }
-.tl-avatar { width: 32px; height: 32px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #374151; flex-shrink: 0; }
-.tl-body { flex: 1; min-width: 0; }
-.tl-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
-.tl-name { font-weight: 600; font-size: 12px; color: #111; }
-.tl-time { font-size: 10px; color: #9ca3af; }
-.tl-subject { font-size: 12px; color: #374151; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
-.tl-preview { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tl-status { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 8px; margin-top: 5px; }
-.status-new { background: #ede9fe; color: #5b21b6; }
-.status-submitted { background: #dcfce7; color: #166534; }
+/* ── MAIN ── */
+.main-area { flex: 1; display: flex; overflow: hidden; flex-direction: column; }
 
-/* MAIN + SIDEBAR */
-.main-area { flex: 1; display: flex; overflow: hidden; }
-.ticket-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f9fafb; }
-.tv-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #9ca3af; }
-.tv-empty-icon { font-size: 44px; opacity: 0.2; }
+/* ── TICKET TABLE VIEW ── */
+.ticket-table-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.ttv-header { padding: 16px 24px 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: #fff; }
+.ttv-title { font-size: 16px; font-weight: 700; color: #111; display: flex; align-items: center; gap: 8px; }
+.ttv-count { font-size: 12px; color: #6b7280; font-weight: 400; }
+.ttv-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.ttv-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; font-size: 12px; color: #374151; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: inherit; }
+.ttv-btn:hover { background: #f9fafb; }
+.ticket-table-wrap { flex: 1; overflow-y: auto; }
+table.ticket-table { width: 100%; border-collapse: collapse; }
+table.ticket-table thead th { padding: 9px 16px; text-align: left; font-size: 11px; font-weight: 600; color: #9ca3af; border-bottom: 1px solid #e5e7eb; background: #fff; position: sticky; top: 0; white-space: nowrap; cursor: pointer; user-select: none; }
+table.ticket-table thead th:hover { color: #374151; }
+table.ticket-table thead th:first-child { width: 36px; padding-right: 0; }
+table.ticket-table tbody tr { cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 0.08s; }
+table.ticket-table tbody tr:hover { background: #f9fafb; }
+table.ticket-table tbody tr.active-row { background: #f5f3ff; }
+table.ticket-table tbody td { padding: 11px 16px; font-size: 12.5px; color: #374151; vertical-align: middle; }
+table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
+.tt-checkbox { width: 14px; height: 14px; accent-color: #7c3aed; cursor: pointer; }
+.tt-subject { font-weight: 600; color: #111; margin-bottom: 2px; }
+.tt-preview { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 400px; }
+.tt-assignee { font-size: 12px; color: #6b7280; }
+.tt-time { font-size: 12px; color: #374151; white-space: nowrap; }
+.tt-time.bold { font-weight: 600; color: #111; }
+.tt-status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.dot-new { background: #7c3aed; }
+.dot-submitted { background: #22c55e; }
+.dot-scored { background: #f59e0b; }
 
-/* TICKET TOPBAR */
-.tv-topbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 0 20px; height: 44px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.tv-subject { font-weight: 700; font-size: 14px; color: #111; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tv-status-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; flex-shrink: 0; }
+/* ── TICKET DETAIL (replaces table when ticket open) ── */
+.ticket-detail { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+.td-topbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 0 20px; height: 46px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.td-back { color: #9ca3af; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; border: none; background: none; font-family: inherit; padding: 4px 8px; border-radius: 5px; }
+.td-back:hover { background: #f3f4f6; color: #374151; }
+.td-breadcrumb-sep { color: #d1d5db; }
+.td-subject { font-weight: 700; font-size: 13px; color: #111; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-status-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; flex-shrink: 0; }
 .badge-open { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
 .badge-submitted { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
 .badge-scored { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+.td-btn { padding: 4px 11px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; font-size: 12px; color: #374151; cursor: pointer; font-family: inherit; }
+.td-btn:hover { background: #f9fafb; }
 
 /* MESSAGES */
-.messages-area { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+.td-body { display: flex; flex: 1; overflow: hidden; }
+.messages-area { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; background: #f9fafb; }
 .msg-wrap { display: flex; gap: 10px; }
 .msg-ava { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; }
 .msg-ava.customer { background: #e5e7eb; color: #374151; }
 .msg-ava.agent { background: #7c3aed; color: #fff; }
-.msg-body { max-width: 620px; flex: 1; }
+.msg-content { max-width: 600px; flex: 1; }
 .msg-meta { font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: flex; gap: 8px; }
 .msg-sender { font-weight: 600; color: #374151; }
 .msg-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; font-size: 13px; line-height: 1.6; color: #374151; }
 .msg-card.agent-card { background: #f5f3ff; border-color: #c4b5fd; }
-.msg-card p { margin-bottom: 8px; }
-.msg-card p:last-child { margin: 0; }
-
-/* SUBMITTED STATE */
-.submitted-banner { background: #f0fdf4; border-top: 1px solid #bbf7d0; padding: 20px 24px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-.submitted-icon { font-size: 28px; }
-.submitted-title { font-weight: 700; font-size: 14px; color: #166534; }
-.submitted-sub { font-size: 12px; color: #4b7a55; margin-top: 2px; }
-.score-display { margin-left: auto; text-align: center; }
-.score-val { font-size: 26px; font-weight: 800; color: #7c3aed; }
-.score-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
-.feedback-box { background: #f5f3ff; border: 1px solid #c4b5fd; border-radius: 8px; padding: 12px 16px; margin: 0 24px 16px; font-size: 13px; color: #374151; line-height: 1.55; }
 
 /* REPLY BOX */
 .reply-box { border-top: 1px solid #e5e7eb; background: #fff; flex-shrink: 0; }
-.reply-to-row { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
+.reply-to-row { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
+.reply-channel-btn { display: flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 5px; border: 1px solid #e5e7eb; background: #fff; font-size: 12px; color: #374151; cursor: pointer; font-family: inherit; }
 .reply-to-label { color: #9ca3af; }
 .reply-to-val { color: #374151; font-weight: 500; }
-.reply-textarea { width: 100%; border: none; outline: none; padding: 12px 14px; font-size: 13px; font-family: inherit; resize: none; min-height: 100px; color: #374151; background: #fff; line-height: 1.55; }
+.reply-textarea { width: 100%; border: none; outline: none; padding: 12px 16px; font-size: 13px; font-family: inherit; resize: none; min-height: 100px; color: #374151; background: #fff; line-height: 1.55; }
 .reply-textarea::placeholder { color: #9ca3af; }
-.reply-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-top: 1px solid #f3f4f6; }
+.reply-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-top: 1px solid #f3f4f6; }
 .reply-hint { font-size: 11px; color: #9ca3af; }
-.submit-btn { padding: 7px 20px; background: #7c3aed; color: #fff; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.15s; }
-.submit-btn:hover { background: #6d28d9; }
-.submit-btn:disabled { background: #c4b5fd; cursor: not-allowed; }
+.reply-actions { display: flex; gap: 8px; }
+.submit-btn { padding: 7px 18px; background: #111827; color: #fff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.submit-btn:hover { background: #374151; }
+.submit-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+.send-close-btn { padding: 7px 14px; background: #fff; color: #374151; border: 1px solid #e5e7eb; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.send-close-btn:hover { background: #f9fafb; }
+
+/* SUBMITTED BANNER */
+.submitted-banner { background: #f0fdf4; border-top: 1px solid #bbf7d0; padding: 18px 20px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.submitted-title { font-weight: 700; font-size: 14px; color: #166534; }
+.submitted-sub { font-size: 12px; color: #4b7a55; margin-top: 2px; }
+.score-display { margin-left: auto; text-align: center; background: #fff; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 16px; }
+.score-val { font-size: 22px; font-weight: 800; color: #7c3aed; }
+.score-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+.feedback-box { background: #f5f3ff; border: 1px solid #c4b5fd; border-radius: 8px; padding: 12px 16px; margin: 0 20px 14px; font-size: 13px; color: #374151; line-height: 1.55; }
 
 /* CUSTOMER SIDEBAR */
-.customer-sidebar { width: 260px; min-width: 240px; background: #fff; border-left: 1px solid #e5e7eb; overflow-y: auto; flex-shrink: 0; }
+.customer-sidebar { width: 256px; min-width: 240px; background: #fff; border-left: 1px solid #e5e7eb; overflow-y: auto; flex-shrink: 0; }
 .cs-section { padding: 14px 16px; border-bottom: 1px solid #f3f4f6; }
 .cs-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: #9ca3af; margin-bottom: 10px; }
 .cs-name { font-size: 14px; font-weight: 700; color: #111; }
@@ -124,10 +155,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
 .cs-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 5px 0; border-bottom: 1px solid #f9fafb; }
 .cs-row:last-child { border-bottom: none; }
 .cs-label { font-size: 12px; color: #9ca3af; }
-.cs-value { font-size: 12px; color: #374151; font-weight: 500; text-align: right; max-width: 150px; }
+.cs-value { font-size: 12px; color: #374151; font-weight: 500; text-align: right; }
 .order-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; }
 .order-num { font-size: 11px; font-weight: 700; color: #7c3aed; }
-.order-status-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 8px; margin-top: 4px; }
+.order-status-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 8px; margin-top: 5px; }
 .os-processing { background: #fef9c3; color: #854d0e; }
 .os-shipped { background: #dbeafe; color: #1d4ed8; }
 .os-delivered { background: #dcfce7; color: #166534; }
@@ -139,18 +170,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
 .loyalty-gold { background: #fef9c3; color: #713f12; }
 .loyalty-vip { background: #ede9fe; color: #5b21b6; }
 
-/* EMPTY SIDEBAR */
-.sidebar-empty { padding: 30px 16px; text-align: center; color: #9ca3af; font-size: 12px; }
-
-/* SCROLLBAR */
+/* LOADING */
+.loading-overlay { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 999; flex-direction: column; gap: 12px; }
+.loading-spinner { width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: #9ca3af; font-size: 13px; }
+.tv-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #9ca3af; background: #f9fafb; }
+.tv-empty-icon { font-size: 40px; opacity: 0.2; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 99px; }
-
-/* LOADING */
-.loading-overlay { position: fixed; inset: 0; background: #1e1e2e; display: flex; align-items: center; justify-content: center; z-index: 999; flex-direction: column; gap: 12px; }
-.loading-spinner { width: 32px; height: 32px; border: 3px solid rgba(124,58,237,0.3); border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { color: #6b7280; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -164,11 +192,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
 <div class="topnav">
   <div class="topnav-logo">
     <div class="topnav-logomark">h</div>
-    <span class="topnav-name">Healf Support</span>
+  </div>
+  <div class="topnav-inbox">Inbox <span class="topnav-caret">▾</span></div>
+  <div class="topnav-actions">
+    <button class="topnav-btn">✉️ New ticket <kbd>N</kbd></button>
+    <button class="topnav-btn">📞 Call <kbd>⌘ E</kbd></button>
   </div>
   <div class="topnav-right">
-    <span class="trainee-chip" id="trainee-chip">Loading…</span>
-    <button class="signout-btn" onclick="signOut()">Sign out</button>
+    <span class="topnav-icon">🔔</span>
+    <span class="topnav-icon">🔍</span>
+    <span class="topnav-icon">⌨️</span>
+    <div class="topnav-avatar" id="topnav-avatar">?</div>
   </div>
 </div>
 
@@ -176,36 +210,53 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
 
   <!-- LEFT NAV -->
   <div class="leftnav">
-    <div class="leftnav-section">
-      <div class="leftnav-section-title">Inbox</div>
-      <div class="nav-item active" id="nav-my-tickets">
-        <div class="nav-item-left">📥 My Tickets</div>
+    <div class="leftnav-top">
+      <div class="nav-item active" onclick="showTableView()">
+        <div class="nav-item-left"><span class="nav-item-icon">📥</span><span class="nav-item-label">My Tickets</span></div>
         <span class="nav-count" id="nav-ticket-count">—</span>
       </div>
       <div class="nav-item nav-locked">
-        <div class="nav-item-left">👤 Assigned to me</div>
+        <div class="nav-item-left"><span class="nav-item-icon">👤</span><span class="nav-item-label">Assigned to me</span></div>
+        <span class="nav-count">0</span>
       </div>
       <div class="nav-item nav-locked">
-        <div class="nav-item-left">🔕 Snoozed</div>
+        <div class="nav-item-left"><span class="nav-item-icon">🔕</span><span class="nav-item-label">Snoozed</span></div>
+        <span class="nav-count">0</span>
+      </div>
+      <div class="nav-item nav-locked">
+        <div class="nav-item-left"><span class="nav-item-icon">···</span><span class="nav-item-label">More</span></div>
       </div>
     </div>
 
     <div class="nav-divider"></div>
 
-    <div class="leftnav-section">
-      <div class="leftnav-section-title">Training Categories</div>
-      <div id="category-nav"></div>
+    <div class="nav-section-label">Shared views <span class="nav-section-caret">▾</span></div>
+    <div style="padding: 0 8px 4px;">
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔴</span><span class="nav-item-label">FRT (&gt;3 hours)</span></div><span class="nav-count red">31</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔴</span><span class="nav-item-label">FRT (&gt;12 hours)</span></div><span class="nav-count red">7</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔴</span><span class="nav-item-label">FRT (&gt;24 hours)</span></div><span class="nav-count red">4</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔶</span><span class="nav-item-label">Response (&gt;24 hou...)</span></div><span class="nav-count amber">1</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔶</span><span class="nav-item-label">Response (&gt;48 ho...)</span></div><span class="nav-count amber">1</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔴</span><span class="nav-item-label">Response (&gt;72 hou...)</span></div><span class="nav-count red">1</span></div>
     </div>
 
     <div class="nav-divider"></div>
 
-    <div class="leftnav-section">
-      <div class="leftnav-section-title">Shared Views</div>
-      <div class="nav-item nav-locked"><div class="nav-item-left">🔴 FRT (&gt;3 hours)</div></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left">🔶 Response (&gt;24h)</div></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left">💎 VIP's</div></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left">✉️ Email - All</div></div>
+    <div class="nav-section-label" onclick="toggleNavSection('main-channels', this)">Main Channels <span class="nav-section-caret" id="main-channels-caret">▴</span></div>
+    <div id="main-channels" class="nav-sub" style="padding: 0 8px 4px 8px;">
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">💎</span><span class="nav-item-label">VIP's</span></div><span class="nav-count">55</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">💬</span><span class="nav-item-label">WhatsApp</span></div><span class="nav-count">57</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">📁</span><span class="nav-item-label">Compliance</span></div><span class="nav-count">0</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">✉️</span><span class="nav-item-label">Email - All</span></div><span class="nav-count">147</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">📬</span><span class="nav-item-label">Unassigned - C...</span></div><span class="nav-count">85</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🇩🇪</span><span class="nav-item-label">Germany</span></div><span class="nav-count">9</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">👍</span><span class="nav-item-label">Calls</span></div><span class="nav-count">13</span></div>
     </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-section-label">Training Categories <span class="nav-section-caret">▾</span></div>
+    <div id="category-nav" style="padding: 0 8px 4px 8px;"></div>
 
     <div class="leftnav-footer">
       <div class="trainee-info">
@@ -215,35 +266,69 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
           <div class="trainee-email-sm" id="trainee-email-sm">—</div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- TICKET LIST -->
-  <div class="ticket-list-pane">
-    <div class="tlp-header">
-      <div class="tlp-title">
-        My Tickets
-        <span class="tlp-count" id="tlp-count">0</span>
-      </div>
-      <div class="tlp-subtitle" id="tlp-category-name">Loading category…</div>
-    </div>
-    <div class="ticket-list" id="ticket-list"></div>
-  </div>
-
-  <!-- MAIN + SIDEBAR -->
-  <div class="main-area">
-    <div class="ticket-view" id="ticket-view">
-      <div class="tv-empty">
-        <div class="tv-empty-icon">📬</div>
-        <div style="font-weight:600;color:#6b7280;font-size:14px">Select a ticket to practise</div>
-        <div style="font-size:12px">Read the customer's message and write your reply.</div>
+      <div class="footer-icons">
+        <span title="Settings">⚙</span>
+        <span title="Sign out" onclick="signOut()">↪</span>
       </div>
     </div>
-    <div class="customer-sidebar" id="customer-sidebar">
-      <div class="sidebar-empty">Select a ticket to see customer details.</div>
-    </div>
   </div>
 
+  <!-- MAIN CONTENT -->
+  <div class="main-area" id="main-area">
+
+    <!-- TICKET TABLE -->
+    <div class="ticket-table-view" id="ticket-table-view">
+      <div class="ttv-header">
+        <div class="ttv-title">
+          <span id="ttv-icon">📥</span>
+          <span id="ttv-title-text">My Tickets</span>
+          <span class="ttv-count" id="ttv-count"></span>
+        </div>
+        <div class="ttv-right">
+          <button class="ttv-btn">≡≡ Edit table</button>
+        </div>
+      </div>
+      <div class="ticket-table-wrap">
+        <table class="ticket-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" class="tt-checkbox" /></th>
+              <th>Ticket ↑</th>
+              <th>Assignee</th>
+              <th>Created</th>
+              <th>Last message</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="ticket-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TICKET DETAIL -->
+    <div class="ticket-detail" id="ticket-detail">
+      <div class="td-topbar">
+        <button class="td-back" onclick="showTableView()">← Inbox</button>
+        <span class="td-breadcrumb-sep">›</span>
+        <span class="td-subject" id="td-subject">—</span>
+        <span class="td-status-badge badge-open" id="td-status-badge">Open</span>
+        <button class="td-btn" style="background:#1a1a2e;color:#fff;border-color:#1a1a2e">Demetra Ten... ▾</button>
+        <button class="td-btn">No team ▾</button>
+        <span style="color:#9ca3af;font-size:16px;cursor:pointer;padding:0 4px">⏱</span>
+        <span style="color:#9ca3af;font-size:18px;cursor:pointer;padding:0 4px">···</span>
+      </div>
+      <div class="td-body">
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+          <div class="messages-area" id="messages-area"></div>
+          <div id="reply-section"></div>
+        </div>
+        <div class="customer-sidebar" id="customer-sidebar"></div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <script>
@@ -258,44 +343,37 @@ async function init() {
   if (!stored) { window.location.href = 'index.html'; return; }
   trainee = JSON.parse(stored);
 
-  // Refresh trainee from DB (category may have changed)
   const { data: fresh } = await db.from('trainees').select('*').eq('id', trainee.id).single();
   if (fresh) { trainee = fresh; sessionStorage.setItem('trainee', JSON.stringify(fresh)); }
 
-  document.getElementById('trainee-chip').textContent = trainee.name;
+  const initial = trainee.name.charAt(0).toUpperCase();
+  document.getElementById('topnav-avatar').textContent = initial;
+  document.getElementById('trainee-avatar').textContent = initial;
   document.getElementById('trainee-name-sm').textContent = trainee.name;
   document.getElementById('trainee-email-sm').textContent = trainee.email;
-  document.getElementById('trainee-avatar').textContent = trainee.name.charAt(0).toUpperCase();
 
-  // Load categories
   const { data: cats } = await db.from('categories').select('*').order('order_index');
   categories = cats || [];
   renderCategoryNav();
 
-  // Load tickets for current category
   if (trainee.current_category_id) {
     const { data: tix } = await db
       .from('tickets')
-      .select('id, category_id, customer_name, customer_email, order_number, subject, message, order_value, order_status, loyalty_tier')
+      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier')
       .eq('category_id', trainee.current_category_id);
     tickets = tix || [];
 
-    // Load this trainee's submissions
-    const { data: subs } = await db
-      .from('submissions')
-      .select('*')
-      .eq('trainee_id', trainee.id);
+    const { data: subs } = await db.from('submissions').select('*').eq('trainee_id', trainee.id);
     submissions = subs || [];
 
     const cat = categories.find(c => c.id === trainee.current_category_id);
-    document.getElementById('tlp-category-name').textContent = cat ? cat.name : 'Unknown category';
-  } else {
-    document.getElementById('tlp-category-name').textContent = 'No category assigned yet';
+    document.getElementById('ttv-title-text').textContent = cat ? cat.name : 'My Tickets';
+    document.getElementById('ttv-icon').textContent = '📂';
   }
 
-  renderTicketList();
   document.getElementById('nav-ticket-count').textContent = tickets.length;
-  document.getElementById('tlp-count').textContent = tickets.length;
+  document.getElementById('ttv-count').textContent = `Showing ${tickets.length} item${tickets.length !== 1 ? 's' : ''}`;
+  renderTicketTable();
   document.getElementById('loading').style.display = 'none';
 }
 
@@ -304,195 +382,200 @@ function renderCategoryNav() {
   nav.innerHTML = categories.map(cat => {
     const isCurrent = cat.id === trainee.current_category_id;
     return `<div class="nav-item${isCurrent ? ' active' : ' nav-locked'}" title="${cat.name}">
-      <div class="nav-item-left" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-        ${isCurrent ? '📂' : '📁'} ${cat.name}
+      <div class="nav-item-left">
+        <span class="nav-item-icon">${isCurrent ? '📂' : '📁'}</span>
+        <span class="nav-item-label">${cat.name}</span>
       </div>
-      ${isCurrent ? '<span class="nav-category-badge">active</span>' : ''}
+      ${isCurrent ? '<span class="nav-active-badge">active</span>' : ''}
     </div>`;
   }).join('');
 }
 
-function initials(name) {
-  return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-}
+function initials(name) { return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase(); }
+function getSub(ticketId) { return submissions.find(s => s.ticket_id === ticketId); }
 
-function getSubmission(ticketId) {
-  return submissions.find(s => s.ticket_id === ticketId);
-}
+function relativeTime() { return 'Today'; }
 
-function renderTicketList() {
-  const list = document.getElementById('ticket-list');
+function renderTicketTable() {
+  const tbody = document.getElementById('ticket-tbody');
   if (!tickets.length) {
-    list.innerHTML = '<div style="padding:24px;text-align:center;color:#9ca3af;font-size:12px;">No tickets in this category yet.</div>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:48px;color:#9ca3af">No tickets in this category yet.</td></tr>';
     return;
   }
-  list.innerHTML = tickets.map(t => {
-    const sub = getSubmission(t.id);
-    const statusHtml = sub
-      ? (sub.score ? `<span class="tl-status status-submitted">Scored ${sub.score}/5</span>` : '<span class="tl-status status-submitted">Submitted</span>')
-      : '<span class="tl-status status-new">New</span>';
-    return `
-      <div class="tl-item${t.id === activeTicketId ? ' active' : ''}" onclick="openTicket(${t.id})">
-        <div class="tl-avatar">${initials(t.customer_name)}</div>
-        <div class="tl-body">
-          <div class="tl-top">
-            <span class="tl-name">${t.customer_name}</span>
-          </div>
-          <div class="tl-subject">${t.subject}</div>
-          <div class="tl-preview">${t.message.substring(0, 55)}…</div>
-          ${statusHtml}
-        </div>
-      </div>`;
+  tbody.innerHTML = tickets.map(t => {
+    const sub = getSub(t.id);
+    const isActive = t.id === activeTicketId;
+    let dotClass = 'dot-new', statusLabel = 'New';
+    if (sub && sub.score) { dotClass = 'dot-scored'; statusLabel = `Scored ${sub.score}/5`; }
+    else if (sub) { dotClass = 'dot-submitted'; statusLabel = 'Submitted'; }
+
+    return `<tr class="${isActive ? 'active-row' : ''}" onclick="openTicket(${t.id})">
+      <td><input type="checkbox" class="tt-checkbox" onclick="event.stopPropagation()" /></td>
+      <td>
+        <div class="tt-subject">${t.subject}</div>
+        <div class="tt-preview">${t.message.replace(/\n/g,' ').substring(0,70)}…</div>
+      </td>
+      <td class="tt-assignee">${trainee.name}</td>
+      <td class="tt-time">Today</td>
+      <td class="tt-time bold">Today</td>
+      <td><span class="tt-status-dot ${dotClass}"></span>${statusLabel}</td>
+    </tr>`;
   }).join('');
+}
+
+function showTableView() {
+  activeTicketId = null;
+  document.getElementById('ticket-table-view').style.display = 'flex';
+  document.getElementById('ticket-detail').style.display = 'none';
+  renderTicketTable();
 }
 
 function openTicket(id) {
   activeTicketId = id;
-  renderTicketList();
+  renderTicketTable();
   const ticket = tickets.find(t => t.id === id);
-  const sub = getSubmission(id);
-  renderTicketView(ticket, sub);
+  const sub = getSub(id);
+
+  document.getElementById('ticket-table-view').style.display = 'none';
+  const detail = document.getElementById('ticket-detail');
+  detail.style.display = 'flex';
+  detail.style.flexDirection = 'column';
+
+  document.getElementById('td-subject').textContent = ticket.subject;
+
+  const badge = document.getElementById('td-status-badge');
+  if (sub && sub.score) { badge.textContent = `Scored ${sub.score}/5`; badge.className = 'td-status-badge badge-scored'; }
+  else if (sub) { badge.textContent = 'Submitted — awaiting review'; badge.className = 'td-status-badge badge-submitted'; }
+  else { badge.textContent = 'Open'; badge.className = 'td-status-badge badge-open'; }
+
+  renderMessages(ticket, sub);
+  renderReplySection(ticket, sub);
   renderCustomerSidebar(ticket);
 }
 
-function renderTicketView(ticket, sub) {
-  const view = document.getElementById('ticket-view');
-  const statusBadge = sub
-    ? (sub.score ? `<span class="tv-status-badge badge-scored">Scored ${sub.score}/5</span>` : '<span class="tv-status-badge badge-submitted">Submitted — awaiting review</span>')
-    : '<span class="tv-status-badge badge-open">Open</span>';
-
+function renderMessages(ticket, sub) {
+  const area = document.getElementById('messages-area');
   const customerMsg = `
     <div class="msg-wrap">
       <div class="msg-ava customer">${initials(ticket.customer_name)}</div>
-      <div class="msg-body">
+      <div class="msg-content">
         <div class="msg-meta"><span class="msg-sender">${ticket.customer_name}</span><span>${ticket.customer_email}</span></div>
-        <div class="msg-card">${ticket.message.replace(/\n/g, '<br>')}</div>
+        <div class="msg-card">${ticket.message.replace(/\n/g,'<br>')}</div>
       </div>
     </div>`;
-
   const agentReply = sub ? `
     <div class="msg-wrap">
       <div class="msg-ava agent">${trainee.name.charAt(0).toUpperCase()}</div>
-      <div class="msg-body">
-        <div class="msg-meta"><span class="msg-sender">${trainee.name} (you)</span><span>${new Date(sub.submitted_at).toLocaleString('en-GB', {dateStyle:'short',timeStyle:'short'})}</span></div>
-        <div class="msg-card agent-card">${sub.reply_text.replace(/\n/g, '<br>')}</div>
+      <div class="msg-content">
+        <div class="msg-meta"><span class="msg-sender">${trainee.name} (you)</span><span>${new Date(sub.submitted_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'})}</span></div>
+        <div class="msg-card agent-card">${sub.reply_text.replace(/\n/g,'<br>')}</div>
       </div>
     </div>` : '';
+  area.innerHTML = customerMsg + agentReply;
+  setTimeout(() => { area.scrollTop = area.scrollHeight; }, 50);
+}
 
-  const feedbackSection = (sub && sub.feedback) ? `
-    <div class="feedback-box">
-      <strong>Trainer feedback:</strong><br>${sub.feedback.replace(/\n/g, '<br>')}
-    </div>` : '';
-
-  const bottomSection = sub ? `
-    ${feedbackSection}
-    <div class="submitted-banner">
-      <div class="submitted-icon">✅</div>
-      <div>
-        <div class="submitted-title">Reply submitted</div>
-        <div class="submitted-sub">${sub.score ? 'Your trainer has reviewed and scored this reply.' : 'Your trainer will review and score your reply shortly.'}</div>
-      </div>
-      ${sub.score ? `<div class="score-display"><div class="score-val">${sub.score}/5</div><div class="score-label">Score</div></div>` : ''}
-    </div>` : `
-    <div class="reply-box">
-      <div class="reply-to-row">
-        <span class="reply-to-label">To:</span>
-        <span class="reply-to-val">${ticket.customer_email}</span>
-      </div>
-      <textarea class="reply-textarea" id="reply-input" placeholder="Write your reply to ${ticket.customer_name}…"></textarea>
-      <div class="reply-toolbar">
-        <span class="reply-hint">Your reply will be reviewed and scored by your trainer.</span>
-        <button class="submit-btn" id="submit-btn" onclick="submitReply(${ticket.id})">Submit reply</button>
-      </div>
-    </div>`;
-
-  view.innerHTML = `
-    <div class="tv-topbar">
-      <div class="tv-subject">${ticket.subject}</div>
-      ${statusBadge}
-    </div>
-    <div class="messages-area">
-      ${customerMsg}
-      ${agentReply}
-    </div>
-    ${bottomSection}`;
-
-  setTimeout(() => {
-    const area = view.querySelector('.messages-area');
-    if (area) area.scrollTop = area.scrollHeight;
-  }, 50);
+function renderReplySection(ticket, sub) {
+  const section = document.getElementById('reply-section');
+  if (sub) {
+    const feedbackHtml = sub.feedback ? `<div class="feedback-box"><strong>Trainer feedback:</strong><br>${sub.feedback.replace(/\n/g,'<br>')}</div>` : '';
+    section.innerHTML = `
+      ${feedbackHtml}
+      <div class="submitted-banner">
+        <div>
+          <div class="submitted-title">✅ Reply submitted</div>
+          <div class="submitted-sub">${sub.score ? 'Your trainer has reviewed and scored this reply.' : 'Your trainer will review and score your reply shortly.'}</div>
+        </div>
+        ${sub.score ? `<div class="score-display"><div class="score-val">${sub.score}/5</div><div class="score-label">Score</div></div>` : ''}
+      </div>`;
+  } else {
+    section.innerHTML = `
+      <div class="reply-box">
+        <div class="reply-to-row">
+          <button class="reply-channel-btn">✉️ Email ▾</button>
+          <span class="reply-to-label">To:</span>
+          <span class="reply-to-val">${ticket.customer_email}</span>
+        </div>
+        <textarea class="reply-textarea" id="reply-input" placeholder="Click here to reply…"></textarea>
+        <div class="reply-toolbar">
+          <span class="reply-hint">Your reply will be reviewed and scored by your trainer.</span>
+          <div class="reply-actions">
+            <button class="send-close-btn" onclick="submitReply(${ticket.id}, true)">Send &amp; Close</button>
+            <button class="submit-btn" id="submit-btn" onclick="submitReply(${ticket.id}, false)">Send</button>
+          </div>
+        </div>
+      </div>`;
+  }
 }
 
 function renderCustomerSidebar(ticket) {
-  const sidebar = document.getElementById('customer-sidebar');
-  const orderStatusClass = {
-    'Processing': 'os-processing', 'Shipped': 'os-shipped',
-    'Delivered': 'os-delivered', 'Cancelled': 'os-cancelled', 'Refunded': 'os-refunded'
-  }[ticket.order_status] || 'os-processing';
+  const statusClass = { 'Processing':'os-processing','Shipped':'os-shipped','Delivered':'os-delivered','Cancelled':'os-cancelled','Refunded':'os-refunded' }[ticket.order_status] || 'os-processing';
+  const loyaltyClass = { 'Bronze':'loyalty-bronze','Silver':'loyalty-silver','Gold':'loyalty-gold','VIP':'loyalty-vip' }[ticket.loyalty_tier] || '';
 
-  const loyaltyClass = {
-    'Bronze': 'loyalty-bronze', 'Silver': 'loyalty-silver',
-    'Gold': 'loyalty-gold', 'VIP': 'loyalty-vip'
-  }[ticket.loyalty_tier] || 'loyalty-bronze';
-
-  sidebar.innerHTML = `
+  document.getElementById('customer-sidebar').innerHTML = `
     <div class="cs-section">
-      <div class="cs-title">Customer</div>
-      <div class="cs-name">${ticket.customer_name}</div>
-      <div class="cs-email">${ticket.customer_email}</div>
+      <div class="cs-title">Ticket details</div>
+      <button style="display:flex;align-items:center;gap:5px;padding:4px 10px;border:1px dashed #d1d5db;border-radius:14px;font-size:11px;color:#6b7280;cursor:pointer;background:none;font-family:inherit;margin-bottom:8px">+ Add tags</button>
+      <div class="cs-row"><span class="cs-label">Contact reason</span><span style="font-size:11px;color:#7c3aed;cursor:pointer">+ Add</span></div>
     </div>
     <div class="cs-section">
-      <div class="cs-title">Ticket Details</div>
-      <div class="cs-row"><span class="cs-label">Subject</span><span class="cs-value">${ticket.subject}</span></div>
+      <div class="cs-title">👤 ${ticket.customer_name}</div>
+      <div class="cs-row"><span class="cs-label">Email</span><span class="cs-value" style="color:#7c3aed;font-size:11px">${ticket.customer_email}</span></div>
       ${ticket.loyalty_tier ? `<div class="cs-row"><span class="cs-label">Loyalty</span><span class="cs-value"><span class="loyalty-badge ${loyaltyClass}">${ticket.loyalty_tier}</span></span></div>` : ''}
+      <div style="font-size:11px;color:#7c3aed;cursor:pointer;margin-top:6px">▾ Show more</div>
     </div>
     ${ticket.order_number ? `
     <div class="cs-section">
-      <div class="cs-title">Order</div>
+      <div class="cs-title">Recent Orders</div>
       <div class="order-card">
         <div class="order-num">${ticket.order_number}</div>
-        ${ticket.order_value ? `<div style="font-size:12px;color:#374151;margin-top:3px;">${ticket.order_value}</div>` : ''}
-        ${ticket.order_status ? `<span class="order-status-badge ${orderStatusClass}">${ticket.order_status}</span>` : ''}
+        ${ticket.order_value ? `<div style="font-size:12px;color:#374151;margin-top:3px">${ticket.order_value}</div>` : ''}
+        ${ticket.order_status ? `<span class="order-status-badge ${statusClass}">${ticket.order_status}</span>` : ''}
       </div>
     </div>` : ''}
     <div class="cs-section">
       <div class="cs-title">Agent Notes</div>
-      <textarea style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:8px;font-size:12px;font-family:inherit;resize:none;outline:none;min-height:56px;color:#374151;" placeholder="Private notes (not saved)…"></textarea>
+      <textarea style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:8px;font-size:12px;font-family:inherit;resize:none;outline:none;min-height:60px;color:#374151" placeholder="Private notes (not saved)…"></textarea>
     </div>`;
 }
 
-async function submitReply(ticketId) {
+async function submitReply(ticketId, andClose) {
   const input = document.getElementById('reply-input');
   const reply = input ? input.value.trim() : '';
-  if (!reply) { input.style.borderBottom = '2px solid #ef4444'; input.placeholder = 'Please write a reply before submitting.'; return; }
+  if (!reply) { if (input) { input.style.border = '1px solid #ef4444'; input.placeholder = 'Please write a reply first.'; } return; }
 
   const btn = document.getElementById('submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Submitting…';
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
 
   const { data, error } = await db.from('submissions').insert({
-    trainee_id: trainee.id,
-    ticket_id: ticketId,
-    reply_text: reply
+    trainee_id: trainee.id, ticket_id: ticketId, reply_text: reply
   }).select().single();
 
-  if (error) {
-    btn.disabled = false;
-    btn.textContent = 'Submit reply';
-    alert('Error submitting reply. Please try again.');
-    return;
-  }
+  if (error) { if (btn) { btn.disabled = false; btn.textContent = 'Send'; } alert('Error: ' + error.message); return; }
 
   submissions.push(data);
-  renderTicketList();
+  renderTicketTable();
   const ticket = tickets.find(t => t.id === ticketId);
-  renderTicketView(ticket, data);
+  renderMessages(ticket, data);
+  renderReplySection(ticket, data);
+
+  const badge = document.getElementById('td-status-badge');
+  badge.textContent = 'Submitted — awaiting review';
+  badge.className = 'td-status-badge badge-submitted';
+
+  if (andClose) showTableView();
 }
 
-function signOut() {
-  sessionStorage.removeItem('trainee');
-  window.location.href = 'index.html';
+function toggleNavSection(id, el) {
+  const section = document.getElementById(id);
+  const caret = document.getElementById(id + '-caret');
+  if (!section) return;
+  const open = section.style.display !== 'none';
+  section.style.display = open ? 'none' : 'block';
+  if (caret) caret.textContent = open ? '▾' : '▴';
 }
+
+function signOut() { sessionStorage.removeItem('trainee'); window.location.href = 'index.html'; }
 
 init();
 </script>

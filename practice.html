@@ -356,18 +356,23 @@ async function init() {
   categories = cats || [];
   renderCategoryNav();
 
-  if (trainee.current_category_id) {
-    const { data: tix } = await db
+  if (trainee.all_categories || trainee.current_category_id) {
+    let query = db
       .from('tickets')
-      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier')
-      .eq('category_id', trainee.current_category_id);
+      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier');
+    if (!trainee.all_categories) query = query.eq('category_id', trainee.current_category_id);
+    const { data: tix } = await query;
     tickets = tix || [];
 
     const { data: subs } = await db.from('submissions').select('*').eq('trainee_id', trainee.id);
     submissions = subs || [];
 
-    const cat = categories.find(c => c.id === trainee.current_category_id);
-    document.getElementById('ttv-title-text').textContent = cat ? cat.name : 'My Tickets';
+    if (trainee.all_categories) {
+      document.getElementById('ttv-title-text').textContent = 'All Categories';
+    } else {
+      const cat = categories.find(c => c.id === trainee.current_category_id);
+      document.getElementById('ttv-title-text').textContent = cat ? cat.name : 'My Tickets';
+    }
     document.getElementById('ttv-icon').textContent = '📂';
   }
 

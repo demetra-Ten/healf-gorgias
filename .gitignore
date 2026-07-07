@@ -1,0 +1,5 @@
+# Internal Healf content — must NOT be published to the public repo.
+# These are loaded straight into Supabase; they never need to live in git.
+macros.sql
+seed-fulfilment.sql
+seed-fulfilment.json

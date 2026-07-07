@@ -131,6 +131,20 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .reply-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-top: 1px solid #f3f4f6; }
 .reply-hint { font-size: 11px; color: #9ca3af; }
 .reply-actions { display: flex; gap: 8px; }
+.macro-bar { position: relative; padding: 8px 16px 0; }
+.macro-trigger { display: inline-flex; align-items: center; gap: 5px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 10px; font-size: 12px; color: #374151; cursor: pointer; font-family: inherit; }
+.macro-trigger:hover { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
+.macro-picker { display: none; position: absolute; bottom: calc(100% + 6px); left: 16px; width: 440px; max-width: calc(100% - 32px); background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.16); z-index: 60; overflow: hidden; }
+.macro-picker.open { display: block; }
+.macro-search { width: 100%; border: none; border-bottom: 1px solid #f3f4f6; padding: 10px 14px; font-size: 13px; font-family: inherit; outline: none; color: #111; }
+.macro-list { max-height: 300px; overflow-y: auto; }
+.macro-item { padding: 9px 14px; cursor: pointer; border-bottom: 1px solid #f9fafb; }
+.macro-item:last-child { border-bottom: none; }
+.macro-item:hover { background: #ede9fe; }
+.macro-item-cat { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; }
+.macro-item-name { font-size: 12.5px; font-weight: 600; color: #374151; }
+.macro-item-preview { font-size: 11px; color: #9ca3af; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.macro-empty { padding: 18px; text-align: center; color: #9ca3af; font-size: 12px; }
 .submit-btn { padding: 7px 18px; background: #111827; color: #fff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
 .submit-btn:hover { background: #374151; }
 .submit-btn:disabled { background: #9ca3af; cursor: not-allowed; }
@@ -336,6 +350,7 @@ let trainee = null;
 let tickets = [];
 let categories = [];
 let submissions = [];
+let macros = [];
 let activeTicketId = null;
 
 async function init() {
@@ -355,6 +370,9 @@ async function init() {
   const { data: cats } = await db.from('categories').select('*').order('order_index');
   categories = cats || [];
   renderCategoryNav();
+
+  const { data: m } = await db.from('macros').select('*').order('sort_index');
+  macros = m || [];
 
   if (trainee.all_categories || trainee.current_category_id) {
     let query = db
@@ -501,6 +519,13 @@ function renderReplySection(ticket, sub) {
           <span class="reply-to-label">To:</span>
           <span class="reply-to-val">${ticket.customer_email}</span>
         </div>
+        <div class="macro-bar">
+          <button class="macro-trigger" onclick="toggleMacroPicker(event)">⚡ Macros</button>
+          <div class="macro-picker" id="macro-picker">
+            <input class="macro-search" id="macro-search" placeholder="Search macros…" oninput="filterMacros()" autocomplete="off" />
+            <div class="macro-list" id="macro-list"></div>
+          </div>
+        </div>
         <textarea class="reply-textarea" id="reply-input" placeholder="Click here to reply…"></textarea>
         <div class="reply-toolbar">
           <span class="reply-hint">Your reply will be reviewed and scored by your trainer.</span>
@@ -512,6 +537,60 @@ function renderReplySection(ticket, sub) {
       </div>`;
   }
 }
+
+function mEsc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function toggleMacroPicker(e) {
+  if (e) e.stopPropagation();
+  const p = document.getElementById('macro-picker');
+  if (!p) return;
+  const open = p.classList.toggle('open');
+  if (open) {
+    renderMacroList('');
+    const s = document.getElementById('macro-search');
+    if (s) { s.value = ''; s.focus(); }
+  }
+}
+
+function renderMacroList(q) {
+  const list = document.getElementById('macro-list');
+  if (!list) return;
+  if (!macros.length) {
+    list.innerHTML = '<div class="macro-empty">No macros loaded yet. Run macros.sql in Supabase to add them.</div>';
+    return;
+  }
+  const ql = (q || '').toLowerCase();
+  const matches = macros.filter(m => m.name.toLowerCase().includes(ql) || (m.category || '').toLowerCase().includes(ql));
+  if (!matches.length) { list.innerHTML = '<div class="macro-empty">No macros match that search.</div>'; return; }
+  list.innerHTML = matches.map(m => `
+    <div class="macro-item" onclick="insertMacro(${m.id})">
+      <div class="macro-item-cat">${mEsc(m.category)}</div>
+      <div class="macro-item-name">${mEsc(m.name)}</div>
+      <div class="macro-item-preview">${mEsc(m.body.replace(/\n/g,' ').slice(0,100))}</div>
+    </div>`).join('');
+}
+
+function filterMacros() {
+  const s = document.getElementById('macro-search');
+  renderMacroList(s ? s.value : '');
+}
+
+function insertMacro(id) {
+  const m = macros.find(x => x.id === id);
+  if (!m) return;
+  const t = tickets.find(x => x.id === activeTicketId);
+  const first = (t && t.customer_name) ? t.customer_name.split(' ')[0] : 'there';
+  const body = m.body.replace(/\{\{\s*ticket\.customer\.firstname\s*\}\}/g, first);
+  const input = document.getElementById('reply-input');
+  if (input) { input.value = body; input.style.border = 'none'; input.focus(); }
+  const p = document.getElementById('macro-picker');
+  if (p) p.classList.remove('open');
+}
+
+document.addEventListener('click', e => {
+  const p = document.getElementById('macro-picker');
+  if (p && p.classList.contains('open') && !e.target.closest('.macro-bar')) p.classList.remove('open');
+});
 
 function renderCustomerSidebar(ticket) {
   const statusClass = { 'Processing':'os-processing','Shipped':'os-shipped','Delivered':'os-delivered','Cancelled':'os-cancelled','Refunded':'os-refunded' }[ticket.order_status] || 'os-processing';

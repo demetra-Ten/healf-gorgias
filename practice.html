@@ -133,6 +133,10 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 60px; color: #374151; background: transparent; line-height: 1.5; }
 .actions-textarea::placeholder { color: #b6bac2; }
 .cs-items { font-size: 12px; color: #374151; line-height: 1.5; margin-top: 4px; white-space: pre-wrap; }
+.tt-group td { background: #f9fafb; padding: 8px 16px; border-bottom: 1px solid #eceef1; }
+.tt-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
+.tt-group-count { display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 600; background: #e5e7eb; color: #6b7280; padding: 1px 7px; border-radius: 8px; }
+.tt-empty { text-align: center; padding: 20px; color: #9ca3af; font-size: 12px; }
 .reply-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-top: 1px solid #f3f4f6; }
 .reply-hint { font-size: 11px; color: #9ca3af; }
 .reply-actions { display: flex; gap: 8px; }
@@ -432,13 +436,16 @@ function renderTicketTable() {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:48px;color:#9ca3af">No tickets in this category yet.</td></tr>';
     return;
   }
-  tbody.innerHTML = tickets.map(t => {
+  const isMarked = t => { const s = getSub(t.id); return s && s.score != null; };
+  const marked = tickets.filter(isMarked);
+  const toAction = tickets.filter(t => !isMarked(t));
+
+  const row = t => {
     const sub = getSub(t.id);
     const isActive = t.id === activeTicketId;
     let dotClass = 'dot-new', statusLabel = 'New';
-    if (sub && sub.score) { dotClass = 'dot-scored'; statusLabel = `Scored ${sub.score}/5`; }
+    if (sub && sub.score != null) { dotClass = 'dot-scored'; statusLabel = `Scored ${sub.score}/3`; }
     else if (sub) { dotClass = 'dot-submitted'; statusLabel = 'Submitted'; }
-
     return `<tr class="${isActive ? 'active-row' : ''}" onclick="openTicket(${t.id})">
       <td><input type="checkbox" class="tt-checkbox" onclick="event.stopPropagation()" /></td>
       <td>
@@ -450,7 +457,14 @@ function renderTicketTable() {
       <td class="tt-time bold">Today</td>
       <td><span class="tt-status-dot ${dotClass}"></span>${statusLabel}</td>
     </tr>`;
-  }).join('');
+  };
+  const groupHeader = (label, n) => `<tr class="tt-group"><td colspan="6"><span class="tt-group-label">${label}</span><span class="tt-group-count">${n}</span></td></tr>`;
+
+  let html = groupHeader('Tickets to action', toAction.length);
+  html += toAction.length ? toAction.map(row).join('') : '<tr><td colspan="6" class="tt-empty">Nothing to action right now — nice work!</td></tr>';
+  html += groupHeader('Marked Tickets', marked.length);
+  html += marked.length ? marked.map(row).join('') : '<tr><td colspan="6" class="tt-empty">No marked tickets yet — submit a reply to get scored.</td></tr>';
+  tbody.innerHTML = html;
 }
 
 function showTableView() {

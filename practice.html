@@ -352,11 +352,16 @@ let categories = [];
 let submissions = [];
 let macros = [];
 let activeTicketId = null;
+const SCORING_WEBHOOK = 'https://aiwellbeing.app.n8n.cloud/webhook/score-submission';
 
 async function init() {
   const stored = sessionStorage.getItem('trainee');
   if (!stored) { window.location.href = 'index.html'; return; }
   trainee = JSON.parse(stored);
+
+  // Require a live authenticated session — no session means no database access.
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { sessionStorage.removeItem('trainee'); window.location.href = 'index.html'; return; }
 
   const { data: fresh } = await db.from('trainees').select('*').eq('id', trainee.id).single();
   if (fresh) { trainee = fresh; sessionStorage.setItem('trainee', JSON.stringify(fresh)); }
@@ -501,15 +506,33 @@ function renderMessages(ticket, sub) {
 function renderReplySection(ticket, sub) {
   const section = document.getElementById('reply-section');
   if (sub) {
-    const feedbackHtml = sub.feedback ? `<div class="feedback-box"><strong>Trainer feedback:</strong><br>${sub.feedback.replace(/\n/g,'<br>')}</div>` : '';
+    if (sub.scoring) {
+      section.innerHTML = `
+        <div class="submitted-banner">
+          <div>
+            <div class="submitted-title">⏳ Scoring your reply…</div>
+            <div class="submitted-sub">Marking against the ideal handling — this takes a few seconds.</div>
+          </div>
+        </div>`;
+      return;
+    }
+    const scored = sub.score != null && sub.score !== undefined;
+    const rf = sub.response_feedback || '';
+    const af = sub.actions_feedback || '';
+    const fbHtml = scored
+      ? `<div class="feedback-box">
+           <div style="margin-bottom:12px"><strong>Response</strong><br>${(rf || '—').replace(/\n/g,'<br>')}</div>
+           <div><strong>Actions</strong><br>${(af || '—').replace(/\n/g,'<br>')}</div>
+         </div>`
+      : (sub.feedback ? `<div class="feedback-box"><strong>Trainer feedback:</strong><br>${sub.feedback.replace(/\n/g,'<br>')}</div>` : '');
     section.innerHTML = `
-      ${feedbackHtml}
+      ${fbHtml}
       <div class="submitted-banner">
         <div>
           <div class="submitted-title">✅ Reply submitted</div>
-          <div class="submitted-sub">${sub.score ? 'Your trainer has reviewed and scored this reply.' : 'Your trainer will review and score your reply shortly.'}</div>
+          <div class="submitted-sub">${scored ? 'Scored automatically against the ideal handling.' : (sub.scoreError ? 'Saved, but auto-scoring couldn\'t run just now.' : 'Awaiting review.')}</div>
         </div>
-        ${sub.score ? `<div class="score-display"><div class="score-val">${sub.score}/5</div><div class="score-label">Score</div></div>` : ''}
+        ${scored ? `<div class="score-display"><div class="score-val">${sub.score}/3</div><div class="score-label">Score</div></div>` : ''}
       </div>`;
   } else {
     section.innerHTML = `
@@ -638,16 +661,40 @@ async function submitReply(ticketId, andClose) {
   if (error) { if (btn) { btn.disabled = false; btn.textContent = 'Send'; } alert('Error: ' + error.message); return; }
 
   submissions.push(data);
-  renderTicketTable();
   const ticket = tickets.find(t => t.id === ticketId);
   renderMessages(ticket, data);
-  renderReplySection(ticket, data);
 
+  // Show scoring-in-progress
+  data.scoring = true;
+  renderReplySection(ticket, data);
   const badge = document.getElementById('td-status-badge');
-  badge.textContent = 'Submitted — awaiting review';
+  badge.textContent = 'Scoring…';
   badge.className = 'td-status-badge badge-submitted';
 
-  if (andClose) showTableView();
+  // Auto-score via the n8n webhook
+  try {
+    const res = await fetch(SCORING_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ submission_id: data.id, ticket_id: ticketId, reply_text: reply })
+    });
+    if (!res.ok) throw new Error('scoring ' + res.status);
+    const result = await res.json();
+    data.score = result.score;
+    data.response_feedback = result.response_feedback;
+    data.actions_feedback = result.actions_feedback;
+    data.feedback = 'Response: ' + (result.response_feedback || '') + '\n\nActions: ' + (result.actions_feedback || '');
+  } catch (e) {
+    data.scoreError = true;
+  }
+  data.scoring = false;
+
+  renderTicketTable();
+  renderMessages(ticket, data);
+  renderReplySection(ticket, data);
+  const badge2 = document.getElementById('td-status-badge');
+  badge2.textContent = (data.score != null) ? ('Scored ' + data.score + '/3') : 'Submitted';
+  badge2.className = 'td-status-badge badge-submitted';
 }
 
 function toggleNavSection(id, el) {

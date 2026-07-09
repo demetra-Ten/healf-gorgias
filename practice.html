@@ -359,10 +359,6 @@ async function init() {
   if (!stored) { window.location.href = 'index.html'; return; }
   trainee = JSON.parse(stored);
 
-  // Require a live authenticated session — no session means no database access.
-  const { data: { session } } = await db.auth.getSession();
-  if (!session) { sessionStorage.removeItem('trainee'); window.location.href = 'index.html'; return; }
-
   const { data: fresh } = await db.from('trainees').select('*').eq('id', trainee.id).single();
   if (fresh) { trainee = fresh; sessionStorage.setItem('trainee', JSON.stringify(fresh)); }
 

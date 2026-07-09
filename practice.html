@@ -128,6 +128,11 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .reply-to-val { color: #374151; font-weight: 500; }
 .reply-textarea { width: 100%; border: none; outline: none; padding: 12px 16px; font-size: 13px; font-family: inherit; resize: none; min-height: 100px; color: #374151; background: #fff; line-height: 1.55; }
 .reply-textarea::placeholder { color: #9ca3af; }
+.actions-note-wrap { border-top: 1px dashed #e5e7eb; background: #fbfaff; padding: 8px 16px 4px; }
+.actions-note-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+.actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 60px; color: #374151; background: transparent; line-height: 1.5; }
+.actions-textarea::placeholder { color: #b6bac2; }
+.cs-items { font-size: 12px; color: #374151; line-height: 1.5; margin-top: 4px; white-space: pre-wrap; }
 .reply-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-top: 1px solid #f3f4f6; }
 .reply-hint { font-size: 11px; color: #9ca3af; }
 .reply-actions { display: flex; gap: 8px; }
@@ -352,6 +357,7 @@ let categories = [];
 let submissions = [];
 let macros = [];
 let activeTicketId = null;
+let usedMacro = null;
 const SCORING_WEBHOOK = 'https://aiwellbeing.app.n8n.cloud/webhook/score-submission';
 
 async function init() {
@@ -378,7 +384,7 @@ async function init() {
   if (trainee.all_categories || trainee.current_category_id) {
     let query = db
       .from('tickets')
-      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier');
+      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier,order_items');
     if (!trainee.all_categories) query = query.eq('category_id', trainee.current_category_id);
     const { data: tix } = await query;
     tickets = tix || [];
@@ -456,6 +462,7 @@ function showTableView() {
 
 function openTicket(id) {
   activeTicketId = id;
+  usedMacro = null;
   renderTicketTable();
   const ticket = tickets.find(t => t.id === id);
   const sub = getSub(id);
@@ -546,8 +553,12 @@ function renderReplySection(ticket, sub) {
           </div>
         </div>
         <textarea class="reply-textarea" id="reply-input" placeholder="Click here to reply…"></textarea>
+        <div class="actions-note-wrap">
+          <div class="actions-note-label">⚙️ Actions — the steps you'd take on Shopify / Swap / Recharge etc.</div>
+          <textarea class="actions-textarea" id="actions-input" placeholder="e.g. Check the order in Shopify — unfulfilled, so cancel the OOS item (Edit → untick Restock). MO the alternative with reason 'productswap'. Log refund reason from CW Essentials…"></textarea>
+        </div>
         <div class="reply-toolbar">
-          <span class="reply-hint">Your reply will be reviewed and scored by your trainer.</span>
+          <span class="reply-hint">Your reply and actions will be scored automatically.</span>
           <div class="reply-actions">
             <button class="send-close-btn" onclick="submitReply(${ticket.id}, true)">Send &amp; Close</button>
             <button class="submit-btn" id="submit-btn" onclick="submitReply(${ticket.id}, false)">Send</button>
@@ -600,6 +611,7 @@ function insertMacro(id) {
   const t = tickets.find(x => x.id === activeTicketId);
   const first = (t && t.customer_name) ? t.customer_name.split(' ')[0] : 'there';
   const body = m.body.replace(/\{\{\s*ticket\.customer\.firstname\s*\}\}/g, first);
+  usedMacro = { name: m.name, body: body };
   const input = document.getElementById('reply-input');
   if (input) { input.value = body; input.style.border = 'none'; input.focus(); }
   const p = document.getElementById('macro-picker');
@@ -634,6 +646,7 @@ function renderCustomerSidebar(ticket) {
         <div class="order-num">${ticket.order_number}</div>
         ${ticket.order_value ? `<div style="font-size:12px;color:#374151;margin-top:3px">${ticket.order_value}</div>` : ''}
         ${ticket.order_status ? `<span class="order-status-badge ${statusClass}">${ticket.order_status}</span>` : ''}
+        ${ticket.order_items ? `<div class="cs-items">${ticket.order_items.replace(/\n/g,'<br>')}</div>` : ''}
       </div>
     </div>` : ''}
     <div class="cs-section">
@@ -646,12 +659,14 @@ async function submitReply(ticketId, andClose) {
   const input = document.getElementById('reply-input');
   const reply = input ? input.value.trim() : '';
   if (!reply) { if (input) { input.style.border = '1px solid #ef4444'; input.placeholder = 'Please write a reply first.'; } return; }
+  const actionsInput = document.getElementById('actions-input');
+  const actions = actionsInput ? actionsInput.value.trim() : '';
 
   const btn = document.getElementById('submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
 
   const { data, error } = await db.from('submissions').insert({
-    trainee_id: trainee.id, ticket_id: ticketId, reply_text: reply
+    trainee_id: trainee.id, ticket_id: ticketId, reply_text: reply, actions_text: actions
   }).select().single();
 
   if (error) { if (btn) { btn.disabled = false; btn.textContent = 'Send'; } alert('Error: ' + error.message); return; }
@@ -672,7 +687,7 @@ async function submitReply(ticketId, andClose) {
     const res = await fetch(SCORING_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ submission_id: data.id, ticket_id: ticketId, reply_text: reply })
+      body: JSON.stringify({ submission_id: data.id, ticket_id: ticketId, reply_text: reply, actions_text: actions, macro_name: usedMacro ? usedMacro.name : null, macro_body: usedMacro ? usedMacro.body : null })
     });
     if (!res.ok) throw new Error('scoring ' + res.status);
     const result = await res.json();

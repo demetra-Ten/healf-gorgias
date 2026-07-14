@@ -132,7 +132,9 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .actions-note-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
 .actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 60px; color: #374151; background: transparent; line-height: 1.5; }
 .actions-textarea::placeholder { color: #b6bac2; }
-.cs-items { font-size: 12px; color: #374151; line-height: 1.5; margin-top: 4px; white-space: pre-wrap; }
+.cs-items { font-size: 12px; color: #374151; line-height: 1.5; margin-top: 4px; }
+.cs-items a { color: #7c3aed; text-decoration: none; }
+.cs-items a:hover { text-decoration: underline; }
 .tt-group td { background: #f9fafb; padding: 8px 16px; border-bottom: 1px solid #eceef1; }
 .tt-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
 .tt-group-count { display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 600; background: #e5e7eb; color: #6b7280; padding: 1px 7px; border-radius: 8px; }
@@ -395,6 +397,11 @@ const PRODUCTS_BY_ID = {
   38: "NAC (N-AcetylCysteine) 600mg (x1) — £29.00 [unfulfilled]\nMega EPA Forte (x1) — £29.00 [Fulfilment in Progress]"
 };
 function ticketProducts(t) { return (t && (t.order_items || PRODUCTS_BY_ID[t.id])) || ''; }
+function renderProducts(str) {
+  return (str || '')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\n/g, '<br>');
+}
 
 async function init() {
   const stored = sessionStorage.getItem('trainee');
@@ -692,7 +699,7 @@ function renderCustomerSidebar(ticket) {
         <div class="order-num">${ticket.order_number}</div>
         ${ticket.order_value ? `<div style="font-size:12px;color:#374151;margin-top:3px">${ticket.order_value}</div>` : ''}
         ${ticket.order_status ? `<span class="order-status-badge ${statusClass}">${ticket.order_status}</span>` : ''}
-        ${ticketProducts(ticket) ? `<div class="cs-items">${ticketProducts(ticket).replace(/\n/g,'<br>')}</div>` : ''}
+        ${ticketProducts(ticket) ? `<div class="cs-items">${renderProducts(ticketProducts(ticket))}</div>` : ''}
       </div>
     </div>` : ''}
     <div class="cs-section">

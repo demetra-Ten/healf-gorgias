@@ -388,7 +388,7 @@ async function init() {
   if (trainee.all_categories || trainee.current_category_id) {
     let query = db
       .from('tickets')
-      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier,order_items');
+      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier,order_items,ideal_response');
     if (!trainee.all_categories) query = query.eq('category_id', trainee.current_category_id);
     const { data: tix } = await query;
     tickets = tix || [];
@@ -701,7 +701,15 @@ async function submitReply(ticketId, andClose) {
     const res = await fetch(SCORING_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ submission_id: data.id, ticket_id: ticketId, reply_text: reply, actions_text: actions, macro_name: usedMacro ? usedMacro.name : null, macro_body: usedMacro ? usedMacro.body : null })
+      body: JSON.stringify({
+        submission_id: data.id, ticket_id: ticketId,
+        reply_text: reply, actions_text: actions,
+        macro_name: usedMacro ? usedMacro.name : null,
+        macro_body: usedMacro ? usedMacro.body : null,
+        customer_name: ticket.customer_name, message: ticket.message,
+        ideal_response: ticket.ideal_response, order_items: ticket.order_items,
+        order_value: ticket.order_value, order_status: ticket.order_status
+      })
     });
     if (!res.ok) throw new Error('scoring ' + res.status);
     const result = await res.json();

@@ -89,9 +89,10 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .tt-time { font-size: 12px; color: #374151; white-space: nowrap; }
 .tt-time.bold { font-weight: 600; color: #111; }
 .tt-status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-.dot-new { background: #7c3aed; }
-.dot-submitted { background: #22c55e; }
-.dot-scored { background: #f59e0b; }
+.dot-open { background: #7c3aed; }
+.dot-score-3 { background: #22c55e; }
+.dot-score-2 { background: #f59e0b; }
+.dot-score-1 { background: #ef4444; }
 
 /* ── TICKET DETAIL (replaces table when ticket open) ── */
 .ticket-detail { flex: 1; display: none; flex-direction: column; overflow: hidden; }
@@ -101,9 +102,11 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .td-breadcrumb-sep { color: #d1d5db; }
 .td-subject { font-weight: 700; font-size: 13px; color: #111; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .td-status-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; flex-shrink: 0; }
-.badge-open { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
-.badge-submitted { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-.badge-scored { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+.badge-open { background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe; }
+.badge-submitted { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; }
+.badge-score-3 { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.badge-score-2 { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+.badge-score-1 { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 .td-btn { padding: 4px 11px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; font-size: 12px; color: #374151; cursor: pointer; font-family: inherit; }
 .td-btn:hover { background: #f9fafb; }
 
@@ -188,11 +191,9 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .order-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; }
 .order-num { font-size: 11px; font-weight: 700; color: #7c3aed; }
 .order-status-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 8px; margin-top: 5px; }
-.os-processing { background: #fef9c3; color: #854d0e; }
-.os-shipped { background: #dbeafe; color: #1d4ed8; }
-.os-delivered { background: #dcfce7; color: #166534; }
-.os-cancelled { background: #fee2e2; color: #991b1b; }
-.os-refunded { background: #ede9fe; color: #5b21b6; }
+.os-fulfilled { background: #dcfce7; color: #166534; }
+.os-partial { background: #dbeafe; color: #1d4ed8; }
+.os-unfulfilled { background: #fef9c3; color: #854d0e; }
 .loyalty-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 8px; }
 .loyalty-bronze { background: #fef3c7; color: #92400e; }
 .loyalty-silver { background: #f3f4f6; color: #374151; }
@@ -556,6 +557,17 @@ function getSub(ticketId) { return submissions.find(s => s.ticket_id === ticketI
 
 function relativeTime() { return 'Today'; }
 
+function scoreDotClass(s) { return s >= 3 ? 'dot-score-3' : s == 2 ? 'dot-score-2' : 'dot-score-1'; }
+function scoreBadgeClass(s) { return s >= 3 ? 'badge-score-3' : s == 2 ? 'badge-score-2' : 'badge-score-1'; }
+// Normalise any raw order status to one of the three real Shopify fulfilment states.
+function fulfilment(raw) {
+  if (!raw) return null;
+  const s = String(raw).toLowerCase();
+  if (s.includes('partial')) return { label: 'Partially fulfilled', cls: 'os-partial' };
+  if (s.includes('deliver') || s.includes('shipped') || s === 'fulfilled') return { label: 'Fulfilled', cls: 'os-fulfilled' };
+  return { label: 'Unfulfilled', cls: 'os-unfulfilled' };
+}
+
 function renderTicketTable() {
   const tbody = document.getElementById('ticket-tbody');
   if (!tickets.length) {
@@ -569,9 +581,8 @@ function renderTicketTable() {
   const row = t => {
     const sub = getSub(t.id);
     const isActive = t.id === activeTicketId;
-    let dotClass = 'dot-new', statusLabel = 'New';
-    if (sub && sub.score != null) { dotClass = 'dot-scored'; statusLabel = `Scored ${sub.score}/3`; }
-    else if (sub) { dotClass = 'dot-submitted'; statusLabel = 'Submitted'; }
+    let dotClass = 'dot-open', statusLabel = 'Open';
+    if (sub && sub.score != null) { dotClass = scoreDotClass(sub.score); statusLabel = `${sub.score}/3`; }
     return `<tr class="${isActive ? 'active-row' : ''}" onclick="openTicket(${t.id})">
       <td><input type="checkbox" class="tt-checkbox" onclick="event.stopPropagation()" /></td>
       <td>
@@ -615,8 +626,8 @@ function openTicket(id) {
   document.getElementById('td-subject').textContent = ticket.subject;
 
   const badge = document.getElementById('td-status-badge');
-  if (sub && sub.score) { badge.textContent = `Scored ${sub.score}/5`; badge.className = 'td-status-badge badge-scored'; }
-  else if (sub) { badge.textContent = 'Submitted — awaiting review'; badge.className = 'td-status-badge badge-submitted'; }
+  if (sub && sub.score != null) { badge.textContent = `${sub.score}/3`; badge.className = `td-status-badge ${scoreBadgeClass(sub.score)}`; }
+  else if (sub) { badge.textContent = 'Submitted'; badge.className = 'td-status-badge badge-submitted'; }
   else { badge.textContent = 'Open'; badge.className = 'td-status-badge badge-open'; }
 
   renderMessages(ticket, sub);
@@ -764,7 +775,7 @@ document.addEventListener('click', e => {
 });
 
 function renderCustomerSidebar(ticket) {
-  const statusClass = { 'Processing':'os-processing','Shipped':'os-shipped','Delivered':'os-delivered','Cancelled':'os-cancelled','Refunded':'os-refunded' }[ticket.order_status] || 'os-processing';
+  const fs = fulfilment(ticket.order_status);
   const loyaltyClass = { 'Bronze':'loyalty-bronze','Silver':'loyalty-silver','Gold':'loyalty-gold','VIP':'loyalty-vip' }[ticket.loyalty_tier] || '';
 
   document.getElementById('customer-sidebar').innerHTML = `
@@ -785,7 +796,7 @@ function renderCustomerSidebar(ticket) {
       <div class="order-card">
         <div class="order-num">${ticket.order_number}</div>
         ${ticket.order_value ? `<div style="font-size:12px;color:#374151;margin-top:3px">${ticket.order_value}</div>` : ''}
-        ${ticket.order_status ? `<span class="order-status-badge ${statusClass}">${ticket.order_status}</span>` : ''}
+        ${fs ? `<span class="order-status-badge ${fs.cls}">${fs.label}</span>` : ''}
         ${ticketProducts(ticket) ? `<div class="cs-items">${renderProducts(ticketProducts(ticket))}</div>` : ''}
       </div>
     </div>` : ''}
@@ -852,8 +863,8 @@ async function submitReply(ticketId, andClose) {
   renderMessages(ticket, data);
   renderReplySection(ticket, data);
   const badge2 = document.getElementById('td-status-badge');
-  badge2.textContent = (data.score != null) ? ('Scored ' + data.score + '/3') : 'Submitted';
-  badge2.className = 'td-status-badge badge-submitted';
+  if (data.score != null) { badge2.textContent = `${data.score}/3`; badge2.className = `td-status-badge ${scoreBadgeClass(data.score)}`; }
+  else { badge2.textContent = 'Submitted'; badge2.className = 'td-status-badge badge-submitted'; }
 }
 
 function toggleNavSection(id, el) {

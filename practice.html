@@ -52,7 +52,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
 .nav-locked { opacity: 0.45; cursor: default; }
 .nav-locked:hover { background: none !important; }
 .nav-active-badge { font-size: 9px; background: #7c3aed; color: #fff; padding: 1px 5px; border-radius: 4px; margin-left: 3px; flex-shrink: 0; }
-.leftnav-footer { margin-top: auto; padding: 10px 12px; border-top: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+.leftnav-footer { position: relative; margin-top: auto; padding: 10px 12px; border-top: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
 .trainee-info { display: flex; align-items: center; gap: 8px; }
 .trainee-avatar { width: 28px; height: 28px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0; }
 .trainee-name-sm { font-size: 12px; font-weight: 600; color: #111; }
@@ -216,7 +216,7 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .cs-notes { width: 100%; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; font-size: 12px; font-family: inherit; resize: none; outline: none; min-height: 60px; color: #374151; background: #fff; }
 
 /* PROFILE MENU */
-.profile-menu { position: absolute; top: 40px; right: 12px; width: 260px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.22); z-index: 200; overflow: hidden; display: none; }
+.profile-menu { position: absolute; bottom: 56px; left: 8px; right: 8px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.22); z-index: 200; overflow: hidden; display: none; }
 .profile-menu.open { display: block; }
 .pm-head { display: flex; align-items: center; gap: 10px; padding: 14px; border-bottom: 1px solid #f3f4f6; }
 .pm-avatar { width: 34px; height: 34px; border-radius: 50%; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
@@ -329,18 +329,6 @@ html[data-theme="dark"] .pm-divider { background: #2c2c31; }
   </div>
   <div class="topnav-right">
     <span class="topnav-icon">⌕</span>
-    <div class="topnav-avatar" id="topnav-avatar" onclick="toggleProfileMenu(event)">?</div>
-  </div>
-  <div class="profile-menu" id="profile-menu">
-    <div class="pm-head">
-      <div class="pm-avatar" id="pm-avatar">?</div>
-      <div><div class="pm-name" id="pm-name">Trainee</div><div class="pm-sub">Trainee</div></div>
-    </div>
-    <div class="pm-row" onclick="toggleAvailability(event)"><span>Availability</span><span class="pm-toggle" id="pm-avail"></span></div>
-    <div class="pm-divider"></div>
-    <div class="pm-row" onclick="toggleTheme(event)"><span>Dark mode</span><span class="pm-toggle" id="pm-theme"></span></div>
-    <div class="pm-divider"></div>
-    <div class="pm-row pm-signout" onclick="signOut()">Sign out</div>
   </div>
 </div>
 
@@ -353,42 +341,6 @@ html[data-theme="dark"] .pm-divider { background: #2c2c31; }
         <div class="nav-item-left"><span class="nav-item-icon">📥</span><span class="nav-item-label">My Tickets</span></div>
         <span class="nav-count" id="nav-ticket-count">—</span>
       </div>
-      <div class="nav-item nav-locked">
-        <div class="nav-item-left"><span class="nav-item-icon">👤</span><span class="nav-item-label">Assigned to me</span></div>
-        <span class="nav-count">0</span>
-      </div>
-      <div class="nav-item nav-locked">
-        <div class="nav-item-left"><span class="nav-item-icon">🔕</span><span class="nav-item-label">Snoozed</span></div>
-        <span class="nav-count">0</span>
-      </div>
-      <div class="nav-item nav-locked">
-        <div class="nav-item-left"><span class="nav-item-icon">···</span><span class="nav-item-label">More</span></div>
-      </div>
-    </div>
-
-    <div class="nav-divider"></div>
-
-    <div class="nav-section-label">Shared views <span class="nav-section-caret">▾</span></div>
-    <div style="padding: 0 8px 4px;">
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">⏰</span><span class="nav-item-label">FRT (&gt;3 hours)</span></div><span class="nav-count red">31</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">⏰</span><span class="nav-item-label">FRT (&gt;12 hours)</span></div><span class="nav-count red">7</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">⏰</span><span class="nav-item-label">FRT (&gt;24 hours)</span></div><span class="nav-count red">4</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔶</span><span class="nav-item-label">Response (&gt;24 hou...)</span></div><span class="nav-count amber">1</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔶</span><span class="nav-item-label">Response (&gt;48 ho...)</span></div><span class="nav-count amber">1</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔴</span><span class="nav-item-label">Response (&gt;72 hou...)</span></div><span class="nav-count red">1</span></div>
-    </div>
-
-    <div class="nav-divider"></div>
-
-    <div class="nav-section-label" onclick="toggleNavSection('main-channels', this)">Main Channels <span class="nav-section-caret" id="main-channels-caret">▴</span></div>
-    <div id="main-channels" class="nav-sub" style="padding: 0 8px 4px 8px;">
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">💎</span><span class="nav-item-label">VIP's</span></div><span class="nav-count">55</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">💬</span><span class="nav-item-label">WhatsApp</span></div><span class="nav-count">57</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">📁</span><span class="nav-item-label">Compliance</span></div><span class="nav-count">0</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">✉️</span><span class="nav-item-label">Email - All</span></div><span class="nav-count">147</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">📬</span><span class="nav-item-label">Unassigned - C...</span></div><span class="nav-count">85</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🇩🇪</span><span class="nav-item-label">Germany</span></div><span class="nav-count">9</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">👍</span><span class="nav-item-label">Calls</span></div><span class="nav-count">13</span></div>
     </div>
 
     <div class="nav-divider"></div>
@@ -397,7 +349,7 @@ html[data-theme="dark"] .pm-divider { background: #2c2c31; }
     <div id="category-nav" style="padding: 0 8px 4px 8px;"></div>
 
     <div class="leftnav-footer">
-      <div class="trainee-info">
+      <div class="trainee-info" id="profile-trigger" onclick="toggleProfileMenu(event)" style="cursor:pointer">
         <div class="trainee-avatar" id="trainee-avatar">?</div>
         <div>
           <div class="trainee-name-sm" id="trainee-name-sm">—</div>
@@ -405,8 +357,19 @@ html[data-theme="dark"] .pm-divider { background: #2c2c31; }
         </div>
       </div>
       <div class="footer-icons">
-        <span title="Settings">⚙</span>
+        <span title="Settings" onclick="toggleProfileMenu(event)">⚙</span>
         <span title="Sign out" onclick="signOut()">↪</span>
+      </div>
+      <div class="profile-menu" id="profile-menu">
+        <div class="pm-head">
+          <div class="pm-avatar" id="pm-avatar">?</div>
+          <div><div class="pm-name" id="pm-name">Trainee</div><div class="pm-sub">Trainee</div></div>
+        </div>
+        <div class="pm-row" onclick="toggleAvailability(event)"><span>Availability</span><span class="pm-toggle" id="pm-avail"></span></div>
+        <div class="pm-divider"></div>
+        <div class="pm-row" onclick="toggleTheme(event)"><span>Dark mode</span><span class="pm-toggle" id="pm-theme"></span></div>
+        <div class="pm-divider"></div>
+        <div class="pm-row pm-signout" onclick="signOut()">Sign out</div>
       </div>
     </div>
   </div>
@@ -519,8 +482,7 @@ function renderProducts(str) {
     let qty = '', price = '', status = '';
     const qm = rest.match(/\(x?(\d+)\)/i); if (qm) qty = '×' + qm[1];
     const pm = rest.match(/£[\d.,]+/); if (pm) price = pm[0];
-    const sm = rest.match(/\[([^\]]+)\]/); if (sm) status = sm[1].split(',')[0].trim();  // drop ETA/date after first comma
-    const meta = [qty, price, status].filter(Boolean).join(' · ');
+    const meta = [qty, price].filter(Boolean).join(' · ');  // no status text — matches how Gorgias shows order lines
     const title = url ? `<a href="${url}" target="_blank" rel="noopener">${name}</a>` : name;
     return `<div class="li"><div class="li-name">${title}</div>${meta ? `<div class="li-meta">${meta}</div>` : ''}</div>`;
   }).join('');
@@ -535,7 +497,6 @@ async function init() {
   if (fresh) { trainee = fresh; sessionStorage.setItem('trainee', JSON.stringify(fresh)); }
 
   const initial = trainee.name.charAt(0).toUpperCase();
-  document.getElementById('topnav-avatar').textContent = initial;
   document.getElementById('trainee-avatar').textContent = initial;
   document.getElementById('trainee-name-sm').textContent = trainee.name;
   document.getElementById('trainee-email-sm').textContent = trainee.email;
@@ -914,7 +875,7 @@ function applyTheme(t) {
 function toggleTheme(e) { if (e) e.stopPropagation(); applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
 document.addEventListener('click', e => {
   const m = document.getElementById('profile-menu');
-  if (m && m.classList.contains('open') && !e.target.closest('#profile-menu') && !e.target.closest('#topnav-avatar')) m.classList.remove('open');
+  if (m && m.classList.contains('open') && !e.target.closest('#profile-menu') && !e.target.closest('#profile-trigger') && !e.target.closest('.footer-icons')) m.classList.remove('open');
 });
 
 function signOut() { sessionStorage.removeItem('trainee'); window.location.href = 'index.html'; }

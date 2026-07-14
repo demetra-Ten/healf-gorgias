@@ -11,7 +11,7 @@
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; background: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: #111; }
 
 /* ── TOP NAV ── */
-.topnav { background: #1a1a2e; height: 44px; display: flex; align-items: center; padding: 0 14px; gap: 10px; flex-shrink: 0; }
+.topnav { background: #1a1a2e; height: 44px; display: flex; align-items: center; padding: 0 14px; gap: 10px; flex-shrink: 0; position: relative; }
 .topnav-logo { display: flex; align-items: center; gap: 7px; }
 .topnav-logomark { width: 26px; height: 26px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: #111; letter-spacing: -0.5px; }
 .topnav-name { color: #fff; font-weight: 700; font-size: 14px; }
@@ -204,7 +204,103 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .tv-empty-icon { font-size: 40px; opacity: 0.2; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 99px; }
+
+/* AGENT NOTES + tidy classes (so they theme correctly) */
+.cs-addtag { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px dashed #d1d5db; border-radius: 14px; font-size: 11px; color: #6b7280; cursor: pointer; background: none; font-family: inherit; margin-bottom: 8px; }
+.cs-add { font-size: 11px; color: #7c3aed; cursor: pointer; }
+.cs-more { font-size: 11px; color: #7c3aed; cursor: pointer; margin-top: 6px; }
+.cs-notes { width: 100%; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; font-size: 12px; font-family: inherit; resize: none; outline: none; min-height: 60px; color: #374151; background: #fff; }
+
+/* PROFILE MENU */
+.profile-menu { position: absolute; top: 40px; right: 12px; width: 260px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.22); z-index: 200; overflow: hidden; display: none; }
+.profile-menu.open { display: block; }
+.pm-head { display: flex; align-items: center; gap: 10px; padding: 14px; border-bottom: 1px solid #f3f4f6; }
+.pm-avatar { width: 34px; height: 34px; border-radius: 50%; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+.pm-name { font-size: 13px; font-weight: 700; color: #111; }
+.pm-sub { font-size: 11px; color: #9ca3af; }
+.pm-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; font-size: 13px; color: #374151; cursor: pointer; }
+.pm-row:hover { background: #f9fafb; }
+.pm-divider { height: 1px; background: #f3f4f6; }
+.pm-toggle { width: 34px; height: 20px; border-radius: 99px; background: #d1d5db; position: relative; transition: background 0.15s; flex-shrink: 0; }
+.pm-toggle.on { background: #7c3aed; }
+.pm-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.pm-toggle.on::after { left: 16px; }
+.pm-signout { color: #dc2626; }
+
+/* ─────────────  DARK THEME  ───────────── */
+html[data-theme="dark"] body { background: #17171a; color: #e6e6e9; }
+html[data-theme="dark"] .leftnav { background: #1d1d21; border-right-color: #2c2c31; }
+html[data-theme="dark"] .nav-item { color: #c7c7cd; }
+html[data-theme="dark"] .nav-item:hover { background: #26262b; }
+html[data-theme="dark"] .nav-item.active { background: #2e2a4d; color: #c4b5fd; }
+html[data-theme="dark"] .nav-section-label { color: #8a8a92; }
+html[data-theme="dark"] .nav-count { background: #2c2c31; color: #a1a1aa; }
+html[data-theme="dark"] .nav-item.active .nav-count { background: #4c4470; color: #ddd6fe; }
+html[data-theme="dark"] .nav-divider { background: #2c2c31; }
+html[data-theme="dark"] .leftnav-footer { border-top-color: #2c2c31; }
+html[data-theme="dark"] .trainee-name-sm { color: #f4f4f5; }
+html[data-theme="dark"] .ttv-header, html[data-theme="dark"] .td-topbar { background: #1d1d21; border-bottom-color: #2c2c31; }
+html[data-theme="dark"] .ttv-title, html[data-theme="dark"] .td-subject { color: #f4f4f5; }
+html[data-theme="dark"] .ttv-count, html[data-theme="dark"] .ttv-btn, html[data-theme="dark"] .td-btn, html[data-theme="dark"] .reply-channel-btn { color: #c7c7cd; }
+html[data-theme="dark"] .ttv-btn, html[data-theme="dark"] .td-btn, html[data-theme="dark"] .reply-channel-btn { background: #232327; border-color: #2c2c31; }
+html[data-theme="dark"] .ttv-btn:hover, html[data-theme="dark"] .td-btn:hover { background: #2a2a30; }
+html[data-theme="dark"] table.ticket-table thead th { background: #1d1d21; color: #8a8a92; border-bottom-color: #2c2c31; }
+html[data-theme="dark"] table.ticket-table tbody tr { border-bottom-color: #232327; }
+html[data-theme="dark"] table.ticket-table tbody tr:hover { background: #232327; }
+html[data-theme="dark"] table.ticket-table tbody tr.active-row { background: #262336; }
+html[data-theme="dark"] table.ticket-table tbody td { color: #d4d4d8; }
+html[data-theme="dark"] .tt-subject, html[data-theme="dark"] .tt-time.bold { color: #f4f4f5; }
+html[data-theme="dark"] .tt-preview, html[data-theme="dark"] .tt-assignee { color: #8a8a92; }
+html[data-theme="dark"] .tt-time { color: #d4d4d8; }
+html[data-theme="dark"] .tt-group td { background: #1d1d21; border-bottom-color: #2c2c31; }
+html[data-theme="dark"] .tt-group-label { color: #a1a1aa; }
+html[data-theme="dark"] .tt-group-count { background: #2c2c31; color: #a1a1aa; }
+html[data-theme="dark"] .td-back:hover { background: #26262b; color: #d4d4d8; }
+html[data-theme="dark"] .messages-area { background: #161619; }
+html[data-theme="dark"] .msg-card { background: #232327; border-color: #2c2c31; color: #d4d4d8; }
+html[data-theme="dark"] .msg-card.agent-card { background: #2a2740; border-color: #4c4470; }
+html[data-theme="dark"] .msg-ava.customer { background: #3a3a40; color: #d4d4d8; }
+html[data-theme="dark"] .msg-sender { color: #d4d4d8; }
+html[data-theme="dark"] .reply-box { background: #232327; border-top-color: #2c2c31; }
+html[data-theme="dark"] .reply-to-row { border-bottom-color: #2c2c31; }
+html[data-theme="dark"] .reply-textarea { background: transparent; color: #e6e6e9; }
+html[data-theme="dark"] .actions-note-wrap { background: #1e1e22; border-top-color: #2c2c31; }
+html[data-theme="dark"] .actions-textarea { color: #e6e6e9; }
+html[data-theme="dark"] .reply-toolbar { border-top-color: #2c2c31; }
+html[data-theme="dark"] .macro-trigger { background: #2a2a30; border-color: #2c2c31; color: #d4d4d8; }
+html[data-theme="dark"] .macro-trigger:hover { background: #33304d; color: #ddd6fe; border-color: #4c4470; }
+html[data-theme="dark"] .macro-picker { background: #232327; border-color: #2c2c31; }
+html[data-theme="dark"] .macro-search { background: transparent; color: #e6e6e9; border-bottom-color: #2c2c31; }
+html[data-theme="dark"] .macro-item { border-bottom-color: #2a2a30; }
+html[data-theme="dark"] .macro-item:hover { background: #2a2740; }
+html[data-theme="dark"] .macro-item-name { color: #e6e6e9; }
+html[data-theme="dark"] .send-close-btn { background: #2a2a30; color: #d4d4d8; border-color: #2c2c31; }
+html[data-theme="dark"] .submit-btn { background: #6d6ef0; }
+html[data-theme="dark"] .submit-btn:hover { background: #8385f4; }
+html[data-theme="dark"] .submitted-banner { background: #14261a; border-top-color: #1f5132; }
+html[data-theme="dark"] .submitted-title { color: #86efac; }
+html[data-theme="dark"] .submitted-sub { color: #86b799; }
+html[data-theme="dark"] .score-display { background: #232327; border-color: #2c2c31; }
+html[data-theme="dark"] .score-val { color: #b3a6f7; }
+html[data-theme="dark"] .feedback-box { background: #24223a; border-color: #4c4470; color: #d4d4d8; }
+html[data-theme="dark"] .customer-sidebar { background: #1d1d21; border-left-color: #2c2c31; }
+html[data-theme="dark"] .cs-section { border-bottom-color: #2c2c31; }
+html[data-theme="dark"] .cs-name, html[data-theme="dark"] .cs-value { color: #e6e6e9; }
+html[data-theme="dark"] .cs-row { border-bottom-color: #26262b; }
+html[data-theme="dark"] .order-card { background: #232327; border-color: #2c2c31; }
+html[data-theme="dark"] .cs-notes { background: #232327; border-color: #2c2c31; color: #e6e6e9; }
+html[data-theme="dark"] .cs-addtag { border-color: #3a3a40; color: #a1a1aa; }
+html[data-theme="dark"] .loading-overlay { background: #17171a; }
+html[data-theme="dark"] .tv-empty { background: #161619; }
+html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #3a3a40; }
+html[data-theme="dark"] .profile-menu { background: #232327; border-color: #2c2c31; }
+html[data-theme="dark"] .pm-head { border-bottom-color: #2c2c31; }
+html[data-theme="dark"] .pm-name { color: #f4f4f5; }
+html[data-theme="dark"] .pm-row { color: #d4d4d8; }
+html[data-theme="dark"] .pm-row:hover { background: #2a2a30; }
+html[data-theme="dark"] .pm-divider { background: #2c2c31; }
 </style>
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
 <body>
 
@@ -220,14 +316,23 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
   </div>
   <div class="topnav-inbox">Inbox <span class="topnav-caret">▾</span></div>
   <div class="topnav-actions">
-    <button class="topnav-btn">✉️ New ticket <kbd>N</kbd></button>
-    <button class="topnav-btn">📞 Call <kbd>⌘ E</kbd></button>
+    <button class="topnav-btn">＋ New ticket <kbd>N</kbd></button>
+    <button class="topnav-btn">Call <kbd>⌘ E</kbd></button>
   </div>
   <div class="topnav-right">
-    <span class="topnav-icon">🔔</span>
-    <span class="topnav-icon">🔍</span>
-    <span class="topnav-icon">⌨️</span>
-    <div class="topnav-avatar" id="topnav-avatar">?</div>
+    <span class="topnav-icon">⌕</span>
+    <div class="topnav-avatar" id="topnav-avatar" onclick="toggleProfileMenu(event)">?</div>
+  </div>
+  <div class="profile-menu" id="profile-menu">
+    <div class="pm-head">
+      <div class="pm-avatar" id="pm-avatar">?</div>
+      <div><div class="pm-name" id="pm-name">Trainee</div><div class="pm-sub">Trainee</div></div>
+    </div>
+    <div class="pm-row" onclick="toggleAvailability(event)"><span>Availability</span><span class="pm-toggle" id="pm-avail"></span></div>
+    <div class="pm-divider"></div>
+    <div class="pm-row" onclick="toggleTheme(event)"><span>Dark mode</span><span class="pm-toggle" id="pm-theme"></span></div>
+    <div class="pm-divider"></div>
+    <div class="pm-row pm-signout" onclick="signOut()">Sign out</div>
   </div>
 </div>
 
@@ -257,9 +362,9 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 
     <div class="nav-section-label">Shared views <span class="nav-section-caret">▾</span></div>
     <div style="padding: 0 8px 4px;">
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔴</span><span class="nav-item-label">FRT (&gt;3 hours)</span></div><span class="nav-count red">31</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔴</span><span class="nav-item-label">FRT (&gt;12 hours)</span></div><span class="nav-count red">7</span></div>
-      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔴</span><span class="nav-item-label">FRT (&gt;24 hours)</span></div><span class="nav-count red">4</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">⏰</span><span class="nav-item-label">FRT (&gt;3 hours)</span></div><span class="nav-count red">31</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">⏰</span><span class="nav-item-label">FRT (&gt;12 hours)</span></div><span class="nav-count red">7</span></div>
+      <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">⏰</span><span class="nav-item-label">FRT (&gt;24 hours)</span></div><span class="nav-count red">4</span></div>
       <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔶</span><span class="nav-item-label">Response (&gt;24 hou...)</span></div><span class="nav-count amber">1</span></div>
       <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔶</span><span class="nav-item-label">Response (&gt;48 ho...)</span></div><span class="nav-count amber">1</span></div>
       <div class="nav-item nav-locked"><div class="nav-item-left"><span class="nav-item-icon">🔴</span><span class="nav-item-label">Response (&gt;72 hou...)</span></div><span class="nav-count red">1</span></div>
@@ -416,6 +521,9 @@ async function init() {
   document.getElementById('trainee-avatar').textContent = initial;
   document.getElementById('trainee-name-sm').textContent = trainee.name;
   document.getElementById('trainee-email-sm').textContent = trainee.email;
+  document.getElementById('pm-avatar').textContent = initial;
+  document.getElementById('pm-name').textContent = trainee.name;
+  if (document.documentElement.getAttribute('data-theme') === 'dark') document.getElementById('pm-theme').classList.add('on');
 
   const { data: cats } = await db.from('categories').select('*').order('order_index');
   categories = cats || [];
@@ -566,7 +674,7 @@ function renderReplySection(ticket, sub) {
       section.innerHTML = `
         <div class="submitted-banner">
           <div>
-            <div class="submitted-title">⏳ Scoring your reply…</div>
+            <div class="submitted-title">Scoring your reply…</div>
             <div class="submitted-sub">Marking against the ideal handling — this takes a few seconds.</div>
           </div>
         </div>`;
@@ -585,7 +693,7 @@ function renderReplySection(ticket, sub) {
       ${fbHtml}
       <div class="submitted-banner">
         <div>
-          <div class="submitted-title">✅ Reply submitted</div>
+          <div class="submitted-title">Reply submitted</div>
           <div class="submitted-sub">${scored ? 'Scored automatically against the ideal handling.' : (sub.scoreError ? 'Saved, but auto-scoring couldn\'t run just now.' : 'Awaiting review.')}</div>
         </div>
         ${scored ? `<div class="score-display"><div class="score-val">${sub.score}/3</div><div class="score-label">Score</div></div>` : ''}
@@ -607,7 +715,7 @@ function renderReplySection(ticket, sub) {
         </div>
         <textarea class="reply-textarea" id="reply-input" placeholder="Click here to reply…"></textarea>
         <div class="actions-note-wrap">
-          <div class="actions-note-label">⚙️ Actions — the steps you'd take on Shopify / Swap / Recharge etc.</div>
+          <div class="actions-note-label">Actions — the steps you'd take on Shopify / Swap / Recharge etc.</div>
           <textarea class="actions-textarea" id="actions-input" placeholder="e.g. Check the order in Shopify — unfulfilled, so cancel the OOS item (Edit → untick Restock). MO the alternative with reason 'productswap'. Log refund reason from CW Essentials…"></textarea>
         </div>
         <div class="reply-toolbar">
@@ -683,7 +791,7 @@ function renderCustomerSidebar(ticket) {
   document.getElementById('customer-sidebar').innerHTML = `
     <div class="cs-section">
       <div class="cs-title">Ticket details</div>
-      <button style="display:flex;align-items:center;gap:5px;padding:4px 10px;border:1px dashed #d1d5db;border-radius:14px;font-size:11px;color:#6b7280;cursor:pointer;background:none;font-family:inherit;margin-bottom:8px">+ Add tags</button>
+      <button class="cs-addtag">+ Add tags</button>
       <div class="cs-row"><span class="cs-label">Contact reason</span><span style="font-size:11px;color:#7c3aed;cursor:pointer">+ Add</span></div>
     </div>
     <div class="cs-section">
@@ -704,7 +812,7 @@ function renderCustomerSidebar(ticket) {
     </div>` : ''}
     <div class="cs-section">
       <div class="cs-title">Agent Notes</div>
-      <textarea style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:8px;font-size:12px;font-family:inherit;resize:none;outline:none;min-height:60px;color:#374151" placeholder="Private notes (not saved)…"></textarea>
+      <textarea class="cs-notes" placeholder="Private notes (not saved)…"></textarea>
     </div>`;
 }
 
@@ -777,6 +885,19 @@ function toggleNavSection(id, el) {
   section.style.display = open ? 'none' : 'block';
   if (caret) caret.textContent = open ? '▾' : '▴';
 }
+
+function toggleProfileMenu(e) { if (e) e.stopPropagation(); const m = document.getElementById('profile-menu'); if (m) m.classList.toggle('open'); }
+function toggleAvailability(e) { if (e) e.stopPropagation(); const t = document.getElementById('pm-avail'); if (t) t.classList.toggle('on'); }
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('healf_theme', t);
+  const sw = document.getElementById('pm-theme'); if (sw) sw.classList.toggle('on', t === 'dark');
+}
+function toggleTheme(e) { if (e) e.stopPropagation(); applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
+document.addEventListener('click', e => {
+  const m = document.getElementById('profile-menu');
+  if (m && m.classList.contains('open') && !e.target.closest('#profile-menu') && !e.target.closest('#topnav-avatar')) m.classList.remove('open');
+});
 
 function signOut() { sessionStorage.removeItem('trainee'); window.location.href = 'index.html'; }
 

@@ -363,6 +363,38 @@ let macros = [];
 let activeTicketId = null;
 let usedMacro = null;
 const SCORING_WEBHOOK = 'https://aiwellbeing.app.n8n.cloud/webhook/score-submission';
+const PRODUCTS_BY_ID = {
+  1: "Grass Fed Whey Protein Isolate – Unflavoured (x1) — £39.99 [pre-order]\nMagnesium Glycinate (x1) — shipped",
+  2: "NMN 500mg (x1) — £15.98 [pre-order]\nFree sample: Collagen sachet (x1) — £0.00",
+  3: "Buffered Ascorbic Acid (Vitamin C) Powder (x1) — £15.99 [pre-order]\nBuffered Ascorbic Acid – 90 caps (x1) — £15.99 [in stock]",
+  4: "Theragun Pro Massage Device (x1) — £449.10 [pre-order]",
+  5: "Optimal PC Softgels (x1) — £46.00 [pre-order, ETA 11 May]",
+  6: "Sun Balm SPF 50+ PA++++ (x1) — £21.57 [pre-order, ETA 17 May]\n(rest of order already shipped)",
+  7: "Active Collagen (x1) — £55.98 [pre-order, ordered February]",
+  8: "Raspberry Leaf Tea (x1) — £24.98 [pre-order]\nLemongrass, Raspberry & Hibiscus Infusion (x1) — free",
+  17: "Magnesium Glycinate (x1) — £29.99 [out of stock / delayed]",
+  18: "Vitamin D3 + K2 (x1) — £19.99 [pre-order]",
+  19: "Marine Collagen Powder (x1) — £42.00 [discontinued]",
+  21: "Lion's Mane Extract (x2) — £64.00 [pre-order, delayed twice]",
+  22: "Ashwagandha KSM-66 (x1) — £38.00 [unfulfilled]",
+  23: "Thorne Basic Nutrients Multivitamin (x1) — £48.00\nBare Biology Omega-3 (x1) — £40.00\nFree gift (not received): Healf tote bag",
+  24: "Ashwagandha (x1) — £18.00 [missing / pending]\nMagnesium (x1) — £18.00 [delivered]\nVitamin C (x1) — £18.00 [delivered]",
+  25: "Ceremonial Grade Matcha (x1) — £27.00 [pre-order]",
+  26: "Reishi Mushroom Blend (x1) — £45.00 [cancelled]",
+  27: "Berberine (x1) — £29.99 [pre-order]\nCreatine Monohydrate (x1) — £20.00 [shipping]\nElectrolytes (x1) — £21.01 [shipping]",
+  28: "Bare Biology Omega-3 (x1) — £33.00 [pre-order, ETA after next week]",
+  29: "Bone Broth – Fish (x1) — £36.00 [pre-order]\n(other items in order in stock)",
+  30: "Balance Breathing Device (x1) — £89.00 [pre-order]\nMagnesium Glycinate (x1) — £31.00 [ships in 2-3 days]",
+  31: "Nootropic Focus Blend (x1) — £28.00 [listed for pre-order on site]",
+  32: "Creatine Monohydrate (x1) — £40.00 [OOS but showing Fulfilment in Progress]",
+  33: "Hears One – Jet Black (x1) — £29.99 [pre-order, ETA 4 July]\n(rest of order shipped)",
+  34: "Clevr Blends SuperLatte – Matcha (x1) — £32.00 [pre-order, keeps slipping]",
+  35: "Momentous Grass Fed Whey Isolate – Unflavoured (x1) — £45.00 [pre-order]",
+  36: "Probiotic Complex (x1) — £39.00 [discontinued, ordered December]",
+  37: "Oura Ring 4 – Silver (x1) — £349.00 [pre-order]\nFree gifts (x2) — £0.00",
+  38: "NAC (N-AcetylCysteine) 600mg (x1) — £29.00 [unfulfilled]\nMega EPA Forte (x1) — £29.00 [Fulfilment in Progress]"
+};
+function ticketProducts(t) { return (t && (t.order_items || PRODUCTS_BY_ID[t.id])) || ''; }
 
 async function init() {
   const stored = sessionStorage.getItem('trainee');
@@ -660,7 +692,7 @@ function renderCustomerSidebar(ticket) {
         <div class="order-num">${ticket.order_number}</div>
         ${ticket.order_value ? `<div style="font-size:12px;color:#374151;margin-top:3px">${ticket.order_value}</div>` : ''}
         ${ticket.order_status ? `<span class="order-status-badge ${statusClass}">${ticket.order_status}</span>` : ''}
-        ${ticket.order_items ? `<div class="cs-items">${ticket.order_items.replace(/\n/g,'<br>')}</div>` : ''}
+        ${ticketProducts(ticket) ? `<div class="cs-items">${ticketProducts(ticket).replace(/\n/g,'<br>')}</div>` : ''}
       </div>
     </div>` : ''}
     <div class="cs-section">
@@ -707,7 +739,7 @@ async function submitReply(ticketId, andClose) {
         macro_name: usedMacro ? usedMacro.name : null,
         macro_body: usedMacro ? usedMacro.body : null,
         customer_name: ticket.customer_name, message: ticket.message,
-        ideal_response: ticket.ideal_response, order_items: ticket.order_items,
+        ideal_response: ticket.ideal_response, order_items: ticketProducts(ticket),
         order_value: ticket.order_value, order_status: ticket.order_status
       })
     });

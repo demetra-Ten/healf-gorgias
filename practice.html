@@ -132,9 +132,13 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .actions-note-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
 .actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 60px; color: #374151; background: transparent; line-height: 1.5; }
 .actions-textarea::placeholder { color: #b6bac2; }
-.cs-items { font-size: 12px; color: #374151; line-height: 1.5; margin-top: 4px; }
-.cs-items a { color: #7c3aed; text-decoration: none; }
-.cs-items a:hover { text-decoration: underline; }
+.cs-items { margin-top: 6px; }
+.li { padding: 7px 0; border-bottom: 1px solid #f3f4f6; }
+.li:last-child { border-bottom: none; padding-bottom: 0; }
+.li-name { font-size: 12px; color: #374151; font-weight: 500; }
+.li-name a { color: #7c3aed; text-decoration: none; }
+.li-name a:hover { text-decoration: underline; }
+.li-meta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
 .tt-group td { background: #f9fafb; padding: 8px 16px; border-bottom: 1px solid #eceef1; }
 .tt-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
 .tt-group-count { display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 600; background: #e5e7eb; color: #6b7280; padding: 1px 7px; border-radius: 8px; }
@@ -289,6 +293,10 @@ html[data-theme="dark"] .cs-name, html[data-theme="dark"] .cs-value { color: #e6
 html[data-theme="dark"] .cs-row { border-bottom-color: #26262b; }
 html[data-theme="dark"] .order-card { background: #232327; border-color: #2c2c31; }
 html[data-theme="dark"] .cs-notes { background: #232327; border-color: #2c2c31; color: #e6e6e9; }
+html[data-theme="dark"] .li { border-bottom-color: #2c2c31; }
+html[data-theme="dark"] .li-name { color: #d4d4d8; }
+html[data-theme="dark"] .li-name a { color: #b3a6f7; }
+html[data-theme="dark"] .li-meta { color: #8a8a92; }
 html[data-theme="dark"] .cs-addtag { border-color: #3a3a40; color: #a1a1aa; }
 html[data-theme="dark"] .loading-overlay { background: #17171a; }
 html[data-theme="dark"] .tv-empty { background: #161619; }
@@ -503,9 +511,19 @@ const PRODUCTS_BY_ID = {
 };
 function ticketProducts(t) { return (t && (t.order_items || PRODUCTS_BY_ID[t.id])) || ''; }
 function renderProducts(str) {
-  return (str || '')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-    .replace(/\n/g, '<br>');
+  if (!str) return '';
+  return str.split('\n').filter(l => l.trim()).map(line => {
+    const m = line.match(/^\[([^\]]+)\]\(([^)]+)\)\s*(.*)$/);
+    let name, url = '', rest = '';
+    if (m) { name = m[1]; url = m[2]; rest = m[3]; } else { name = line; }
+    let qty = '', price = '', status = '';
+    const qm = rest.match(/\(x?(\d+)\)/i); if (qm) qty = '×' + qm[1];
+    const pm = rest.match(/£[\d.,]+/); if (pm) price = pm[0];
+    const sm = rest.match(/\[([^\]]+)\]/); if (sm) status = sm[1].split(',')[0].trim();  // drop ETA/date after first comma
+    const meta = [qty, price, status].filter(Boolean).join(' · ');
+    const title = url ? `<a href="${url}" target="_blank" rel="noopener">${name}</a>` : name;
+    return `<div class="li"><div class="li-name">${title}</div>${meta ? `<div class="li-meta">${meta}</div>` : ''}</div>`;
+  }).join('');
 }
 
 async function init() {

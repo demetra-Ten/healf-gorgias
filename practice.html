@@ -523,7 +523,15 @@ function contactReasonOptions(selected) {
   for (const g in groups) html += `<optgroup label="${g}">` + groups[g].map(o => `<option value="${o.v.replace(/"/g,'&quot;')}"${o.v===selected?' selected':''}>${o.s}</option>`).join('') + '</optgroup>';
   return html;
 }
-function setContactReason(ticketId, value) { contactReasons[ticketId] = value; localStorage.setItem('healf_contact_reasons', JSON.stringify(contactReasons)); }
+function setContactReason(ticketId, value) {
+  contactReasons[ticketId] = value;
+  localStorage.setItem('healf_contact_reasons', JSON.stringify(contactReasons));
+  if (value) {
+    const sel = document.querySelector('.cs-cr-select'); if (sel) sel.style.borderColor = '';
+    const hint = document.querySelector('.reply-hint');
+    if (hint && hint.textContent.indexOf('contact reason') !== -1) { hint.textContent = 'Your reply and actions will be scored automatically.'; hint.style.color = ''; }
+  }
+}
 
 function ticketProducts(t) { return (t && (t.order_items || PRODUCTS_BY_ID[t.id])) || ''; }
 function renderProducts(str) {
@@ -954,6 +962,14 @@ async function submitReply(ticketId, andClose) {
   const input = document.getElementById('reply-input');
   const reply = input ? input.value.trim() : '';
   if (!reply) { if (input) { input.style.border = '1px solid #ef4444'; input.placeholder = 'Please write a reply first.'; } return; }
+  // Contact reason is required before a ticket can be sent/closed (like Gorgias)
+  if (!contactReasons[ticketId]) {
+    const sel = document.querySelector('.cs-cr-select');
+    if (sel) { sel.style.borderColor = '#ef4444'; sel.focus(); }
+    const hint = document.querySelector('.reply-hint');
+    if (hint) { hint.textContent = '⚠ Assign a contact reason before sending.'; hint.style.color = '#ef4444'; }
+    return;
+  }
   const actionsInput = document.getElementById('actions-input');
   const actions = actionsInput ? actionsInput.value.trim() : '';
 

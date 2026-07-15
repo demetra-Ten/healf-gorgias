@@ -129,12 +129,16 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .reply-channel-btn { display: flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 5px; border: 1px solid #e5e7eb; background: #fff; font-size: 12px; color: #374151; cursor: pointer; font-family: inherit; }
 .reply-to-label { color: #9ca3af; }
 .reply-to-val { color: #374151; font-weight: 500; }
-.reply-textarea { width: 100%; border: none; outline: none; padding: 12px 16px; font-size: 13px; font-family: inherit; resize: none; min-height: 100px; color: #374151; background: #fff; line-height: 1.55; }
+.reply-textarea { width: 100%; border: none; outline: none; padding: 10px 16px 12px; font-size: 13px; font-family: inherit; resize: none; min-height: 40px; height: 110px; color: #374151; background: #fff; line-height: 1.55; }
 .reply-textarea::placeholder { color: #9ca3af; }
-.actions-note-wrap { border-top: 1px dashed #e5e7eb; background: #fbfaff; padding: 8px 16px 4px; }
-.actions-note-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
-.actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 60px; color: #374151; background: transparent; line-height: 1.5; }
+.actions-note-wrap { border-top: 1px dashed #e5e7eb; background: #fbfaff; padding: 0 16px 4px; }
+.actions-note-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; }
+.actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 32px; height: 64px; color: #374151; background: transparent; line-height: 1.5; }
 .actions-textarea::placeholder { color: #b6bac2; }
+.drag-handle { height: 9px; cursor: ns-resize; display: flex; align-items: center; justify-content: center; background: inherit; touch-action: none; }
+.drag-handle::before { content: ''; width: 26px; height: 3px; border-radius: 2px; background: #e5e7eb; transition: background 0.12s; }
+.drag-handle:hover::before { background: #cbd5e1; }
+.drag-handle.dragging::before { background: #7c3aed; }
 .cs-items { margin-top: 6px; }
 .li { padding: 7px 0; border-bottom: 1px solid #f3f4f6; }
 .li:last-child { border-bottom: none; padding-bottom: 0; }
@@ -275,6 +279,8 @@ html[data-theme="dark"] .reply-to-row { border-bottom-color: #2c2c31; }
 html[data-theme="dark"] .reply-textarea { background: transparent; color: #e6e6e9; }
 html[data-theme="dark"] .actions-note-wrap { background: #1e1e22; border-top-color: #2c2c31; }
 html[data-theme="dark"] .actions-textarea { color: #e6e6e9; }
+html[data-theme="dark"] .drag-handle::before { background: #3a3a42; }
+html[data-theme="dark"] .drag-handle:hover::before { background: #52525b; }
 html[data-theme="dark"] .reply-toolbar { border-top-color: #2c2c31; }
 html[data-theme="dark"] .macro-trigger { background: #2a2a30; border-color: #2c2c31; color: #d4d4d8; }
 html[data-theme="dark"] .macro-trigger:hover { background: #33304d; color: #ddd6fe; border-color: #4c4470; }
@@ -711,8 +717,10 @@ function renderReplySection(ticket, sub) {
             <div class="macro-list" id="macro-list"></div>
           </div>
         </div>
+        <div class="drag-handle" data-target="reply-input" title="Drag to resize"></div>
         <textarea class="reply-textarea" id="reply-input" placeholder="Click here to reply…"></textarea>
         <div class="actions-note-wrap">
+          <div class="drag-handle" data-target="actions-input" title="Drag to resize"></div>
           <div class="actions-note-label">Actions — the steps you'd take on Shopify / Swap / Recharge etc.</div>
           <textarea class="actions-textarea" id="actions-input" placeholder="e.g. Check the order in Shopify — unfulfilled, so cancel the OOS item (Edit → untick Restock). MO the alternative with reason 'productswap'. Log refund reason from CW Essentials…"></textarea>
         </div>
@@ -780,6 +788,30 @@ function insertMacro(id) {
 document.addEventListener('click', e => {
   const p = document.getElementById('macro-picker');
   if (p && p.classList.contains('open') && !e.target.closest('.macro-bar')) p.classList.remove('open');
+});
+
+// Independently drag-resize the reply and actions boxes (drag handle up = taller, down = flatter)
+let _resize = null;
+document.addEventListener('pointerdown', e => {
+  const handle = e.target.closest('.drag-handle');
+  if (!handle) return;
+  const ta = document.getElementById(handle.dataset.target);
+  if (!ta) return;
+  _resize = { ta, handle, startY: e.clientY, startH: ta.offsetHeight };
+  handle.classList.add('dragging');
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
+});
+document.addEventListener('pointermove', e => {
+  if (!_resize) return;
+  const next = _resize.startH + (_resize.startY - e.clientY); // drag up → taller
+  _resize.ta.style.height = Math.max(34, Math.min(window.innerHeight * 0.6, next)) + 'px';
+});
+document.addEventListener('pointerup', () => {
+  if (!_resize) return;
+  _resize.handle.classList.remove('dragging');
+  document.body.style.userSelect = '';
+  _resize = null;
 });
 
 function renderCustomerSidebar(ticket) {

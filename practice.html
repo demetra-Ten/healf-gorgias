@@ -113,15 +113,20 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 /* MESSAGES */
 .td-body { display: flex; flex: 1; overflow: hidden; }
 .messages-area { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; background: #f9fafb; }
-.msg-wrap { display: flex; gap: 10px; }
+.msg-wrap { display: flex; gap: 10px; align-items: flex-start; }
+.msg-wrap.out { flex-direction: row-reverse; }
 .msg-ava { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; }
 .msg-ava.customer { background: #e5e7eb; color: #374151; }
 .msg-ava.agent { background: #7c3aed; color: #fff; }
-.msg-content { max-width: 600px; flex: 1; }
-.msg-meta { font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: flex; gap: 8px; }
+.msg-ava.lola { background: #ede9fe; color: #7c3aed; }
+.msg-content { display: flex; flex-direction: column; align-items: flex-start; max-width: 74%; min-width: 0; }
+.msg-wrap.out .msg-content { align-items: flex-end; }
+.msg-meta { font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
 .msg-sender { font-weight: 600; color: #374151; }
+.auto-chip { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; background: #ede9fe; color: #7c3aed; padding: 1px 6px; border-radius: 4px; }
 .msg-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; font-size: 13px; line-height: 1.6; color: #374151; }
 .msg-card.agent-card { background: #f5f3ff; border-color: #c4b5fd; }
+.msg-card.lola-card { background: #f4f4f5; border-color: #e9e9ec; }
 
 /* REPLY BOX */
 .reply-box { border-top: 1px solid #e5e7eb; background: #fff; flex-shrink: 0; }
@@ -274,6 +279,9 @@ html[data-theme="dark"] .messages-area { background: #161619; }
 html[data-theme="dark"] .msg-card { background: #232327; border-color: #2c2c31; color: #d4d4d8; }
 html[data-theme="dark"] .msg-card.agent-card { background: #2a2740; border-color: #4c4470; }
 html[data-theme="dark"] .msg-ava.customer { background: #3a3a40; color: #d4d4d8; }
+html[data-theme="dark"] .msg-ava.lola { background: #2e2a4d; color: #c4b5fd; }
+html[data-theme="dark"] .auto-chip { background: #2e2a4d; color: #c4b5fd; }
+html[data-theme="dark"] .msg-card.lola-card { background: #232327; border-color: #2c2c31; }
 html[data-theme="dark"] .msg-sender { color: #d4d4d8; }
 html[data-theme="dark"] .reply-box { background: #232327; border-top-color: #2c2c31; }
 html[data-theme="dark"] .reply-to-row { border-bottom-color: #2c2c31; }
@@ -606,7 +614,7 @@ function renderTicketTable() {
       <td><input type="checkbox" class="tt-checkbox" onclick="event.stopPropagation()" /></td>
       <td>
         <div class="tt-subject">${t.subject}</div>
-        <div class="tt-preview">${t.message.replace(/\n/g,' ').substring(0,70)}…</div>
+        <div class="tt-preview">${customerMessage(t).replace(/\n/g,' ').substring(0,70)}…</div>
       </td>
       <td class="tt-assignee">${trainee.name}</td>
       <td class="tt-time">Today</td>
@@ -654,25 +662,52 @@ function openTicket(id) {
   renderCustomerSidebar(ticket);
 }
 
+// A ticket's `message` may be a thread: segments separated by [[LOLA]] / [[AGENT]] / [[CUSTOMER]]
+// marker lines. No markers = a single customer message (backward compatible).
+function parseThread(ticket) {
+  const raw = ticket.message || '';
+  if (!/\[\[(LOLA|AGENT|CUSTOMER)\]\]/.test(raw)) return [{ type: 'CUSTOMER', body: raw }];
+  const segs = raw.split(/\[\[(LOLA|AGENT|CUSTOMER)\]\]\s*/);
+  const parts = [];
+  for (let i = 1; i < segs.length; i += 2) {
+    const body = (segs[i + 1] || '').trim();
+    if (body) parts.push({ type: segs[i], body });
+  }
+  return parts.length ? parts : [{ type: 'CUSTOMER', body: raw }];
+}
+// The customer's own message (last customer turn) — for the table preview and scorer.
+function customerMessage(ticket) {
+  const c = parseThread(ticket).filter(p => p.type === 'CUSTOMER').pop();
+  return c ? c.body : (ticket.message || '');
+}
+// Readable full thread for the scorer (labels each turn).
+function threadText(ticket) {
+  return parseThread(ticket).map(p => {
+    const who = p.type === 'CUSTOMER' ? `Customer (${ticket.customer_name})`
+      : p.type === 'LOLA' ? 'Earlier automated email from Lola (Healf)'
+      : 'Earlier Healf reply';
+    return `${who}:\n${p.body}`;
+  }).join('\n\n');
+}
+
 function renderMessages(ticket, sub) {
   const area = document.getElementById('messages-area');
-  const customerMsg = `
-    <div class="msg-wrap">
-      <div class="msg-ava customer">${initials(ticket.customer_name)}</div>
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+  const bubble = (o) => `
+    <div class="msg-wrap ${o.dir}">
+      <div class="msg-ava ${o.avaClass}">${o.ava}</div>
       <div class="msg-content">
-        <div class="msg-meta"><span class="msg-sender">${ticket.customer_name}</span><span>${ticket.customer_email}</span></div>
-        <div class="msg-card">${ticket.message.replace(/\n/g,'<br>')}</div>
+        <div class="msg-meta"><span class="msg-sender">${o.sender}</span>${o.automated ? '<span class="auto-chip">automated</span>' : ''}<span>${o.sub}</span></div>
+        <div class="msg-card ${o.cardClass || ''}">${esc(o.body)}</div>
       </div>
     </div>`;
-  const agentReply = sub ? `
-    <div class="msg-wrap">
-      <div class="msg-ava agent">${trainee.name.charAt(0).toUpperCase()}</div>
-      <div class="msg-content">
-        <div class="msg-meta"><span class="msg-sender">${trainee.name} (you)</span><span>${new Date(sub.submitted_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'})}</span></div>
-        <div class="msg-card agent-card">${sub.reply_text.replace(/\n/g,'<br>')}</div>
-      </div>
-    </div>` : '';
-  area.innerHTML = customerMsg + agentReply;
+  let html = parseThread(ticket).map(p => {
+    if (p.type === 'CUSTOMER') return bubble({ dir:'in', avaClass:'customer', ava:initials(ticket.customer_name), sender:ticket.customer_name, sub:ticket.customer_email, body:p.body });
+    if (p.type === 'LOLA') return bubble({ dir:'out', avaClass:'lola', ava:'L', sender:'Lola', automated:true, sub:'team@healf.com', body:p.body, cardClass:'lola-card' });
+    return bubble({ dir:'out', avaClass:'agent', ava:'H', sender:'Healf', sub:'team@healf.com', body:p.body, cardClass:'agent-card' });
+  }).join('');
+  if (sub) html += bubble({ dir:'out', avaClass:'agent', ava:trainee.name.charAt(0).toUpperCase(), sender:`${trainee.name} (you)`, sub:new Date(sub.submitted_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}), body:sub.reply_text, cardClass:'agent-card' });
+  area.innerHTML = html;
   setTimeout(() => { area.scrollTop = area.scrollHeight; }, 50);
 }
 
@@ -888,7 +923,7 @@ async function submitReply(ticketId, andClose) {
         reply_text: reply, actions_text: actions,
         macro_name: usedMacro ? usedMacro.name : null,
         macro_body: usedMacro ? usedMacro.body : null,
-        customer_name: ticket.customer_name, message: ticket.message,
+        customer_name: ticket.customer_name, message: threadText(ticket),
         ideal_response: ticket.ideal_response, order_items: ticketProducts(ticket),
         order_value: ticket.order_value, order_status: ticket.order_status
       })

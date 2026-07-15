@@ -751,8 +751,15 @@ function renderReplySection(ticket, sub) {
       return;
     }
     const scored = sub.score != null && sub.score !== undefined;
-    const rf = sub.response_feedback || '';
-    const af = sub.actions_feedback || '';
+    let rf = sub.response_feedback || '';
+    let af = sub.actions_feedback || '';
+    // On reload the split fields aren't in the DB — recover them from the stored
+    // combined `feedback` ("Response: … \n\nActions: …") so feedback is never lost.
+    if (!rf && !af && sub.feedback) {
+      const m = sub.feedback.match(/Response:\s*([\s\S]*?)\n\nActions:\s*([\s\S]*)$/);
+      if (m) { rf = m[1].trim(); af = m[2].trim(); }
+      else { rf = sub.feedback.trim(); }
+    }
     const fbHtml = scored
       ? `<div class="feedback-box">
            <div style="margin-bottom:12px"><strong>Response</strong><br>${(rf || '—').replace(/\n/g,'<br>')}</div>

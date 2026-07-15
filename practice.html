@@ -15,7 +15,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
 
 /* ── BRAND HEADER (left nav) ── */
 .ln-brand { display: flex; align-items: center; gap: 9px; padding: 13px 14px 11px; flex-shrink: 0; }
-.ln-logomark { width: 24px; height: 24px; border-radius: 6px; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+.ln-logomark { width: 24px; height: 24px; border-radius: 6px; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: -0.5px; }
 .ln-brand-text { font-size: 14px; font-weight: 600; color: #1b1c1d; }
 
 /* ── APP ── */
@@ -263,6 +263,7 @@ html[data-theme="dark"] .nav-section-label { color: #8a8a92; }
 html[data-theme="dark"] .nav-count { color: #a1a1aa; }
 html[data-theme="dark"] .nav-item.active .nav-count { color: #c4b5fd; }
 html[data-theme="dark"] .ln-brand-text { color: #f4f4f5; }
+html[data-theme="dark"] .ln-logomark { background: #fff; color: #111; }
 html[data-theme="dark"] .nav-item-icon { color: #8a8a92; }
 html[data-theme="dark"] .nav-item.active .nav-item-icon { color: #c4b5fd; }
 html[data-theme="dark"] .nav-divider { background: #2c2c31; }
@@ -359,8 +360,8 @@ html[data-theme="dark"] .pm-divider { background: #2c2c31; }
   <!-- LEFT NAV -->
   <div class="leftnav">
     <div class="ln-brand">
-      <div class="ln-logomark">h</div>
-      <div class="ln-brand-text">Support Training</div>
+      <div class="ln-logomark">h.</div>
+      <div class="ln-brand-text">Inbox</div>
     </div>
     <div class="leftnav-top">
       <div class="nav-item active" onclick="showTableView()">

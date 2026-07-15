@@ -229,6 +229,10 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 
 /* AGENT NOTES + tidy classes (so they theme correctly) */
 .cs-addtag { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px dashed #d1d5db; border-radius: 14px; font-size: 11px; color: #6b7280; cursor: pointer; background: none; font-family: inherit; margin-bottom: 8px; }
+.cs-cr { padding: 5px 0; }
+.cs-cr .cs-label { display: block; margin-bottom: 4px; }
+.cs-cr-select { width: 100%; font-family: inherit; font-size: 12px; color: #374151; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 8px; cursor: pointer; }
+.cs-cr-select:focus { outline: none; border-color: #7c3aed; }
 .cs-add { font-size: 11px; color: #7c3aed; cursor: pointer; }
 .cs-more { font-size: 11px; color: #7c3aed; cursor: pointer; margin-top: 6px; }
 .cs-notes { width: 100%; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; font-size: 12px; font-family: inherit; resize: none; outline: none; min-height: 60px; color: #374151; background: #fff; }
@@ -330,6 +334,7 @@ html[data-theme="dark"] .li-name { color: #d4d4d8; }
 html[data-theme="dark"] .li-name a { color: #b3a6f7; }
 html[data-theme="dark"] .li-meta { color: #8a8a92; }
 html[data-theme="dark"] .cs-addtag { border-color: #3a3a40; color: #a1a1aa; }
+html[data-theme="dark"] .cs-cr-select { background: #232327; border-color: #2c2c31; color: #e6e6e9; }
 html[data-theme="dark"] .loading-overlay { background: #17171a; }
 html[data-theme="dark"] .tv-empty { background: #161619; }
 html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #3a3a40; }
@@ -496,6 +501,30 @@ const PRODUCTS_BY_ID = {
   37: "Oura Ring 4 – Silver (x1) — £349.00 [pre-order]\nFree gifts (x2) — £0.00",
   38: "NAC (N-AcetylCysteine) 600mg (x1) — £29.00 [unfulfilled]\nMega EPA Forte (x1) — £29.00 [Fulfilment in Progress]"
 };
+// Gorgias contact reasons (Category::Subreason) — trainees apply one per ticket, like agents do.
+const CONTACT_REASONS = [
+  "Unfulfilled::Pre-Order","Unfulfilled::OOS","Unfulfilled::ETA Delay (OOS)","Unfulfilled::Discontinued","Unfulfilled::Dropship",
+  "Order::Cancel Order","Order::Edit Order","Order::Order Invoice","Order::Order Status (UK)","Order::Pre-Ship Change Address","Order::Post-Ship Change Address","Order::Change Product (not locked for shipping)","Order::Supplier Issue","Order::Product / PDP Verification","Order::GXO Issue",
+  "Shipping::Arrived Late (NDD)","Shipping::Arrived Late (SD)","Shipping::Missing","Shipping::Lost","Shipping::Damaged In Transit","Shipping::Returned to Sender","Shipping::International Order Issue - Order Status","Shipping::International Orders - Missing","Shipping::International Orders - Lost","Shipping::International Orders - RTS","Shipping::International Order Issue - Customs Fee",
+  "Return::Warranty","Return::Exchange","Return::Open and Used","Return::Refund",
+  "Subscription::Edit","Subscription::Cancel - Known","Subscription::Cancel - Accidental","Subscription::Portal Issue","Subscription::No Subscription Sample",
+  "Discount & Pricing::Discount","Discount & Pricing::Pricing Inconsistency","Discount & Pricing::Price Match",
+  "Product Queries::Company Question","Product Queries::Product Question","Product Queries::Product Recommendation","Product Queries::Health/Medical Question/Advise","Product Queries::Notify When In Stock","Product Queries::Sample/Gift Query",
+  "Website & App::Website Issues (Glitch)","Website & App::Log-in / Account query","Website & App::App Issue","Website & App::Data/Account Removal",
+  "Company::Positive Feedback","Company::Negative Feedback","Company::Wholesale/Reseller","Company::Brand Issues","Company::Affiliate & RAF","Company::CRM Issues","Company::New Brands","Company::Business Inquiry","Company::Compliance","Company::Outbound feedback requests",
+  "Healf Zone::Cancellation","Healf Zone::Returns","Healf Zone::Failed Tests","Healf Zone::Consultations","Healf Zone::Activation issues","Healf Zone::NDD issues","Healf Zone::Missing Biomarkers","Healf Zone::Questionnaire",
+  "Other::Healf Zone","Other::Duplicate","Other::Chargebacks","Other::Fraud","Other::Spam","Other::Placeholder","Other::HX26"
+];
+let contactReasons = JSON.parse(localStorage.getItem('healf_contact_reasons') || '{}');
+function contactReasonOptions(selected) {
+  const groups = {};
+  CONTACT_REASONS.forEach(r => { const g = r.split('::')[0].trim(), s = r.split('::').slice(1).join('::').trim(); (groups[g] = groups[g] || []).push({ v: r, s }); });
+  let html = '<option value="">— Select a contact reason —</option>';
+  for (const g in groups) html += `<optgroup label="${g}">` + groups[g].map(o => `<option value="${o.v.replace(/"/g,'&quot;')}"${o.v===selected?' selected':''}>${o.s}</option>`).join('') + '</optgroup>';
+  return html;
+}
+function setContactReason(ticketId, value) { contactReasons[ticketId] = value; localStorage.setItem('healf_contact_reasons', JSON.stringify(contactReasons)); }
+
 function ticketProducts(t) { return (t && (t.order_items || PRODUCTS_BY_ID[t.id])) || ''; }
 function renderProducts(str) {
   if (!str) return '';
@@ -895,7 +924,9 @@ function renderCustomerSidebar(ticket) {
     <div class="cs-section">
       <div class="cs-title">Ticket details</div>
       <button class="cs-addtag">+ Add tags</button>
-      <div class="cs-row"><span class="cs-label">Contact reason</span><span style="font-size:11px;color:#7c3aed;cursor:pointer">+ Add</span></div>
+      <div class="cs-cr"><span class="cs-label">Contact reason</span>
+        <select class="cs-cr-select" onchange="setContactReason(${ticket.id}, this.value)">${contactReasonOptions(contactReasons[ticket.id] || '')}</select>
+      </div>
     </div>
     <div class="cs-section">
       <div class="cs-title cs-title-user">${ICONS.user} ${ticket.customer_name}</div>
@@ -957,6 +988,7 @@ async function submitReply(ticketId, andClose) {
         macro_name: usedMacro ? usedMacro.name : null,
         macro_body: usedMacro ? usedMacro.body : null,
         customer_name: ticket.customer_name, message: threadText(ticket),
+        contact_reason: contactReasons[ticketId] || null,
         ideal_response: ticket.ideal_response, order_items: ticketProducts(ticket),
         order_value: ticket.order_value, order_status: ticket.order_status
       })

@@ -142,6 +142,7 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .cs-items { margin-top: 6px; }
 .li { padding: 7px 0; border-bottom: 1px solid #f3f4f6; }
 .li:last-child { border-bottom: none; padding-bottom: 0; }
+.li-brand { font-size: 10px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 1px; }
 .li-name { font-size: 12px; color: #374151; font-weight: 500; }
 .li-name a { color: #7c3aed; text-decoration: none; }
 .li-name a:hover { text-decoration: underline; }
@@ -305,6 +306,7 @@ html[data-theme="dark"] .cs-row { border-bottom-color: #26262b; }
 html[data-theme="dark"] .order-card { background: #232327; border-color: #2c2c31; }
 html[data-theme="dark"] .cs-notes { background: #232327; border-color: #2c2c31; color: #e6e6e9; }
 html[data-theme="dark"] .li { border-bottom-color: #2c2c31; }
+html[data-theme="dark"] .li-brand { color: #8a8a92; }
 html[data-theme="dark"] .li-name { color: #d4d4d8; }
 html[data-theme="dark"] .li-name a { color: #b3a6f7; }
 html[data-theme="dark"] .li-meta { color: #8a8a92; }
@@ -475,15 +477,18 @@ function ticketProducts(t) { return (t && (t.order_items || PRODUCTS_BY_ID[t.id]
 function renderProducts(str) {
   if (!str) return '';
   return str.split('\n').filter(l => l.trim()).map(line => {
+    let brand = '';
+    const bm = line.match(/@@\s*(.+?)\s*$/);        // brand stored as "… @@Vendor"
+    if (bm) { brand = bm[1].trim(); line = line.replace(/\s*@@.*$/, ''); }
     const m = line.match(/^\[([^\]]+)\]\(([^)]+)\)\s*(.*)$/);
     let name, url = '', rest = '';
     if (m) { name = m[1]; url = m[2]; rest = m[3]; } else { name = line; }
-    let qty = '', price = '', status = '';
+    let qty = '', price = '';
     const qm = rest.match(/\(x?(\d+)\)/i); if (qm) qty = '×' + qm[1];
     const pm = rest.match(/£[\d.,]+/); if (pm) price = pm[0];
     const meta = [qty, price].filter(Boolean).join(' · ');  // no status text — matches how Gorgias shows order lines
     const title = url ? `<a href="${url}" target="_blank" rel="noopener">${name}</a>` : name;
-    return `<div class="li"><div class="li-name">${title}</div>${meta ? `<div class="li-meta">${meta}</div>` : ''}</div>`;
+    return `<div class="li">${brand ? `<div class="li-brand">${brand}</div>` : ''}<div class="li-name">${title}</div>${meta ? `<div class="li-meta">${meta}</div>` : ''}</div>`;
   }).join('');
 }
 

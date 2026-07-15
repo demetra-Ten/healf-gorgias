@@ -4,27 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Healf Support — Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; background: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: #111; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; background: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: #222; -webkit-font-smoothing: antialiased; }
 
-/* ── TOP NAV ── */
-.topnav { background: #1a1a2e; height: 44px; display: flex; align-items: center; padding: 0 14px; gap: 10px; flex-shrink: 0; position: relative; }
-.topnav-logo { display: flex; align-items: center; gap: 7px; }
-.topnav-logomark { width: 26px; height: 26px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: #111; letter-spacing: -0.5px; }
-.topnav-name { color: #fff; font-weight: 700; font-size: 14px; }
-.topnav-inbox { display: flex; align-items: center; gap: 4px; color: #fff; font-weight: 600; font-size: 13px; margin-left: 6px; cursor: pointer; }
-.topnav-caret { color: #9ca3af; font-size: 9px; }
-.topnav-actions { display: flex; gap: 6px; margin-left: 8px; }
-.topnav-btn { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #e5e7eb; font-size: 12px; padding: 4px 11px; border-radius: 6px; cursor: pointer; font-family: inherit; }
-.topnav-btn:hover { background: rgba(255,255,255,0.14); }
-.topnav-btn kbd { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 3px; font-size: 9px; padding: 0 3px; color: #aaa; }
-.topnav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-.topnav-icon { color: #9ca3af; font-size: 15px; cursor: pointer; }
-.topnav-icon:hover { color: #fff; }
-.topnav-avatar { width: 27px; height: 27px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 10px; cursor: pointer; }
+/* ── BRAND HEADER (left nav) ── */
+.ln-brand { display: flex; align-items: center; gap: 9px; padding: 13px 14px 11px; flex-shrink: 0; }
+.ln-logomark { width: 24px; height: 24px; border-radius: 6px; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+.ln-brand-text { font-size: 14px; font-weight: 600; color: #1b1c1d; }
 
 /* ── APP ── */
 .app { display: flex; flex: 1; overflow: hidden; }
@@ -32,19 +24,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
 /* ── LEFT NAV ── */
 .leftnav { width: 220px; min-width: 220px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
 .leftnav-top { padding: 10px 10px 4px; }
-.nav-section-label { font-size: 11px; font-weight: 600; color: #6b7280; padding: 10px 10px 4px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-.nav-section-label:hover { color: #374151; }
+.nav-section-label { font-size: 13px; font-weight: 500; color: #5f5e5c; padding: 12px 12px 5px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.nav-section-label:hover { color: #1b1c1d; }
 .nav-section-caret { font-size: 9px; color: #9ca3af; }
-.nav-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: 6px; cursor: pointer; color: #374151; font-size: 12.5px; margin-bottom: 1px; }
-.nav-item:hover { background: #f3f4f6; }
-.nav-item.active { background: #ede9fe; color: #5b21b6; font-weight: 500; }
-.nav-item-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.nav-item-icon { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+.nav-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 6px; cursor: pointer; color: #1b1c1d; font-size: 13.5px; margin-bottom: 1px; }
+.nav-item:hover { background: #f4f4f5; }
+.nav-item.active { background: #efeef2; color: #1b1c1d; font-weight: 500; }
+.nav-item-left { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.nav-item-icon { color: #6b7280; width: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.nav-item-icon svg { width: 16px; height: 16px; display: block; }
+.nav-item.active .nav-item-icon { color: #7c3aed; }
 .nav-item-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nav-count { font-size: 10px; font-weight: 600; background: #f3f4f6; color: #6b7280; padding: 1px 6px; border-radius: 8px; flex-shrink: 0; }
-.nav-item.active .nav-count { background: #ddd6fe; color: #5b21b6; }
-.nav-count.red { background: #fee2e2; color: #dc2626; }
-.nav-count.amber { background: #fef3c7; color: #d97706; }
+.nav-count { font-size: 12px; font-weight: 600; color: #5f5e5c; flex-shrink: 0; }
+.nav-item.active .nav-count { color: #7c3aed; }
+.nav-count.red { color: #dc2626; }
+.nav-count.amber { color: #d97706; }
 .nav-divider { height: 1px; background: #f3f4f6; margin: 6px 0; }
 .nav-sub { padding-left: 18px; }
 .nav-sub .nav-item { font-size: 12px; color: #6b7280; }
@@ -57,8 +51,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
 .trainee-avatar { width: 28px; height: 28px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0; }
 .trainee-name-sm { font-size: 12px; font-weight: 600; color: #111; }
 .trainee-email-sm { font-size: 10px; color: #9ca3af; }
-.footer-icons { display: flex; gap: 8px; color: #9ca3af; font-size: 15px; }
-.footer-icons span { cursor: pointer; }
+.footer-icons { display: flex; gap: 10px; color: #9ca3af; }
+.footer-icons span { cursor: pointer; display: inline-flex; align-items: center; }
+.footer-icons svg { width: 16px; height: 16px; display: block; }
 .footer-icons span:hover { color: #374151; }
 
 /* ── MAIN ── */
@@ -68,6 +63,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
 .ticket-table-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .ttv-header { padding: 16px 24px 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: #fff; }
 .ttv-title { font-size: 16px; font-weight: 700; color: #111; display: flex; align-items: center; gap: 8px; }
+.ttv-icon { color: #6b7280; display: inline-flex; align-items: center; }
+.ttv-icon svg { width: 18px; height: 18px; display: block; }
+.reply-channel-btn svg, .macro-trigger svg, .td-back svg { display: block; flex-shrink: 0; }
+.cs-title-user { display: flex; align-items: center; gap: 6px; text-transform: none; font-size: 13px; letter-spacing: normal; font-weight: 600; color: #1b1c1d; }
+.cs-title-user svg { color: #6b7280; flex-shrink: 0; }
 .ttv-count { font-size: 12px; color: #6b7280; font-weight: 400; }
 .ttv-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .ttv-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; font-size: 12px; color: #374151; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: inherit; }
@@ -240,8 +240,11 @@ html[data-theme="dark"] .nav-item { color: #c7c7cd; }
 html[data-theme="dark"] .nav-item:hover { background: #26262b; }
 html[data-theme="dark"] .nav-item.active { background: #2e2a4d; color: #c4b5fd; }
 html[data-theme="dark"] .nav-section-label { color: #8a8a92; }
-html[data-theme="dark"] .nav-count { background: #2c2c31; color: #a1a1aa; }
-html[data-theme="dark"] .nav-item.active .nav-count { background: #4c4470; color: #ddd6fe; }
+html[data-theme="dark"] .nav-count { color: #a1a1aa; }
+html[data-theme="dark"] .nav-item.active .nav-count { color: #c4b5fd; }
+html[data-theme="dark"] .ln-brand-text { color: #f4f4f5; }
+html[data-theme="dark"] .nav-item-icon { color: #8a8a92; }
+html[data-theme="dark"] .nav-item.active .nav-item-icon { color: #c4b5fd; }
 html[data-theme="dark"] .nav-divider { background: #2c2c31; }
 html[data-theme="dark"] .leftnav-footer { border-top-color: #2c2c31; }
 html[data-theme="dark"] .trainee-name-sm { color: #f4f4f5; }
@@ -319,28 +322,17 @@ html[data-theme="dark"] .pm-divider { background: #2c2c31; }
   <div class="loading-text">Loading your tickets…</div>
 </div>
 
-<!-- TOP NAV -->
-<div class="topnav">
-  <div class="topnav-logo">
-    <div class="topnav-logomark">h</div>
-  </div>
-  <div class="topnav-inbox">Inbox <span class="topnav-caret">▾</span></div>
-  <div class="topnav-actions">
-    <button class="topnav-btn">＋ New ticket <kbd>N</kbd></button>
-    <button class="topnav-btn">Call <kbd>⌘ E</kbd></button>
-  </div>
-  <div class="topnav-right">
-    <span class="topnav-icon">⌕</span>
-  </div>
-</div>
-
 <div class="app">
 
   <!-- LEFT NAV -->
   <div class="leftnav">
+    <div class="ln-brand">
+      <div class="ln-logomark">h</div>
+      <div class="ln-brand-text">Support Training</div>
+    </div>
     <div class="leftnav-top">
       <div class="nav-item active" onclick="showTableView()">
-        <div class="nav-item-left"><span class="nav-item-icon">📥</span><span class="nav-item-label">My Tickets</span></div>
+        <div class="nav-item-left"><span class="nav-item-icon" id="nav-mytickets-icon"></span><span class="nav-item-label">My Tickets</span></div>
         <span class="nav-count" id="nav-ticket-count">—</span>
       </div>
     </div>
@@ -359,8 +351,8 @@ html[data-theme="dark"] .pm-divider { background: #2c2c31; }
         </div>
       </div>
       <div class="footer-icons">
-        <span title="Settings" onclick="toggleProfileMenu(event)">⚙</span>
-        <span title="Sign out" onclick="signOut()">↪</span>
+        <span title="Settings" id="footer-settings" onclick="toggleProfileMenu(event)"></span>
+        <span title="Sign out" id="footer-signout" onclick="signOut()"></span>
       </div>
       <div class="profile-menu" id="profile-menu">
         <div class="pm-head">
@@ -383,12 +375,12 @@ html[data-theme="dark"] .pm-divider { background: #2c2c31; }
     <div class="ticket-table-view" id="ticket-table-view">
       <div class="ttv-header">
         <div class="ttv-title">
-          <span id="ttv-icon">📥</span>
+          <span id="ttv-icon" class="ttv-icon"></span>
           <span id="ttv-title-text">My Tickets</span>
           <span class="ttv-count" id="ttv-count"></span>
         </div>
         <div class="ttv-right">
-          <button class="ttv-btn">≡≡ Edit table</button>
+          <button class="ttv-btn">Edit table</button>
         </div>
       </div>
       <div class="ticket-table-wrap">
@@ -413,13 +405,12 @@ html[data-theme="dark"] .pm-divider { background: #2c2c31; }
     <!-- TICKET DETAIL -->
     <div class="ticket-detail" id="ticket-detail">
       <div class="td-topbar">
-        <button class="td-back" onclick="showTableView()">← Inbox</button>
+        <button class="td-back" onclick="showTableView()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Inbox</button>
         <span class="td-breadcrumb-sep">›</span>
         <span class="td-subject" id="td-subject">—</span>
         <span class="td-status-badge badge-open" id="td-status-badge">Open</span>
-        <button class="td-btn" style="background:#1a1a2e;color:#fff;border-color:#1a1a2e">Demetra Ten... ▾</button>
+        <button class="td-btn">Demetra Ten... ▾</button>
         <button class="td-btn">No team ▾</button>
-        <span style="color:#9ca3af;font-size:16px;cursor:pointer;padding:0 4px">⏱</span>
         <span style="color:#9ca3af;font-size:18px;cursor:pointer;padding:0 4px">···</span>
       </div>
       <div class="td-body">
@@ -490,10 +481,25 @@ function renderProducts(str) {
   }).join('');
 }
 
+const _S = 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+const ICONS = {
+  inbox: `<svg width="16" height="16" viewBox="0 0 24 24" ${_S}><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>`,
+  folder: `<svg width="16" height="16" viewBox="0 0 24 24" ${_S}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z"/></svg>`,
+  gear: `<svg width="16" height="16" viewBox="0 0 24 24" ${_S}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  logout: `<svg width="16" height="16" viewBox="0 0 24 24" ${_S}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+  user: `<svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+  mail: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>`,
+  zap: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+};
+
 async function init() {
   const stored = sessionStorage.getItem('trainee');
   if (!stored) { window.location.href = 'index.html'; return; }
   trainee = JSON.parse(stored);
+  document.getElementById('nav-mytickets-icon').innerHTML = ICONS.inbox;
+  document.getElementById('footer-settings').innerHTML = ICONS.gear;
+  document.getElementById('footer-signout').innerHTML = ICONS.logout;
+  document.getElementById('ttv-icon').innerHTML = ICONS.inbox;
 
   const { data: fresh } = await db.from('trainees').select('*').eq('id', trainee.id).single();
   if (fresh) { trainee = fresh; sessionStorage.setItem('trainee', JSON.stringify(fresh)); }
@@ -530,7 +536,7 @@ async function init() {
       const cat = categories.find(c => c.id === trainee.current_category_id);
       document.getElementById('ttv-title-text').textContent = cat ? cat.name : 'My Tickets';
     }
-    document.getElementById('ttv-icon').textContent = '📂';
+    document.getElementById('ttv-icon').innerHTML = ICONS.folder;
   }
 
   document.getElementById('nav-ticket-count').textContent = tickets.length;
@@ -545,7 +551,7 @@ function renderCategoryNav() {
     const isCurrent = cat.id === trainee.current_category_id;
     return `<div class="nav-item${isCurrent ? ' active' : ' nav-locked'}" title="${cat.name}">
       <div class="nav-item-left">
-        <span class="nav-item-icon">${isCurrent ? '📂' : '📁'}</span>
+        <span class="nav-item-icon">${ICONS.folder}</span>
         <span class="nav-item-label">${cat.name}</span>
       </div>
       ${isCurrent ? '<span class="nav-active-badge">active</span>' : ''}
@@ -694,12 +700,12 @@ function renderReplySection(ticket, sub) {
     section.innerHTML = `
       <div class="reply-box">
         <div class="reply-to-row">
-          <button class="reply-channel-btn">✉️ Email ▾</button>
+          <button class="reply-channel-btn">${ICONS.mail} Email ▾</button>
           <span class="reply-to-label">To:</span>
           <span class="reply-to-val">${ticket.customer_email}</span>
         </div>
         <div class="macro-bar">
-          <button class="macro-trigger" onclick="toggleMacroPicker(event)">⚡ Macros</button>
+          <button class="macro-trigger" onclick="toggleMacroPicker(event)">${ICONS.zap} Macros</button>
           <div class="macro-picker" id="macro-picker">
             <input class="macro-search" id="macro-search" placeholder="Search macros…" oninput="filterMacros()" autocomplete="off" />
             <div class="macro-list" id="macro-list"></div>
@@ -787,7 +793,7 @@ function renderCustomerSidebar(ticket) {
       <div class="cs-row"><span class="cs-label">Contact reason</span><span style="font-size:11px;color:#7c3aed;cursor:pointer">+ Add</span></div>
     </div>
     <div class="cs-section">
-      <div class="cs-title">👤 ${ticket.customer_name}</div>
+      <div class="cs-title cs-title-user">${ICONS.user} ${ticket.customer_name}</div>
       <div class="cs-row"><span class="cs-label">Email</span><span class="cs-value" style="color:#7c3aed;font-size:11px">${ticket.customer_email}</span></div>
       ${ticket.loyalty_tier ? `<div class="cs-row"><span class="cs-label">Loyalty</span><span class="cs-value"><span class="loyalty-badge ${loyaltyClass}">${ticket.loyalty_tier}</span></span></div>` : ''}
       <div style="font-size:11px;color:#7c3aed;cursor:pointer;margin-top:6px">▾ Show more</div>

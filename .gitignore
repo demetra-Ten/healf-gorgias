@@ -3,6 +3,7 @@
 macros.sql
 seed-*.sql
 seed-*.json
-# Customer Obsession: REAL customer data + internal Slack + a legal threat — never publish publicly.
-customer-obsession.html
+# Customer Obsession raw source data (un-anonymised) — never publish.
 co-*.json
+# customer-obsession.html IS published (customer PII anonymised + noindex), per explicit decision 2026-07-15.
+# It names brands + describes internal incidents — keep the URL closely held; don't link it publicly.

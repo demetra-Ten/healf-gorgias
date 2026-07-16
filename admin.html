@@ -3,12 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Healf Training — Admin</title>
+<title>Gorgias Simulator — Admin</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzExMTExMSIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQgNCkiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIxLjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTQgMTR2LTNhOCA4IDAgMSAxIDE2IDB2MyIvPjxwYXRoIGQ9Ik0xOCAxOWMwIDEuNjU3IC0uODk1IDMgLTIgM2gtMyIvPjxwYXRoIGQ9Ik00IDE0YTIgMiAwIDAgMSAyIC0yaDFhMSAxIDAgMCAxIDEgMXY0YTEgMSAwIDAgMSAtMSAxaC0xYTIgMiAwIDAgMSAtMiAtMnYtMnoiLz48cGF0aCBkPSJNMjAgMTRhMiAyIDAgMCAwIC0yIC0yaC0xYTEgMSAwIDAgMCAtMSAxdjRhMSAxIDAgMCAwIDEgMWgxYTIgMiAwIDAgMCAyIC0ydi0yeiIvPjwvZz48L3N2Zz4=">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; background: #f4f4f8; min-height: 100vh; color: #111; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; background: #f7f7f8; min-height: 100vh; color: #1b1c1d; -webkit-font-smoothing: antialiased; }
 
 /* LOGIN */
 .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -18,14 +22,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; f
 
 /* ADMIN SHELL */
 .admin-shell { display: none; flex-direction: column; min-height: 100vh; }
-.admin-nav { background: #1e1e2e; height: 52px; display: flex; align-items: center; padding: 0 24px; gap: 0; }
-.admin-logo { color: #fff; font-weight: 700; font-size: 15px; margin-right: 32px; }
-.admin-logo span { color: #7c3aed; }
-.tab-btn { color: #9ca3af; font-size: 13px; padding: 0 16px; height: 52px; border: none; background: none; cursor: pointer; font-family: inherit; border-bottom: 3px solid transparent; transition: color 0.15s; }
-.tab-btn:hover { color: #e5e7eb; }
-.tab-btn.active { color: #fff; border-bottom-color: #7c3aed; }
+.admin-nav { background: #fff; border-bottom: 1px solid #e5e7eb; height: 54px; display: flex; align-items: center; padding: 0 22px; gap: 2px; }
+.admin-logo { display: flex; align-items: center; gap: 9px; margin-right: 26px; }
+.admin-logomark { width: 24px; height: 24px; border-radius: 6px; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.admin-logomark svg { width: 15px; height: 15px; display: block; }
+.admin-logo-text { font-size: 14px; font-weight: 600; color: #1b1c1d; white-space: nowrap; }
+.admin-logo-text .sub { color: #9ca3af; font-weight: 400; }
+.tab-btn { color: #6b7280; font-size: 13px; padding: 0 14px; height: 54px; border: none; background: none; cursor: pointer; font-family: inherit; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s; }
+.tab-btn:hover { color: #1b1c1d; }
+.tab-btn.active { color: #1b1c1d; font-weight: 600; border-bottom-color: #7c3aed; }
 .admin-right { margin-left: auto; }
-.admin-badge { background: rgba(124,58,237,0.2); color: #c4b5fd; font-size: 11px; padding: 3px 10px; border-radius: 10px; border: 1px solid rgba(124,58,237,0.3); }
+.admin-badge { background: #ede9fe; color: #7c3aed; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; border: 1px solid #ddd6fe; }
 
 .admin-body { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
@@ -107,8 +114,14 @@ textarea { resize: vertical; min-height: 80px; }
 <!-- LOGIN -->
 <div class="login-wrap" id="login-wrap">
   <div class="login-card">
-    <h1>Admin Panel</h1>
-    <p>Healf Training — restricted access.</p>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <div style="width:34px;height:34px;border-radius:8px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-3a8 8 0 1 1 16 0v3"/><path d="M18 19c0 1.657-.895 3-2 3h-3"/><path d="M4 14a2 2 0 0 1 2-2h1a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-2-2v-2z"/><path d="M20 14a2 2 0 0 0-2-2h-1a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1a2 2 0 0 0 2-2v-2z"/></svg>
+      </div>
+      <div style="font-size:15px;font-weight:600;color:#1b1c1d">Gorgias Simulator</div>
+    </div>
+    <h1>Admin</h1>
+    <p>Restricted access — trainers only.</p>
     <label>Password</label>
     <input type="password" id="admin-pw" placeholder="Enter admin password" />
     <button class="btn btn-primary" style="width:100%" onclick="adminLogin()">Enter</button>
@@ -119,7 +132,10 @@ textarea { resize: vertical; min-height: 80px; }
 <!-- ADMIN SHELL -->
 <div class="admin-shell" id="admin-shell">
   <nav class="admin-nav">
-    <div class="admin-logo">gorgi<span>as</span> · <span style="color:#9ca3af;font-weight:400;font-size:12px">healf admin</span></div>
+    <div class="admin-logo">
+      <div class="admin-logomark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-3a8 8 0 1 1 16 0v3"/><path d="M18 19c0 1.657-.895 3-2 3h-3"/><path d="M4 14a2 2 0 0 1 2-2h1a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-2-2v-2z"/><path d="M20 14a2 2 0 0 0-2-2h-1a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1a2 2 0 0 0 2-2v-2z"/></svg></div>
+      <div class="admin-logo-text">Gorgias Simulator <span class="sub">· Admin</span></div>
+    </div>
     <button class="tab-btn active" onclick="switchTab('trainees', this)">Trainees</button>
     <button class="tab-btn" onclick="switchTab('tickets', this)">Tickets</button>
     <button class="tab-btn" onclick="switchTab('marking', this)">
@@ -238,14 +254,15 @@ let submissionScores = {};
 
 function adminLogin() {
   const pw = document.getElementById('admin-pw').value;
-  if (pw === ADMIN_PASSWORD) {
-    document.getElementById('login-wrap').style.display = 'none';
-    document.getElementById('admin-shell').style.display = 'flex';
-    document.getElementById('admin-shell').style.flexDirection = 'column';
-    loadAll();
-  } else {
+  document.getElementById('pw-error').style.display = 'none';
+  if (pw !== ADMIN_PASSWORD) {
     document.getElementById('pw-error').style.display = 'block';
+    return;
   }
+  document.getElementById('login-wrap').style.display = 'none';
+  document.getElementById('admin-shell').style.display = 'flex';
+  document.getElementById('admin-shell').style.flexDirection = 'column';
+  loadAll();
 }
 document.getElementById('admin-pw').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
 
@@ -440,7 +457,7 @@ function renderMarking() {
             <strong>${traineeInfo.name || 'Unknown'}</strong>
             <div class="marking-meta">${traineeInfo.email || ''} · ${ticketInfo.subject || 'Unknown ticket'} · ${new Date(s.submitted_at).toLocaleString('en-GB', {dateStyle:'short',timeStyle:'short'})}</div>
           </div>
-          ${isScored ? `<span class="badge badge-scored">Scored ${s.score}/5</span>` : '<span class="badge badge-pending">Needs marking</span>'}
+          ${isScored ? `<span class="badge badge-scored">Scored ${s.score}/3</span>` : '<span class="badge badge-pending">Needs marking</span>'}
         </div>
         <div class="reply-compare">
           <div class="reply-panel">
@@ -458,7 +475,7 @@ function renderMarking() {
           <div>
             <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:6px">Score</div>
             <div class="score-btns" id="score-btns-${s.id}">
-              ${[1,2,3,4,5].map(n => `<button class="score-btn" onclick="selectScore(${s.id}, ${n})">${n}</button>`).join('')}
+              ${[1,2,3].map(n => `<button class="score-btn" onclick="selectScore(${s.id}, ${n})">${n}</button>`).join('')}
             </div>
           </div>
           <div class="feedback-input" style="flex:1">

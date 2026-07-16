@@ -79,6 +79,13 @@ textarea { resize: vertical; min-height: 80px; }
 .badge-pending { background: #fef9c3; color: #854d0e; }
 .badge-submitted { background: #dbeafe; color: #1d4ed8; }
 .badge-scored { background: #dcfce7; color: #166534; }
+.badge-3 { background: #dcfce7; color: #166534; }
+.badge-2 { background: #fef9c3; color: #854d0e; }
+.badge-1 { background: #fee2e2; color: #991b1b; }
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-tile { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
+.stat-tile .v { font-size: 22px; font-weight: 700; color: #1b1c1d; }
+.stat-tile .l { font-size: 12px; color: #6b7280; margin-top: 2px; }
 
 /* MARKING */
 .marking-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
@@ -139,7 +146,7 @@ textarea { resize: vertical; min-height: 80px; }
     <button class="tab-btn active" onclick="switchTab('trainees', this)">Trainees</button>
     <button class="tab-btn" onclick="switchTab('tickets', this)">Tickets</button>
     <button class="tab-btn" onclick="switchTab('marking', this)">
-      Marking
+      Results
       <span id="marking-badge" style="background:#ef4444;color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px;display:none">0</span>
     </button>
     <div class="admin-right"><span class="admin-badge">Admin</span></div>
@@ -233,8 +240,8 @@ textarea { resize: vertical; min-height: 80px; }
     <div id="tab-marking" style="display:none">
       <div class="section-header">
         <div>
-          <div class="section-title">Marking</div>
-          <div class="section-sub">Review trainee replies and assign a score 1–5 with feedback.</div>
+          <div class="section-title">Results</div>
+          <div class="section-sub">Auto-scored trainee performance, marked against the ideal handling.</div>
         </div>
       </div>
       <div id="marking-list"><div class="loading">Loading submissions…</div></div>
@@ -439,14 +446,45 @@ function updateMarkingBadge() {
 
 function renderMarking() {
   const list = document.getElementById('marking-list');
-  const unscored = submissions.filter(s => !s.score);
-  const scored   = submissions.filter(s => s.score);
+  if (!submissions.length) { list.innerHTML = '<div class="loading">No submissions yet.</div>'; return; }
 
-  if (!submissions.length) {
-    list.innerHTML = '<div class="loading">No submissions yet.</div>';
-    return;
-  }
+  const unscored = submissions.filter(s => s.score == null);
+  const scored   = submissions.filter(s => s.score != null);
 
+  // ── overall stat tiles ──
+  const allN3 = scored.filter(s => s.score == 3).length;
+  const overallAvg = scored.length ? (scored.reduce((a,s)=>a+Number(s.score),0)/scored.length).toFixed(2) : '—';
+  const overallQ = scored.length ? (Math.round(allN3/scored.length*1000)/10) + '%' : '—';
+  const tiles = `<div class="stat-tiles">
+    <div class="stat-tile"><div class="v">${submissions.length}</div><div class="l">Tickets attempted</div></div>
+    <div class="stat-tile"><div class="v">${scored.length}</div><div class="l">Scored</div></div>
+    <div class="stat-tile"><div class="v">${overallAvg}</div><div class="l">Average score</div></div>
+    <div class="stat-tile"><div class="v">${overallQ}</div><div class="l">Quality score</div></div>
+  </div>`;
+
+  // ── per-trainee summary ──
+  const byT = {};
+  submissions.forEach(s => { const t = s.trainees || {}; const k = s.trainee_id;
+    (byT[k] = byT[k] || { name: t.name || 'Unknown', email: t.email || '', subs: [] }).subs.push(s); });
+  const rows = Object.values(byT).map(t => {
+    const sc = t.subs.filter(s => s.score != null);
+    const n3 = sc.filter(s=>s.score==3).length, n2 = sc.filter(s=>s.score==2).length, n1 = sc.filter(s=>s.score==1).length;
+    const avg = sc.length ? (sc.reduce((a,s)=>a+Number(s.score),0)/sc.length).toFixed(2) : '—';
+    const q = sc.length ? (Math.round(n3/sc.length*1000)/10) + '%' : '—';
+    return `<tr>
+      <td><strong>${t.name}</strong><div class="marking-meta">${t.email}</div></td>
+      <td>${t.subs.length}</td><td>${sc.length}</td>
+      <td><strong>${avg}</strong></td><td><strong>${q}</strong></td>
+      <td><span class="badge badge-3">${n3}</span></td>
+      <td><span class="badge badge-2">${n2}</span></td>
+      <td><span class="badge badge-1">${n1}</span></td>
+    </tr>`;
+  }).join('');
+  const summary = `<div class="card"><div class="card-header"><span class="card-title">By trainee</span><span class="marking-meta">Quality score = % of tickets marked 3/3</span></div>
+    <table><thead><tr><th>Trainee</th><th>Attempted</th><th>Scored</th><th>Avg</th><th>Quality</th><th>3s</th><th>2s</th><th>1s</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+
+  // ── detail cards ──
   const renderCard = (s, isScored) => {
     const traineeInfo = s.trainees || {};
     const ticketInfo  = s.tickets  || {};
@@ -457,7 +495,7 @@ function renderMarking() {
             <strong>${traineeInfo.name || 'Unknown'}</strong>
             <div class="marking-meta">${traineeInfo.email || ''} · ${ticketInfo.subject || 'Unknown ticket'} · ${new Date(s.submitted_at).toLocaleString('en-GB', {dateStyle:'short',timeStyle:'short'})}</div>
           </div>
-          ${isScored ? `<span class="badge badge-scored">Scored ${s.score}/3</span>` : '<span class="badge badge-pending">Needs marking</span>'}
+          ${isScored ? `<span class="badge badge-${s.score}">${s.score}/3</span>` : '<span class="badge badge-pending">Needs attention</span>'}
         </div>
         <div class="reply-compare">
           <div class="reply-panel">
@@ -465,15 +503,16 @@ function renderMarking() {
             <div class="reply-panel-body">${escHtml(s.reply_text)}</div>
           </div>
           <div class="reply-panel ideal-panel">
-            <div class="reply-panel-title">Ideal response</div>
-            <div class="reply-panel-body">${escHtml(ticketInfo.ideal_response || '(No ideal response set for this ticket.)')}</div>
+            <div class="reply-panel-title">Ideal handling</div>
+            <div class="reply-panel-body">${escHtml(ticketInfo.ideal_response || '(No ideal handling set for this ticket.)')}</div>
           </div>
         </div>
-        ${isScored && s.feedback ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:14px"><strong>Feedback given:</strong> ${escHtml(s.feedback)}</div>` : ''}
+        ${s.actions_text ? `<div style="background:#fbfaff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:12px"><strong>Trainee's actions note:</strong> ${escHtml(s.actions_text)}</div>` : ''}
+        ${isScored && s.feedback ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:4px;white-space:pre-wrap"><strong>Auto feedback:</strong>\n${escHtml(s.feedback)}</div>` : ''}
         ${!isScored ? `
         <div class="score-row">
           <div>
-            <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:6px">Score</div>
+            <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:6px">Score manually</div>
             <div class="score-btns" id="score-btns-${s.id}">
               ${[1,2,3].map(n => `<button class="score-btn" onclick="selectScore(${s.id}, ${n})">${n}</button>`).join('')}
             </div>
@@ -483,21 +522,20 @@ function renderMarking() {
             <input type="text" id="feedback-${s.id}" placeholder="e.g. Great empathy, but missed the refund timeline." style="margin-bottom:0" />
           </div>
           <div style="padding-top:18px">
-            <button class="btn btn-primary" onclick="markSubmission(${s.id})">Mark</button>
+            <button class="btn btn-primary" onclick="markSubmission(${s.id})">Save</button>
           </div>
         </div>` : ''}
       </div>`;
   };
 
-  list.innerHTML = '';
+  let html = tiles + summary;
   if (unscored.length) {
-    list.innerHTML += `<h3 style="font-size:14px;font-weight:700;margin-bottom:14px">Needs Marking (${unscored.length})</h3>`;
-    list.innerHTML += unscored.map(s => renderCard(s, false)).join('');
+    html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Needs attention — auto-scoring didn't run (${unscored.length})</h3>`;
+    html += unscored.map(s => renderCard(s, false)).join('');
   }
-  if (scored.length) {
-    list.innerHTML += `<h3 style="font-size:14px;font-weight:700;margin:24px 0 14px">Marked (${scored.length})</h3>`;
-    list.innerHTML += scored.map(s => renderCard(s, true)).join('');
-  }
+  html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Submissions (${scored.length})</h3>`;
+  html += scored.length ? scored.map(s => renderCard(s, true)).join('') : '<div class="loading">No scored submissions yet.</div>';
+  list.innerHTML = html;
 }
 
 function selectScore(subId, score) {

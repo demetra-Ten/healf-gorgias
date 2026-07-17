@@ -683,7 +683,7 @@ function renderCategoryNav() {
   const nav = document.getElementById('category-nav');
   nav.innerHTML = categories.map(cat => {
     const isCurrent = cat.id === trainee.current_category_id;
-    return `<div class="nav-item${isCurrent ? ' active' : ' nav-locked'}" title="${cat.name}">
+    return `<div class="nav-item${isCurrent ? ' active' : ' nav-locked'}" title="${cat.name}"${isCurrent ? ' onclick="showTableView()" style="cursor:pointer"' : ''}>
       <div class="nav-item-left">
         <span class="nav-item-icon">${ICONS.folder}</span>
         <span class="nav-item-label">${cat.name}</span>
@@ -763,6 +763,7 @@ function showTableView() {
   const cv = document.getElementById('co-view'); if (cv) cv.style.display = 'none';
   document.querySelectorAll('#co-nav .nav-item').forEach(el => el.classList.remove('active'));
   const my = document.querySelector('.leftnav-top .nav-item'); if (my) my.classList.add('active');
+  renderCategoryNav();   // restore the active category's highlight + onclick after a CO detour
   document.getElementById('ticket-table-view').style.display = 'flex';
   document.getElementById('ticket-detail').style.display = 'none';
   renderTicketTable();

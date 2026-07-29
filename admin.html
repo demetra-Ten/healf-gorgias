@@ -296,7 +296,7 @@ function populateCategorySelects() {
   const opts = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   const ntCat = document.getElementById('nt-category');
   const tkCat = document.getElementById('tk-category');
-  if (ntCat) ntCat.innerHTML = '<option value="">— No category yet —</option><option value="all">All categories</option>' + opts;
+  if (ntCat) ntCat.innerHTML = '<option value="">All categories</option>' + opts;
   if (tkCat) tkCat.innerHTML = opts;
 }
 
@@ -314,13 +314,12 @@ function renderTrainees() {
     return `<tr>
       <td><strong>${t.name}</strong></td>
       <td style="color:#9ca3af">${t.email}</td>
-      <td>${t.all_categories ? '<span class="badge badge-submitted">All categories</span>' : cat ? `<span class="badge badge-submitted">${cat.name}</span>` : '<span style="color:#9ca3af">—</span>'}</td>
+      <td>${cat ? `<span class="badge badge-submitted">${cat.name}</span>` : '<span class="badge badge-submitted">All categories</span>'}</td>
       <td>${subCount}</td>
       <td>
         <select onchange="updateTraineeCategory(${t.id}, this.value)" style="margin-bottom:0;width:auto;min-width:180px;font-size:12px;padding:4px 8px">
-          <option value="">— No category —</option>
-          <option value="all"${t.all_categories ? ' selected' : ''}>All categories</option>
-          ${categories.map(c => `<option value="${c.id}"${!t.all_categories && c.id === t.current_category_id ? ' selected' : ''}>${c.name}</option>`).join('')}
+          <option value=""${!t.current_category_id ? ' selected' : ''}>All categories</option>
+          ${categories.map(c => `<option value="${c.id}"${c.id === t.current_category_id ? ' selected' : ''}>${c.name}</option>`).join('')}
         </select>
       </td>
     </tr>`;
@@ -328,12 +327,11 @@ function renderTrainees() {
 }
 
 async function updateTraineeCategory(traineeId, categoryId) {
-  const allCats = categoryId === 'all';
-  const val = (categoryId && !allCats) ? parseInt(categoryId) : null;
-  const { error } = await db.from('trainees').update({ current_category_id: val, all_categories: allCats }).eq('id', traineeId);
+  const val = categoryId ? parseInt(categoryId) : null;   // null = all categories
+  const { error } = await db.from('trainees').update({ current_category_id: val }).eq('id', traineeId);
   if (error) { toast('Error updating category.'); return; }
-  trainees = trainees.map(t => t.id === traineeId ? { ...t, current_category_id: val, all_categories: allCats } : t);
-  toast('Category updated.');
+  trainees = trainees.map(t => t.id === traineeId ? { ...t, current_category_id: val } : t);
+  toast(val ? 'Category updated — trainee now sees this category in the sim.' : 'Set to all categories.');
 }
 
 function showAddTrainee() { document.getElementById('add-trainee-form').style.display = 'block'; }
@@ -348,8 +346,7 @@ async function addTrainee() {
 
   const { data, error } = await db.from('trainees').insert({
     name, email, pin,
-    current_category_id: (catId && catId !== 'all') ? parseInt(catId) : null,
-    all_categories: catId === 'all',
+    current_category_id: catId ? parseInt(catId) : null,   // null = all categories
   }).select().single();
 
   if (error) { toast('Error: ' + (error.message || 'Could not create trainee.')); return; }

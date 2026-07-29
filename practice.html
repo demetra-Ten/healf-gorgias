@@ -659,18 +659,19 @@ async function init() {
   const { data: m } = await db.from('macros').select('*').order('sort_index');
   macros = m || [];
 
-  if (trainee.all_categories || trainee.current_category_id) {
+  {
+    const allCats = !trainee.current_category_id;   // no category assigned = All categories
     let query = db
       .from('tickets')
       .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier,order_items,ideal_response');
-    if (!trainee.all_categories) query = query.eq('category_id', trainee.current_category_id);
+    if (!allCats) query = query.eq('category_id', trainee.current_category_id);
     const { data: tix } = await query;
     tickets = tix || [];
 
     const { data: subs } = await db.from('submissions').select('*').eq('trainee_id', trainee.id);
     submissions = subs || [];
 
-    if (trainee.all_categories) {
+    if (allCats) {
       document.getElementById('ttv-title-text').textContent = 'All Categories';
     } else {
       const cat = categories.find(c => c.id === trainee.current_category_id);

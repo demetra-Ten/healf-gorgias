@@ -183,8 +183,8 @@ textarea { resize: vertical; min-height: 80px; }
 
       <div class="card">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Current Category</th><th>Submissions</th><th>Change Category</th></tr></thead>
-          <tbody id="trainees-tbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+          <thead><tr><th>Name</th><th>Email</th><th>Submissions</th><th>Assigned Topic</th></tr></thead>
+          <tbody id="trainees-tbody"><tr class="empty-row"><td colspan="4">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -304,17 +304,14 @@ function populateCategorySelects() {
 function renderTrainees() {
   const tbody = document.getElementById('trainees-tbody');
   if (!trainees.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No trainees yet. Add one above.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No trainees yet. Add one above.</td></tr>';
     return;
   }
-  const catOpts = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   tbody.innerHTML = trainees.map(t => {
-    const cat = categories.find(c => c.id === t.current_category_id);
     const subCount = submissions.filter(s => s.trainee_id === t.id).length;
     return `<tr>
       <td><strong>${t.name}</strong></td>
       <td style="color:#9ca3af">${t.email}</td>
-      <td>${cat ? `<span class="badge badge-submitted">${cat.name}</span>` : '<span class="badge badge-submitted">All categories</span>'}</td>
       <td>${subCount}</td>
       <td>
         <select onchange="updateTraineeCategory(${t.id}, this.value)" style="margin-bottom:0;width:auto;min-width:180px;font-size:12px;padding:4px 8px">

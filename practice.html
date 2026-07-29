@@ -537,6 +537,7 @@ let categories = [];
 let submissions = [];
 let macros = [];
 let activeTicketId = null;
+let activeCatFilter = null;   // category the ticket table is showing (null = all accessible categories)
 let usedMacro = null;
 const SCORING_WEBHOOK = 'https://aiwellbeing.app.n8n.cloud/webhook/score-submission';
 const PRODUCTS_BY_ID = {
@@ -654,6 +655,7 @@ async function init() {
 
   const { data: cats } = await db.from('categories').select('*').order('order_index');
   categories = cats || [];
+  activeCatFilter = trainee.current_category_id || null;   // single topic → that topic; all-access → null (all)
   renderCategoryNav();
 
   const { data: m } = await db.from('macros').select('*').order('sort_index');
@@ -688,16 +690,31 @@ async function init() {
 
 function renderCategoryNav() {
   const nav = document.getElementById('category-nav');
+  const allAccess = !trainee.current_category_id;   // no assigned topic = access all
   nav.innerHTML = categories.map(cat => {
-    const isCurrent = cat.id === trainee.current_category_id;
-    return `<div class="nav-item${isCurrent ? ' active' : ' nav-locked'}" title="${cat.name}"${isCurrent ? ' onclick="showTableView()" style="cursor:pointer"' : ''}>
+    const accessible = allAccess || cat.id === trainee.current_category_id;
+    const isActive = accessible && cat.id === activeCatFilter;
+    const cls = isActive ? ' active' : (accessible ? '' : ' nav-locked');
+    return `<div class="nav-item${cls}" title="${cat.name}"${accessible ? ` onclick="selectCategory(${cat.id})" style="cursor:pointer"` : ''}>
       <div class="nav-item-left">
         <span class="nav-item-icon">${ICONS.folder}</span>
         <span class="nav-item-label">${cat.name}</span>
       </div>
-      ${isCurrent ? '<span class="nav-active-badge">active</span>' : ''}
+      ${isActive ? '<span class="nav-active-badge">active</span>' : ''}
     </div>`;
   }).join('');
+}
+// Open a specific topic's tickets (used when a trainee has access to more than one)
+function selectCategory(catId) {
+  activeCatFilter = catId;
+  activeTicketId = null; coActive = null; coTicketN = null;
+  const cv = document.getElementById('co-view'); if (cv) cv.style.display = 'none';
+  document.querySelectorAll('#co-nav .nav-item').forEach(el => el.classList.remove('active'));
+  const my = document.querySelector('.leftnav-top .nav-item'); if (my) my.classList.remove('active');
+  document.getElementById('ticket-detail').style.display = 'none';
+  document.getElementById('ticket-table-view').style.display = 'flex';
+  renderCategoryNav();
+  renderTicketTable();
 }
 
 function initials(name) { return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase(); }
@@ -722,9 +739,15 @@ function switchTicketTab(tab) { ticketTab = tab; renderTicketTable(); }
 
 function renderTicketTable() {
   const tbody = document.getElementById('ticket-tbody');
+  const view = (activeCatFilter == null) ? tickets : tickets.filter(t => t.category_id === activeCatFilter);
   const isMarked = t => { const s = getSub(t.id); return s && s.score != null; };
-  const marked = tickets.filter(isMarked);
-  const toAction = tickets.filter(t => !isMarked(t));
+  const marked = view.filter(isMarked);
+  const toAction = view.filter(t => !isMarked(t));
+
+  // title + count reflect the topic currently in view
+  const catName = activeCatFilter ? ((categories.find(c => c.id === activeCatFilter) || {}).name || 'My Tickets') : 'All Categories';
+  const ttT = document.getElementById('ttv-title-text'); if (ttT) ttT.textContent = catName;
+  const ttC = document.getElementById('ttv-count'); if (ttC) ttC.textContent = `Showing ${view.length} item${view.length !== 1 ? 's' : ''}`;
 
   // keep the tab counts + active state in sync
   const cA = document.getElementById('count-toaction'); if (cA) cA.textContent = toAction.length;
@@ -734,7 +757,7 @@ function renderTicketTable() {
   if (tM) tM.classList.toggle('active', ticketTab === 'marked');
 
   const emptyRow = msg => `<tr><td colspan="6" class="tt-empty">${msg}</td></tr>`;
-  if (!tickets.length) { tbody.innerHTML = emptyRow('No tickets in this category yet.'); return; }
+  if (!view.length) { tbody.innerHTML = emptyRow('No tickets in this category yet.'); return; }
 
   const rows = ticketTab === 'marked' ? marked : toAction;
 
@@ -768,6 +791,7 @@ function showTableView() {
   activeTicketId = null;
   coActive = null;
   coTicketN = null;
+  activeCatFilter = trainee.current_category_id || null;   // My Tickets: all-access → all topics; single → their topic
   const cv = document.getElementById('co-view'); if (cv) cv.style.display = 'none';
   document.querySelectorAll('#co-nav .nav-item').forEach(el => el.classList.remove('active'));
   const my = document.querySelector('.leftnav-top .nav-item'); if (my) my.classList.add('active');

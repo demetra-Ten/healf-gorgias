@@ -212,6 +212,23 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .os-partial { background: #dbeafe; color: #1d4ed8; }
 .os-unfulfilled { background: #fef9c3; color: #854d0e; }
 .os-cancelled { background: #fee2e2; color: #991b1b; }
+.order-box { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff; }
+.order-box-head { padding: 10px 12px; cursor: pointer; }
+.order-box-row { display: flex; align-items: center; justify-content: space-between; }
+.order-box-chevron { font-size: 11px; color: #9ca3af; transition: transform .15s; }
+.order-box.open .order-box-chevron { transform: rotate(180deg); }
+.order-box-meta { font-size: 11.5px; color: #6b7280; margin-top: 3px; }
+.order-box-head .order-status-badge { margin-top: 7px; }
+.order-box-body { display: none; border-top: 1px solid #f3f4f6; padding: 10px 12px; }
+.order-box.open .order-box-body { display: block; }
+.order-lines-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #9ca3af; margin-bottom: 6px; }
+.order-lines-n { background: #f3f4f6; color: #6b7280; border-radius: 8px; padding: 0 6px; margin-left: 4px; font-size: 10px; }
+.order-total { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; color: #111; border-top: 1px solid #f3f4f6; margin-top: 8px; padding-top: 8px; }
+.order-empty { font-size: 12px; color: #9ca3af; }
+html[data-theme="dark"] .order-box { background: #1d1d21; border-color: #2c2c31; }
+html[data-theme="dark"] .order-box-body, html[data-theme="dark"] .order-total { border-top-color: #2c2c31; }
+html[data-theme="dark"] .order-total { color: #f4f4f5; }
+html[data-theme="dark"] .order-lines-n { background: #2c2c31; color: #a1a1aa; }
 .loyalty-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 8px; }
 .loyalty-bronze { background: #fef3c7; color: #92400e; }
 .loyalty-silver { background: #f3f4f6; color: #374151; }
@@ -1042,16 +1059,25 @@ function renderCustomerSidebar(ticket) {
       ${ticket.loyalty_tier ? `<div class="cs-row"><span class="cs-label">Loyalty</span><span class="cs-value"><span class="loyalty-badge ${loyaltyClass}">${ticket.loyalty_tier}</span></span></div>` : ''}
       <div style="font-size:11px;color:#7c3aed;cursor:pointer;margin-top:6px">▾ Show more</div>
     </div>
-    ${ticket.order_number ? `
+    ${ticket.order_number ? (function(){
+      const items = ticketProducts(ticket);
+      const n = items ? items.split('\n').filter(l => l.trim()).length : 0;
+      const meta = [ticket.order_date || '', n ? (n + ' item' + (n !== 1 ? 's' : '')) : '', ticket.order_value || ''].filter(Boolean).join(' · ');
+      return `
     <div class="cs-section">
       <div class="cs-title">Recent Orders</div>
-      <div class="order-card">
-        <div class="order-num">${ticket.order_number}</div>
-        ${ticket.order_value ? `<div style="font-size:12px;color:#374151;margin-top:3px">${ticket.order_value}</div>` : ''}
-        ${fs ? `<span class="order-status-badge ${fs.cls}">${fs.label}</span>` : ''}
-        ${ticketProducts(ticket) ? `<div class="cs-items">${renderProducts(ticketProducts(ticket))}</div>` : ''}
+      <div class="order-box">
+        <div class="order-box-head" onclick="this.closest('.order-box').classList.toggle('open')">
+          <div class="order-box-row"><span class="order-num">${ticket.order_number}</span><span class="order-box-chevron">▾</span></div>
+          ${meta ? `<div class="order-box-meta">${meta}</div>` : ''}
+          ${fs ? `<span class="order-status-badge ${fs.cls}">${fs.label}</span>` : ''}
+        </div>
+        <div class="order-box-body">
+          ${items ? `<div class="order-lines-lbl">Line items<span class="order-lines-n">${n}</span></div><div class="cs-items">${renderProducts(items)}</div>` : '<div class="order-empty">No itemised products on file for this order yet.</div>'}
+          ${ticket.order_value ? `<div class="order-total"><span>Total</span><span>${ticket.order_value}</span></div>` : ''}
+        </div>
       </div>
-    </div>` : ''}
+    </div>`; })() : ''}
     <div class="cs-section">
       <div class="cs-title">Agent Notes</div>
       <textarea class="cs-notes" placeholder="Private notes (not saved)…"></textarea>

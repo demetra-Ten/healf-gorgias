@@ -165,6 +165,14 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .tt-empty { text-align: center; padding: 20px; color: #9ca3af; font-size: 12px; }
 .reply-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-top: 1px solid #f3f4f6; }
 .reply-hint { font-size: 11px; color: #9ca3af; }
+.quoted-wrap { margin-top: 6px; }
+.quoted-dots { border: 1px solid #e5e7eb; background: #f3f4f6; border-radius: 8px; padding: 1px 9px; cursor: pointer; color: #9ca3af; font-size: 13px; letter-spacing: 1px; line-height: 1.6; }
+.quoted-dots:hover { background: #e5e7eb; color: #6b7280; }
+.quoted-email { display: none; margin-top: 8px; border-left: 2px solid #e5e7eb; padding: 10px 14px; color: #6b7280; font-size: 12.5px; line-height: 1.55; background: #fff; border-radius: 0 8px 8px 0; }
+.quoted-wrap.open .quoted-email { display: block; }
+.quoted-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #b0b4bb; margin-bottom: 6px; }
+html[data-theme="dark"] .quoted-dots { background: #232327; border-color: #2c2c31; color: #6b7280; }
+html[data-theme="dark"] .quoted-email { background: #1d1d21; border-left-color: #2c2c31; color: #9ca3af; }
 .reply-actions { display: flex; gap: 8px; }
 .macro-bar { position: relative; padding: 8px 16px 0; }
 .macro-trigger { display: inline-flex; align-items: center; gap: 5px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 10px; font-size: 12px; color: #374151; cursor: pointer; font-family: inherit; }
@@ -557,6 +565,9 @@ let activeTicketId = null;
 let activeCatFilter = null;   // category the ticket table is showing (null = all accessible categories)
 let usedMacro = null;
 const SCORING_WEBHOOK = 'https://aiwellbeing.app.n8n.cloud/webhook/score-submission';
+// Marks the boundary in a CUSTOMER message between the customer's reply and the
+// original (usually marketing) email they're replying to — revealed via the "•••" expander.
+const QUOTE_SENTINEL = '⟦MARKETING⟧';
 const PRODUCTS_BY_ID = {
   1: "Grass Fed Whey Protein Isolate – Unflavoured (x1) — £39.99 [pre-order]\nMagnesium Glycinate (x1) — shipped",
   2: "NMN 500mg (x1) — £15.98 [pre-order]\nFree sample: Collagen sachet (x1) — £0.00",
@@ -856,17 +867,23 @@ function parseThread(ticket) {
   return parts.length ? parts : [{ type: 'CUSTOMER', body: raw }];
 }
 // The customer's own message (last customer turn) — for the table preview and scorer.
+// Strips any quoted marketing email that trails the reply.
 function customerMessage(ticket) {
   const c = parseThread(ticket).filter(p => p.type === 'CUSTOMER').pop();
-  return c ? c.body : (ticket.message || '');
+  let b = c ? c.body : (ticket.message || '');
+  const i = b.indexOf(QUOTE_SENTINEL);
+  return i >= 0 ? b.slice(0, i).trim() : b;
 }
-// Readable full thread for the scorer (labels each turn).
+// Readable full thread for the scorer (labels each turn; surfaces any quoted email as context).
 function threadText(ticket) {
   return parseThread(ticket).map(p => {
     const who = p.type === 'CUSTOMER' ? `Customer (${ticket.customer_name})`
       : p.type === 'LOLA' ? 'Earlier automated email from Lola (Healf)'
       : 'Earlier Healf reply';
-    return `${who}:\n${p.body}`;
+    const body = p.type === 'CUSTOMER'
+      ? p.body.replace(QUOTE_SENTINEL, '\n\n[Original marketing email the customer is replying to:]\n')
+      : p.body;
+    return `${who}:\n${body}`;
   }).join('\n\n');
 }
 
@@ -882,7 +899,25 @@ function renderMessages(ticket, sub) {
       </div>
     </div>`;
   let html = parseThread(ticket).map(p => {
-    if (p.type === 'CUSTOMER') return bubble({ dir:'in', avaClass:'customer', ava:initials(ticket.customer_name), sender:ticket.customer_name, sub:ticket.customer_email, body:p.body });
+    if (p.type === 'CUSTOMER') {
+      const sepIdx = p.body.indexOf(QUOTE_SENTINEL);
+      const main = sepIdx >= 0 ? p.body.slice(0, sepIdx).trim() : p.body;
+      const quoted = sepIdx >= 0 ? p.body.slice(sepIdx + QUOTE_SENTINEL.length).trim() : '';
+      const quotedHtml = quoted ? `
+        <div class="quoted-wrap">
+          <button class="quoted-dots" onclick="this.closest('.quoted-wrap').classList.toggle('open')" title="Show trimmed content">•••</button>
+          <div class="quoted-email"><div class="quoted-label">Original email</div>${esc(quoted)}</div>
+        </div>` : '';
+      return `
+        <div class="msg-wrap in">
+          <div class="msg-ava customer">${initials(ticket.customer_name)}</div>
+          <div class="msg-content">
+            <div class="msg-meta"><span class="msg-sender">${ticket.customer_name}</span><span>${ticket.customer_email}</span></div>
+            <div class="msg-card">${esc(main)}</div>
+            ${quotedHtml}
+          </div>
+        </div>`;
+    }
     if (p.type === 'LOLA') return bubble({ dir:'out', avaClass:'lola', ava:'L', sender:'Lola', automated:true, sub:'team@healf.com', body:p.body, cardClass:'lola-card' });
     return bubble({ dir:'out', avaClass:'agent', ava:'H', sender:'Healf', sub:'team@healf.com', body:p.body, cardClass:'agent-card' });
   }).join('');

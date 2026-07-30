@@ -173,6 +173,20 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .quoted-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #b0b4bb; margin-bottom: 6px; }
 html[data-theme="dark"] .quoted-dots { background: #232327; border-color: #2c2c31; color: #6b7280; }
 html[data-theme="dark"] .quoted-email { background: #1d1d21; border-left-color: #2c2c31; color: #9ca3af; }
+.recharge-head { display: flex; align-items: center; gap: 6px; }
+.recharge-mark { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; background: #5433fa; color: #fff; border-radius: 4px; font-size: 11px; }
+.recharge-cust { color: #7c3aed; font-weight: 600; }
+.recharge-status { font-weight: 700; color: #111827; letter-spacing: 0.3px; }
+.recharge-sub { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6; }
+.cs-sublabel { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+.recharge-badge { display: inline-block; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: 6px; padding: 2px 9px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; }
+.recharge-cancel { display: block; margin-top: 10px; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #374151; cursor: pointer; }
+.recharge-cancel:hover { background: #f9fafb; }
+.order-box + .order-box { margin-top: 8px; }
+html[data-theme="dark"] .recharge-status { color: #f3f4f6; }
+html[data-theme="dark"] .recharge-sub { border-top-color: #2c2c31; }
+html[data-theme="dark"] .recharge-badge { background: #14311f; color: #4ade80; border-color: #1c4a2e; }
+html[data-theme="dark"] .recharge-cancel { background: #1d1d21; border-color: #2c2c31; color: #d1d5db; }
 .reply-actions { display: flex; gap: 8px; }
 .macro-bar { position: relative; padding: 8px 16px 0; }
 .macro-trigger { display: inline-flex; align-items: center; gap: 5px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 10px; font-size: 12px; color: #374151; cursor: pointer; font-family: inherit; }
@@ -1076,8 +1090,61 @@ document.addEventListener('pointerup', () => {
   _resize = null;
 });
 
+// A ticket's order_items may hold ONE order (legacy: line items only, header from the
+// order_number/value/status columns) OR MULTIPLE orders, each prefixed by a header line
+// "@@ORDER|<number>|<value>|<status>|<date>". Returns an array of order objects.
+function parseOrders(ticket) {
+  const raw = (ticket.order_items || '').trim();
+  if (raw.indexOf('@@ORDER|') !== -1) {
+    return raw.split('@@ORDER|').map(s => s.trim()).filter(Boolean).map(block => {
+      const nl = block.indexOf('\n');
+      const header = (nl === -1 ? block : block.slice(0, nl)).trim();
+      const items = nl === -1 ? '' : block.slice(nl + 1).trim();
+      const p = header.split('|').map(x => (x || '').trim());
+      return { number: p[0] || '', value: p[1] || '', status: p[2] || '', date: p[3] || '', items };
+    });
+  }
+  if (ticket.order_number) return [{ number: ticket.order_number, value: ticket.order_value || '', status: ticket.order_status || '', date: ticket.order_date || '', items: raw }];
+  return [];
+}
+function orderBoxHtml(o, open) {
+  const items = o.items || '';
+  const n = items ? items.split('\n').filter(l => l.trim()).length : 0;
+  const fs = fulfilment(o.status);
+  const meta = [o.date || '', n ? (n + ' item' + (n !== 1 ? 's' : '')) : '', o.value || ''].filter(Boolean).join(' · ');
+  return `
+      <div class="order-box${open ? ' open' : ''}">
+        <div class="order-box-head" onclick="this.closest('.order-box').classList.toggle('open')">
+          <div class="order-box-row"><span class="order-num">${o.number}</span><span class="order-box-chevron">▾</span></div>
+          ${meta ? `<div class="order-box-meta">${meta}</div>` : ''}
+          ${fs ? `<span class="order-status-badge ${fs.cls}">${fs.label}</span>` : ''}
+        </div>
+        <div class="order-box-body">
+          ${items ? `<div class="order-lines-lbl">Line items<span class="order-lines-n">${n}</span></div><div class="cs-items">${renderProducts(items)}</div>` : '<div class="order-empty">No itemised products on file for this order yet.</div>'}
+          ${o.value ? `<div class="order-total"><span>Total</span><span>${o.value}</span></div>` : ''}
+        </div>
+      </div>`;
+}
+// Recharge (subscriptions) integration panel — mirrors what Gorgias shows: the customer's
+// subscription is ACTIVE (amendments are made in Recharge, not here).
+function rechargePanelHtml(ticket) {
+  const orders = parseOrders(ticket);
+  const upd = (orders[0] && orders[0].date) ? orders[0].date : 'Recently';
+  return `
+    <div class="cs-section">
+      <div class="cs-title recharge-head"><span class="recharge-mark">↻</span> Recharge <span class="recharge-cust">${ticket.customer_name}</span></div>
+      <div class="cs-row"><span class="cs-label">Status</span><span class="cs-value recharge-status">ACTIVE</span></div>
+      <div class="cs-row"><span class="cs-label">Updated at</span><span class="cs-value">${upd}</span></div>
+      <div class="cs-row"><span class="cs-label">Processor type</span><span class="cs-value">shopify_payments</span></div>
+      <div class="recharge-sub">
+        <div class="cs-sublabel">Subscription</div>
+        <span class="recharge-badge">ACTIVE</span>
+        <button class="recharge-cancel" onclick="return false" title="Amendments are made in Recharge">⊘ Cancel</button>
+      </div>
+    </div>`;
+}
+
 function renderCustomerSidebar(ticket) {
-  const fs = fulfilment(ticket.order_status);
   const loyaltyClass = { 'Bronze':'loyalty-bronze','Silver':'loyalty-silver','Gold':'loyalty-gold','VIP':'loyalty-vip' }[ticket.loyalty_tier] || '';
 
   document.getElementById('customer-sidebar').innerHTML = `
@@ -1094,25 +1161,16 @@ function renderCustomerSidebar(ticket) {
       ${ticket.loyalty_tier ? `<div class="cs-row"><span class="cs-label">Loyalty</span><span class="cs-value"><span class="loyalty-badge ${loyaltyClass}">${ticket.loyalty_tier}</span></span></div>` : ''}
       <div style="font-size:11px;color:#7c3aed;cursor:pointer;margin-top:6px">▾ Show more</div>
     </div>
-    ${ticket.order_number ? (function(){
-      const items = ticketProducts(ticket);
-      const n = items ? items.split('\n').filter(l => l.trim()).length : 0;
-      const meta = [ticket.order_date || '', n ? (n + ' item' + (n !== 1 ? 's' : '')) : '', ticket.order_value || ''].filter(Boolean).join(' · ');
+    ${(function(){
+      const orders = parseOrders(ticket);
+      if (!orders.length) return '';
+      const lbl = orders.length > 1 ? `Recent Orders <span class="order-lines-n">${orders.length}</span>` : 'Recent Orders';
       return `
     <div class="cs-section">
-      <div class="cs-title">Recent Orders</div>
-      <div class="order-box">
-        <div class="order-box-head" onclick="this.closest('.order-box').classList.toggle('open')">
-          <div class="order-box-row"><span class="order-num">${ticket.order_number}</span><span class="order-box-chevron">▾</span></div>
-          ${meta ? `<div class="order-box-meta">${meta}</div>` : ''}
-          ${fs ? `<span class="order-status-badge ${fs.cls}">${fs.label}</span>` : ''}
-        </div>
-        <div class="order-box-body">
-          ${items ? `<div class="order-lines-lbl">Line items<span class="order-lines-n">${n}</span></div><div class="cs-items">${renderProducts(items)}</div>` : '<div class="order-empty">No itemised products on file for this order yet.</div>'}
-          ${ticket.order_value ? `<div class="order-total"><span>Total</span><span>${ticket.order_value}</span></div>` : ''}
-        </div>
-      </div>
-    </div>`; })() : ''}
+      <div class="cs-title">${lbl}</div>
+      ${orders.map((o, i) => orderBoxHtml(o, i === 0)).join('')}
+    </div>`; })()}
+    ${Number(ticket.category_id) === 5 ? rechargePanelHtml(ticket) : ''}
     <div class="cs-section">
       <div class="cs-title">Agent Notes</div>
       <textarea class="cs-notes" placeholder="Private notes (not saved)…"></textarea>

@@ -369,33 +369,41 @@ function toggleTicketForm() {
   f.style.display = f.style.display === 'none' ? 'block' : 'none';
 }
 
+let ticketCatFilter = null;   // which category's tickets to show
+function setTicketCat(v) { ticketCatFilter = Number(v); renderTickets(); }
 function renderTickets() {
   const container = document.getElementById('tickets-by-category');
-  container.innerHTML = categories.map(cat => {
-    const catTickets = allTickets.filter(t => t.category_id === cat.id);
-    const rows = catTickets.length
-      ? catTickets.map(t => `
-          <tr>
-            <td><strong>${t.subject}</strong></td>
-            <td>${t.customer_name}</td>
-            <td>${t.order_number || '—'}</td>
-            <td>${t.order_status || '—'}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="deleteTicket(${t.id})">Delete</button></td>
-          </tr>`).join('')
-      : '<tr class="empty-row"><td colspan="5">No tickets in this category.</td></tr>';
-
-    return `
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-header">
-          <span class="card-title">${cat.name}</span>
-          <span style="font-size:11px;color:#9ca3af">${catTickets.length} ticket${catTickets.length !== 1 ? 's' : ''}</span>
-        </div>
-        <table>
-          <thead><tr><th>Subject</th><th>Customer</th><th>Order</th><th>Status</th><th></th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-  }).join('');
+  const cats = categories.filter(c => allTickets.some(t => t.category_id === c.id));
+  if (!cats.length) { container.innerHTML = '<div class="loading">No tickets yet.</div>'; return; }
+  if (ticketCatFilter == null || !cats.some(c => c.id === ticketCatFilter)) ticketCatFilter = cats[0].id;
+  const cat = categories.find(c => c.id === ticketCatFilter);
+  const catTickets = allTickets.filter(t => t.category_id === ticketCatFilter);
+  const options = cats.map(c => `<option value="${c.id}"${c.id === ticketCatFilter ? ' selected' : ''}>${c.name} (${allTickets.filter(t => t.category_id === c.id).length})</option>`).join('');
+  const rows = catTickets.length
+    ? catTickets.map(t => `
+        <tr>
+          <td><strong>${t.subject}</strong></td>
+          <td>${t.customer_name}</td>
+          <td>${t.order_number || '—'}</td>
+          <td>${t.order_status || '—'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteTicket(${t.id})">Delete</button></td>
+        </tr>`).join('')
+    : '<tr class="empty-row"><td colspan="5">No tickets in this category.</td></tr>';
+  container.innerHTML = `
+    <div class="filter-row" style="margin-bottom:16px">
+      <span class="filter-label">Category</span>
+      <select onchange="setTicketCat(this.value)" style="max-width:360px">${options}</select>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">${cat.name}</span>
+        <span style="font-size:11px;color:#9ca3af">${catTickets.length} ticket${catTickets.length !== 1 ? 's' : ''}</span>
+      </div>
+      <table>
+        <thead><tr><th>Subject</th><th>Customer</th><th>Order</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 async function addTicket() {

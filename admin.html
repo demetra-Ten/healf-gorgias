@@ -140,7 +140,7 @@ textarea { resize: vertical; min-height: 80px; }
     <p>Restricted access — trainers only.</p>
     <label>Password</label>
     <input type="password" id="admin-pw" placeholder="Enter admin password" />
-    <button class="btn btn-primary" style="width:100%" onclick="adminLogin()">Enter</button>
+    <button class="btn btn-primary" style="width:100%" id="admin-login-btn" onclick="adminLogin()">Enter</button>
     <div style="margin-top:10px;font-size:12px;color:#ef4444;display:none" id="pw-error">Incorrect password.</div>
   </div>
 </div>
@@ -227,18 +227,27 @@ textarea { resize: vertical; min-height: 80px; }
 <div class="toast" id="toast"></div>
 
 <script>
-const ADMIN_PASSWORD = 'healf2025';
 let categories = [];
 let trainees = [];
 let allTickets = [];
 let submissions = [];
 let submissionScores = {};
 
-function adminLogin() {
-  const pw = document.getElementById('admin-pw').value;
-  document.getElementById('pw-error').style.display = 'none';
-  if (pw !== ADMIN_PASSWORD) {
-    document.getElementById('pw-error').style.display = 'block';
+async function adminLogin() {
+  const pw  = document.getElementById('admin-pw').value;
+  const err = document.getElementById('pw-error');
+  const btn = document.getElementById('admin-login-btn');
+  err.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+
+  // Authenticate against the admin account — this is the real gate now (RLS blocks the public key).
+  const { error } = await db.auth.signInWithPassword({
+    email: 'admin-access@healf.com',
+    password: pw
+  });
+  if (error) {
+    err.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.textContent = 'Enter'; }
     return;
   }
   document.getElementById('login-wrap').style.display = 'none';

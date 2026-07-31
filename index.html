@@ -124,14 +124,23 @@ async function login() {
   err.style.display = 'none';
 
   if (!email || !pin) { showError('Please enter your email and password.'); return; }
-  if (pin !== 'HealfLearning123') {
-    showError('Incorrect password. Please try again.');
-    return;
-  }
 
   btn.disabled = true;
   btn.textContent = 'Signing in…';
 
+  // Authenticate against the shared training account (gates all database access).
+  const { error: authErr } = await db.auth.signInWithPassword({
+    email: 'trainee-access@healf.com',
+    password: pin
+  });
+  if (authErr) {
+    showError('Incorrect password. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+    return;
+  }
+
+  // Identify the trainee by their own email address.
   const { data, error } = await db
     .from('trainees')
     .select('*')
@@ -140,6 +149,7 @@ async function login() {
 
   if (error || !data) {
     showError('No account found for that email address.');
+    await db.auth.signOut();
     btn.disabled = false;
     btn.textContent = 'Sign in';
     return;

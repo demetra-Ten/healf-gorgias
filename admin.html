@@ -205,40 +205,6 @@ textarea { resize: vertical; min-height: 80px; }
           <div class="section-title">Tickets</div>
           <div class="section-sub">Add and manage practice tickets by category.</div>
         </div>
-        <button class="btn btn-primary" onclick="toggleTicketForm()">+ Add ticket</button>
-      </div>
-
-      <!-- Add ticket form -->
-      <div class="card" id="add-ticket-form" style="display:none;margin-bottom:20px">
-        <div class="card-header"><span class="card-title">New Ticket</span><button class="btn btn-outline btn-sm" onclick="toggleTicketForm()">Cancel</button></div>
-        <div style="padding:18px">
-          <div class="form-grid">
-            <div><label>Category</label>
-              <select id="tk-category"></select>
-            </div>
-            <div><label>Customer name</label><input type="text" id="tk-cname" placeholder="Sarah Mitchell" /></div>
-            <div><label>Customer email</label><input type="email" id="tk-cemail" placeholder="sarah@example.com" /></div>
-            <div><label>Order number</label><input type="text" id="tk-order" placeholder="#HLF-8821" /></div>
-            <div><label>Order value</label><input type="text" id="tk-value" placeholder="£49.99" /></div>
-            <div><label>Order status</label>
-              <select id="tk-status">
-                <option value="">— Select —</option>
-                <option>Processing</option><option>Shipped</option><option>Delivered</option>
-                <option>Cancelled</option><option>Refunded</option>
-              </select>
-            </div>
-            <div><label>Loyalty tier</label>
-              <select id="tk-loyalty">
-                <option value="">— None —</option>
-                <option>Bronze</option><option>Silver</option><option>Gold</option><option>VIP</option>
-              </select>
-            </div>
-            <div class="full"><label>Subject</label><input type="text" id="tk-subject" placeholder="My order hasn't arrived after 10 days" /></div>
-            <div class="full"><label>Customer message</label><textarea id="tk-message" placeholder="Hi, I placed an order on…" style="min-height:100px"></textarea></div>
-            <div class="full"><label>Ideal response <span style="font-weight:400;color:#9ca3af">(hidden from trainees)</span></label><textarea id="tk-ideal" placeholder="Hi [Name], Thank you for getting in touch…" style="min-height:100px"></textarea></div>
-          </div>
-          <button class="btn btn-primary" onclick="addTicket()">Save ticket</button>
-        </div>
       </div>
 
       <!-- Tickets by category -->
@@ -304,9 +270,7 @@ async function loadAll() {
 function populateCategorySelects() {
   const opts = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   const ntCat = document.getElementById('nt-category');
-  const tkCat = document.getElementById('tk-category');
   if (ntCat) ntCat.innerHTML = '<option value="">All categories</option>' + opts;
-  if (tkCat) tkCat.innerHTML = opts;
 }
 
 // ── TRAINEES ──
@@ -364,11 +328,6 @@ async function addTrainee() {
 }
 
 // ── TICKETS ──
-function toggleTicketForm() {
-  const f = document.getElementById('add-ticket-form');
-  f.style.display = f.style.display === 'none' ? 'block' : 'none';
-}
-
 let ticketCatFilter = null;   // which category's tickets to show
 function setTicketCat(v) { ticketCatFilter = Number(v); renderTickets(); }
 function renderTickets() {
@@ -404,38 +363,6 @@ function renderTickets() {
         <tbody>${rows}</tbody>
       </table>
     </div>`;
-}
-
-async function addTicket() {
-  const catId   = document.getElementById('tk-category').value;
-  const cname   = document.getElementById('tk-cname').value.trim();
-  const cemail  = document.getElementById('tk-cemail').value.trim();
-  const subject = document.getElementById('tk-subject').value.trim();
-  const message = document.getElementById('tk-message').value.trim();
-  if (!catId || !cname || !cemail || !subject || !message) {
-    toast('Category, customer name, email, subject and message are required.'); return;
-  }
-
-  const { data, error } = await db.from('tickets').insert({
-    category_id:    parseInt(catId),
-    customer_name:  cname,
-    customer_email: cemail,
-    order_number:   document.getElementById('tk-order').value.trim() || null,
-    order_value:    document.getElementById('tk-value').value.trim() || null,
-    order_status:   document.getElementById('tk-status').value || null,
-    loyalty_tier:   document.getElementById('tk-loyalty').value || null,
-    subject, message,
-    ideal_response: document.getElementById('tk-ideal').value.trim() || null,
-  }).select().single();
-
-  if (error) { toast('Error saving ticket: ' + error.message); return; }
-  allTickets.push(data);
-  renderTickets();
-  toggleTicketForm();
-  ['tk-cname','tk-cemail','tk-order','tk-value','tk-subject','tk-message','tk-ideal'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('tk-status').value = '';
-  document.getElementById('tk-loyalty').value = '';
-  toast('Ticket saved.');
 }
 
 async function deleteTicket(id) {

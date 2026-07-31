@@ -50,6 +50,8 @@ th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; te
 td { padding: 12px 16px; border-bottom: 1px solid #f9fafb; font-size: 13px; color: #374151; vertical-align: top; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: #fafafa; }
+.trainee-row { cursor: pointer; }
+.trainee-row:hover td { background: #f5f3ff; }
 
 /* FORMS */
 label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 5px; }
@@ -438,47 +440,27 @@ function updateMarkingBadge() {
   badge.style.display = unscored > 0 ? 'inline' : 'none';
 }
 
+let selectedTrainee = null;   // null = overview (all trainees); otherwise a trainee_id
+function selectTraineeResults(id) { selectedTrainee = id; renderMarking(); }
+function backToAllResults() { selectedTrainee = null; renderMarking(); }
+function statsFor(subs) {
+  const sc = subs.filter(s => s.score != null);
+  const n3 = sc.filter(s=>s.score==3).length, n2 = sc.filter(s=>s.score==2).length, n1 = sc.filter(s=>s.score==1).length;
+  const avg = sc.length ? (sc.reduce((a,s)=>a+Number(s.score),0)/sc.length).toFixed(2) : '—';
+  const q = sc.length ? (Math.round(n3/sc.length*1000)/10) + '%' : '—';
+  return { sc, n3, n2, n1, avg, q };
+}
+
 function renderMarking() {
   const list = document.getElementById('marking-list');
   if (!submissions.length) { list.innerHTML = '<div class="loading">No submissions yet.</div>'; return; }
 
-  const unscored = submissions.filter(s => s.score == null);
-  const scored   = submissions.filter(s => s.score != null);
-
-  // ── overall stat tiles ──
-  const allN3 = scored.filter(s => s.score == 3).length;
-  const overallAvg = scored.length ? (scored.reduce((a,s)=>a+Number(s.score),0)/scored.length).toFixed(2) : '—';
-  const overallQ = scored.length ? (Math.round(allN3/scored.length*1000)/10) + '%' : '—';
-  const tiles = `<div class="stat-tiles">
-    <div class="stat-tile"><div class="v">${submissions.length}</div><div class="l">Tickets attempted</div></div>
-    <div class="stat-tile"><div class="v">${scored.length}</div><div class="l">Scored</div></div>
-    <div class="stat-tile"><div class="v">${overallAvg}</div><div class="l">Average score</div></div>
-    <div class="stat-tile"><div class="v">${overallQ}</div><div class="l">Quality score</div></div>
-  </div>`;
-
-  // ── per-trainee summary ──
+  // group submissions by trainee
   const byT = {};
   submissions.forEach(s => { const t = s.trainees || {}; const k = s.trainee_id;
-    (byT[k] = byT[k] || { name: t.name || 'Unknown', email: t.email || '', subs: [] }).subs.push(s); });
-  const rows = Object.values(byT).map(t => {
-    const sc = t.subs.filter(s => s.score != null);
-    const n3 = sc.filter(s=>s.score==3).length, n2 = sc.filter(s=>s.score==2).length, n1 = sc.filter(s=>s.score==1).length;
-    const avg = sc.length ? (sc.reduce((a,s)=>a+Number(s.score),0)/sc.length).toFixed(2) : '—';
-    const q = sc.length ? (Math.round(n3/sc.length*1000)/10) + '%' : '—';
-    return `<tr>
-      <td><strong>${t.name}</strong><div class="marking-meta">${t.email}</div></td>
-      <td>${t.subs.length}</td><td>${sc.length}</td>
-      <td><strong>${avg}</strong></td><td><strong>${q}</strong></td>
-      <td><span class="badge badge-3">${n3}</span></td>
-      <td><span class="badge badge-2">${n2}</span></td>
-      <td><span class="badge badge-1">${n1}</span></td>
-    </tr>`;
-  }).join('');
-  const summary = `<div class="card"><div class="card-header"><span class="card-title">By trainee</span><span class="marking-meta">Quality score = % of tickets marked 3/3</span></div>
-    <table><thead><tr><th>Trainee</th><th>Attempted</th><th>Scored</th><th>Avg</th><th>Quality</th><th>3s</th><th>2s</th><th>1s</th></tr></thead>
-    <tbody>${rows}</tbody></table></div>`;
+    (byT[k] = byT[k] || { id: k, name: t.name || 'Unknown', email: t.email || '', subs: [] }).subs.push(s); });
 
-  // ── detail cards ──
+  // ── detail card ──
   const renderCard = (s, isScored) => {
     const traineeInfo = s.trainees || {};
     const ticketInfo  = s.tickets  || {};
@@ -522,14 +504,59 @@ function renderMarking() {
       </div>`;
   };
 
-  let html = tiles + summary;
-  if (unscored.length) {
-    html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Needs attention — auto-scoring didn't run (${unscored.length})</h3>`;
-    html += unscored.map(s => renderCard(s, false)).join('');
+  // ── SINGLE-TRAINEE VIEW ──
+  if (selectedTrainee != null && byT[selectedTrainee]) {
+    const t = byT[selectedTrainee];
+    const st = statsFor(t.subs);
+    const unscored = t.subs.filter(s => s.score == null);
+    const scored   = t.subs.filter(s => s.score != null);
+    let html = `<button class="btn btn-outline" onclick="backToAllResults()" style="margin-bottom:16px">← All trainees</button>
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-header"><span class="card-title">${t.name}</span><span class="marking-meta">${t.email}</span></div>
+        <div class="stat-tiles">
+          <div class="stat-tile"><div class="v">${t.subs.length}</div><div class="l">Tickets attempted</div></div>
+          <div class="stat-tile"><div class="v">${st.sc.length}</div><div class="l">Scored</div></div>
+          <div class="stat-tile"><div class="v">${st.avg}</div><div class="l">Average score</div></div>
+          <div class="stat-tile"><div class="v">${st.q}</div><div class="l">Quality score</div></div>
+        </div>
+      </div>`;
+    if (unscored.length) {
+      html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Needs attention — auto-scoring didn't run (${unscored.length})</h3>`;
+      html += unscored.map(s => renderCard(s, false)).join('');
+    }
+    html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Submissions (${scored.length})</h3>`;
+    html += scored.length ? scored.map(s => renderCard(s, true)).join('') : '<div class="loading">No scored submissions yet.</div>';
+    list.innerHTML = html;
+    return;
   }
-  html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Submissions (${scored.length})</h3>`;
-  html += scored.length ? scored.map(s => renderCard(s, true)).join('') : '<div class="loading">No scored submissions yet.</div>';
-  list.innerHTML = html;
+
+  // ── OVERVIEW: overall tiles + clickable per-trainee table ──
+  const scoredAll = submissions.filter(s => s.score != null);
+  const allN3 = scoredAll.filter(s => s.score == 3).length;
+  const overallAvg = scoredAll.length ? (scoredAll.reduce((a,s)=>a+Number(s.score),0)/scoredAll.length).toFixed(2) : '—';
+  const overallQ = scoredAll.length ? (Math.round(allN3/scoredAll.length*1000)/10) + '%' : '—';
+  const tiles = `<div class="stat-tiles">
+    <div class="stat-tile"><div class="v">${Object.keys(byT).length}</div><div class="l">Trainees</div></div>
+    <div class="stat-tile"><div class="v">${submissions.length}</div><div class="l">Tickets attempted</div></div>
+    <div class="stat-tile"><div class="v">${overallAvg}</div><div class="l">Average score</div></div>
+    <div class="stat-tile"><div class="v">${overallQ}</div><div class="l">Quality score</div></div>
+  </div>`;
+  const rows = Object.values(byT).map(t => {
+    const st = statsFor(t.subs);
+    return `<tr class="trainee-row" onclick="selectTraineeResults(${t.id})">
+      <td><strong>${t.name}</strong><div class="marking-meta">${t.email}</div></td>
+      <td>${t.subs.length}</td><td>${st.sc.length}</td>
+      <td><strong>${st.avg}</strong></td><td><strong>${st.q}</strong></td>
+      <td><span class="badge badge-3">${st.n3}</span></td>
+      <td><span class="badge badge-2">${st.n2}</span></td>
+      <td><span class="badge badge-1">${st.n1}</span></td>
+      <td style="color:#7c3aed;font-weight:600;white-space:nowrap">View →</td>
+    </tr>`;
+  }).join('');
+  const summary = `<div class="card"><div class="card-header"><span class="card-title">By trainee</span><span class="marking-meta">Click a trainee to see their results · Quality = % marked 3/3</span></div>
+    <table><thead><tr><th>Trainee</th><th>Attempted</th><th>Scored</th><th>Avg</th><th>Quality</th><th>3s</th><th>2s</th><th>1s</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+  list.innerHTML = tiles + summary;
 }
 
 function selectScore(subId, score) {

@@ -534,37 +534,42 @@ function renderMarking() {
     const catName = id => (categories.find(c => c.id === id) || {}).name || 'Other';
     const catOrder = id => { const c = categories.find(c => c.id === id); return c ? c.order_index : 99; };
 
-    // ── STEP 1: category filter buttons (only categories this trainee has) ──
     const presentCats = [...new Set(t.subs.map(s => (s.tickets || {}).category_id))].sort((a,b) => catOrder(a) - catOrder(b));
-    const catChip = (label, val) => `<button class="filter-chip${catFilter===val?' active':''}" onclick="setCatFilter(${val===null?'null':val})">${label}</button>`;
-    html += `<div class="filter-row"><span class="filter-label">Category</span>${catChip('All',null)}${presentCats.map(cid => catChip(catName(cid), cid)).join('')}</div>`;
 
-    // ── STEP 2: score filter — only appears once a category is chosen ──
-    if (catFilter !== null) {
-      const chip = (label, val) => `<button class="filter-chip${scoreFilter===val?' active':''}" onclick="setScoreFilter(${val===null?'null':val})">${label}</button>`;
-      html += `<div class="filter-row"><span class="filter-label">Score</span>${chip('All',null)}${chip('3',3)}${chip('2',2)}${chip('1',1)}</div>`;
-    }
-
-    const inCat = s => catFilter === null || (s.tickets || {}).category_id === catFilter;
-    // unscored (respects category; hidden when a specific score is chosen)
-    const unscoredF = unscored.filter(inCat);
-    if (scoreFilter === null && unscoredF.length) {
-      html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Needs attention — auto-scoring didn't run (${unscoredF.length})</h3>`;
-      html += unscoredF.map(s => renderCard(s, false)).join('');
-    }
-    // scored, filtered by category then score, grouped by category
-    let scoredF = scored.filter(inCat);
-    if (catFilter !== null && scoreFilter !== null) scoredF = scoredF.filter(s => s.score == scoreFilter);
-    html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Submissions (${scoredF.length}${catFilter!==null&&scoreFilter!==null?` scored ${scoreFilter}/3`:''})</h3>`;
-    if (!scoredF.length) {
-      html += `<div class="loading">Nothing to show for this filter.</div>`;
+    if (catFilter === null) {
+      // ── category level: a clickable "By category" table (same style as the trainees table) ──
+      const rows = presentCats.map(cid => {
+        const subs = t.subs.filter(s => (s.tickets || {}).category_id === cid);
+        const cst = statsFor(subs);
+        return `<tr class="trainee-row" onclick="setCatFilter(${cid})">
+          <td><strong>${catName(cid)}</strong></td>
+          <td>${subs.length}</td><td>${cst.sc.length}</td>
+          <td><strong>${cst.avg}</strong></td><td><strong>${cst.q}</strong></td>
+          <td><span class="badge badge-3">${cst.n3}</span></td>
+          <td><span class="badge badge-2">${cst.n2}</span></td>
+          <td><span class="badge badge-1">${cst.n1}</span></td>
+          <td style="color:#7c3aed;font-weight:600;white-space:nowrap">View →</td>
+        </tr>`;
+      }).join('');
+      html += `<div class="card"><div class="card-header"><span class="card-title">By category</span><span class="marking-meta">Click a category to see the scores &amp; feedback</span></div>
+        <table><thead><tr><th>Category</th><th>Attempted</th><th>Scored</th><th>Avg</th><th>Quality</th><th>3s</th><th>2s</th><th>1s</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
     } else {
-      const byCat = {};
-      scoredF.forEach(s => { const cid = (s.tickets || {}).category_id; (byCat[cid] = byCat[cid] || []).push(s); });
-      Object.keys(byCat).map(Number).sort((a,b) => catOrder(a) - catOrder(b)).forEach(cid => {
-        html += `<div class="cat-group-head">${catName(cid)} <span class="cat-count">${byCat[cid].length}</span></div>`;
-        html += byCat[cid].map(s => renderCard(s, true)).join('');
-      });
+      // ── category detail: back button + score filter + that category's cards ──
+      html += `<button class="btn btn-outline" onclick="setCatFilter(null)" style="margin-bottom:16px">← All categories</button>`;
+      html += `<h3 style="font-size:15px;font-weight:700;margin:0 0 12px">${catName(catFilter)}</h3>`;
+      const chip = (label, val) => `<button class="filter-chip${scoreFilter===val?' active':''}" onclick="setScoreFilter(${val===null?'null':val})">${label}</button>`;
+      html += `<div class="filter-row"><span class="filter-label">Filter by score</span>${chip('All',null)}${chip('3',3)}${chip('2',2)}${chip('1',1)}</div>`;
+      const inCat = s => (s.tickets || {}).category_id === catFilter;
+      const unscoredF = unscored.filter(inCat);
+      if (scoreFilter === null && unscoredF.length) {
+        html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Needs attention — auto-scoring didn't run (${unscoredF.length})</h3>`;
+        html += unscoredF.map(s => renderCard(s, false)).join('');
+      }
+      let scoredF = scored.filter(inCat);
+      if (scoreFilter !== null) scoredF = scoredF.filter(s => s.score == scoreFilter);
+      html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Submissions (${scoredF.length}${scoreFilter!==null?` scored ${scoreFilter}/3`:''})</h3>`;
+      html += scoredF.length ? scoredF.map(s => renderCard(s, true)).join('') : '<div class="loading">Nothing to show for this filter.</div>';
     }
     list.innerHTML = html;
     return;

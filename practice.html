@@ -1264,6 +1264,8 @@ async function submitReply(ticketId, andClose) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         submission_id: data.id, ticket_id: ticketId,
+        category_id: ticket.category_id,
+        category_name: (categories.find(c => c.id === ticket.category_id) || {}).name || null,
         reply_text: reply, actions_text: actions,
         macro_name: usedMacro ? usedMacro.name : null,
         macro_body: usedMacro ? usedMacro.body : null,

@@ -711,6 +711,7 @@ async function init() {
     if (!allCats) query = query.eq('category_id', trainee.current_category_id);
     const { data: tix } = await query;
     tickets = tix || [];
+    renderCategoryNav();   // re-render now that ticket counts are known (hides empty topics)
 
     const { data: subs } = await db.from('submissions').select('*').eq('trainee_id', trainee.id);
     submissions = subs || [];
@@ -733,7 +734,10 @@ async function init() {
 function renderCategoryNav() {
   const nav = document.getElementById('category-nav');
   const allAccess = !trainee.current_category_id;   // no assigned topic = access all
-  nav.innerHTML = categories.map(cat => {
+  // Hide topics that have no tickets yet (e.g. not built) so the MVP shows no empty categories.
+  const present = new Set((tickets || []).map(t => t.category_id));
+  const cats = (allAccess && present.size) ? categories.filter(c => present.has(c.id)) : categories;
+  nav.innerHTML = cats.map(cat => {
     const accessible = allAccess || cat.id === trainee.current_category_id;
     const isActive = accessible && cat.id === activeCatFilter;
     const cls = isActive ? ' active' : (accessible ? '' : ' nav-locked');

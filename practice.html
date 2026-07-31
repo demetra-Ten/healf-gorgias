@@ -165,6 +165,21 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .tt-empty { text-align: center; padding: 20px; color: #9ca3af; font-size: 12px; }
 .reply-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-top: 1px solid #f3f4f6; }
 .reply-hint { font-size: 11px; color: #9ca3af; }
+.fb-section + .fb-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #eef2f7; }
+.fb-head { font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #111827; }
+.fb-sub { font-weight: 600; font-size: 11.5px; margin: 9px 0 3px; color: #374151; }
+.fb-sub.fb-good { color: #166534; }
+.fb-sub.fb-improve { color: #92400e; }
+.fb-list { margin: 2px 0 4px 4px; padding: 0; list-style: none; }
+.fb-list li { position: relative; padding-left: 15px; font-size: 12.5px; line-height: 1.5; margin: 3px 0; color: #374151; }
+.fb-list li::before { content: "•"; position: absolute; left: 2px; color: #9ca3af; }
+.fb-p { font-size: 12.5px; line-height: 1.5; margin: 3px 0; color: #374151; }
+html[data-theme="dark"] .fb-section + .fb-section { border-top-color: #2c2c31; }
+html[data-theme="dark"] .fb-head { color: #f3f4f6; }
+html[data-theme="dark"] .fb-sub { color: #d1d5db; }
+html[data-theme="dark"] .fb-sub.fb-good { color: #4ade80; }
+html[data-theme="dark"] .fb-sub.fb-improve { color: #fbbf24; }
+html[data-theme="dark"] .fb-list li, html[data-theme="dark"] .fb-p { color: #d1d5db; }
 .quoted-wrap { margin-top: 6px; }
 .quoted-dots { border: 1px solid #e5e7eb; background: #f3f4f6; border-radius: 8px; padding: 1px 9px; cursor: pointer; color: #9ca3af; font-size: 13px; letter-spacing: 1px; line-height: 1.6; }
 .quoted-dots:hover { background: #e5e7eb; color: #6b7280; }
@@ -944,6 +959,32 @@ function renderMessages(ticket, sub) {
   setTimeout(() => { area.scrollTop = area.scrollHeight; }, 50);
 }
 
+// Render scorer feedback as clean headed bullet lists. Understands "**bold**", bullet
+// lines (-, •, *), and sub-headers like "What you did well:" / "What needs improving:".
+function formatFeedback(md) {
+  if (!md || !md.trim()) return '<div class="fb-p">—</div>';
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const bold = s => esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  const lines = md.split('\n').map(l => l.trim()).filter(Boolean);
+  let html = '', inList = false;
+  const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+  for (let line of lines) {
+    if (/^[-•*]\s+/.test(line)) {
+      if (!inList) { html += '<ul class="fb-list">'; inList = true; }
+      html += '<li>' + bold(line.replace(/^[-•*]\s+/, '')) + '</li>';
+    } else if (/^(what (you did |went )?well|strengths?|positives?|what needs? improving|(areas?|room) (to|for) improve.*|to improve|next time)\b/i.test(line) || (/:$/.test(line) && line.length < 42)) {
+      closeList();
+      const good = /well|strength|positive|great/i.test(line);
+      const imp = /improv|better|missing|next time|room/i.test(line);
+      html += `<div class="fb-sub ${good ? 'fb-good' : (imp ? 'fb-improve' : '')}">${bold(line.replace(/:$/, ''))}</div>`;
+    } else {
+      closeList();
+      html += '<div class="fb-p">' + bold(line) + '</div>';
+    }
+  }
+  closeList();
+  return html;
+}
 function renderReplySection(ticket, sub) {
   const section = document.getElementById('reply-section');
   if (sub) {
@@ -969,10 +1010,10 @@ function renderReplySection(ticket, sub) {
     }
     const fbHtml = scored
       ? `<div class="feedback-box">
-           <div style="margin-bottom:12px"><strong>Response</strong><br>${(rf || '—').replace(/\n/g,'<br>')}</div>
-           <div><strong>Actions</strong><br>${(af || '—').replace(/\n/g,'<br>')}</div>
+           <div class="fb-section"><div class="fb-head">Response</div>${formatFeedback(rf)}</div>
+           <div class="fb-section"><div class="fb-head">Actions</div>${formatFeedback(af)}</div>
          </div>`
-      : (sub.feedback ? `<div class="feedback-box"><strong>Trainer feedback:</strong><br>${sub.feedback.replace(/\n/g,'<br>')}</div>` : '');
+      : (sub.feedback ? `<div class="feedback-box"><strong>Trainer feedback:</strong>${formatFeedback(sub.feedback)}</div>` : '');
     section.innerHTML = `
       ${fbHtml}
       <div class="submitted-banner">

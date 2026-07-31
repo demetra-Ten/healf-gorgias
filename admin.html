@@ -52,6 +52,13 @@ tr:last-child td { border-bottom: none; }
 tr:hover td { background: #fafafa; }
 .trainee-row { cursor: pointer; }
 .trainee-row:hover td { background: #f5f3ff; }
+.filter-row { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; }
+.filter-label { font-size: 12px; color: #6b7280; margin-right: 4px; }
+.filter-chip { padding: 5px 15px; border-radius: 20px; border: 1px solid #e5e7eb; background: #fff; font-size: 12.5px; font-weight: 600; color: #374151; cursor: pointer; font-family: inherit; }
+.filter-chip:hover { border-color: #c4b5fd; }
+.filter-chip.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.cat-group-head { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #6b7280; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+.cat-count { color: #9ca3af; }
 
 /* FORMS */
 label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 5px; }
@@ -441,8 +448,10 @@ function updateMarkingBadge() {
 }
 
 let selectedTrainee = null;   // null = overview (all trainees); otherwise a trainee_id
-function selectTraineeResults(id) { selectedTrainee = id; renderMarking(); }
-function backToAllResults() { selectedTrainee = null; renderMarking(); }
+let scoreFilter = null;       // null = all scores; otherwise 1/2/3
+function selectTraineeResults(id) { selectedTrainee = id; scoreFilter = null; renderMarking(); }
+function backToAllResults() { selectedTrainee = null; scoreFilter = null; renderMarking(); }
+function setScoreFilter(v) { scoreFilter = v; renderMarking(); }
 function statsFor(subs) {
   const sc = subs.filter(s => s.score != null);
   const n3 = sc.filter(s=>s.score==3).length, n2 = sc.filter(s=>s.score==2).length, n1 = sc.filter(s=>s.score==1).length;
@@ -520,12 +529,29 @@ function renderMarking() {
           <div class="stat-tile"><div class="v">${st.q}</div><div class="l">Quality score</div></div>
         </div>
       </div>`;
-    if (unscored.length) {
+    // score filter chips
+    const chip = (label, val) => `<button class="filter-chip${scoreFilter===val?' active':''}" onclick="setScoreFilter(${val===null?'null':val})">${label}</button>`;
+    html += `<div class="filter-row"><span class="filter-label">Filter by score</span>${chip('All',null)}${chip('3',3)}${chip('2',2)}${chip('1',1)}</div>`;
+    // unscored only shown when no score filter is active
+    if (scoreFilter === null && unscored.length) {
       html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Needs attention — auto-scoring didn't run (${unscored.length})</h3>`;
       html += unscored.map(s => renderCard(s, false)).join('');
     }
-    html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Submissions (${scored.length})</h3>`;
-    html += scored.length ? scored.map(s => renderCard(s, true)).join('') : '<div class="loading">No scored submissions yet.</div>';
+    // scored, filtered by score, grouped by category
+    const scoredF = scoreFilter === null ? scored : scored.filter(s => s.score == scoreFilter);
+    html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Submissions (${scoredF.length}${scoreFilter!==null?` scored ${scoreFilter}/3`:''})</h3>`;
+    if (!scoredF.length) {
+      html += `<div class="loading">No submissions${scoreFilter!==null?` scored ${scoreFilter}/3`:''} yet.</div>`;
+    } else {
+      const catName = id => (categories.find(c => c.id === id) || {}).name || 'Other';
+      const catOrder = id => { const c = categories.find(c => c.id === id); return c ? c.order_index : 99; };
+      const byCat = {};
+      scoredF.forEach(s => { const cid = (s.tickets || {}).category_id; (byCat[cid] = byCat[cid] || []).push(s); });
+      Object.keys(byCat).map(Number).sort((a,b) => catOrder(a) - catOrder(b)).forEach(cid => {
+        html += `<div class="cat-group-head">${catName(cid)} <span class="cat-count">${byCat[cid].length}</span></div>`;
+        html += byCat[cid].map(s => renderCard(s, true)).join('');
+      });
+    }
     list.innerHTML = html;
     return;
   }

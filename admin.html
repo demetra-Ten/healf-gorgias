@@ -114,6 +114,22 @@ textarea { resize: vertical; min-height: 80px; }
 .feedback-input { flex: 1; min-width: 200px; }
 .feedback-input input { margin-bottom: 0; }
 
+/* Submission accordion */
+.sub-acc { border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px; background: #fff; overflow: hidden; }
+.sub-acc.reviewed { opacity: 0.6; }
+.sub-bar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; }
+.sub-bar:hover { background: #faf9fc; }
+.sb-name { font-weight: 700; font-size: 13px; color: #111; flex: 0 0 auto; min-width: 150px; }
+.sb-date { font-size: 12px; color: #9ca3af; flex: 1; }
+.sb-caret { color: #9ca3af; font-size: 12px; transition: transform 0.15s; }
+.sub-acc.open .sb-caret { transform: rotate(180deg); }
+.sub-review { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280; white-space: nowrap; cursor: pointer; user-select: none; }
+.sub-review input { width: 16px; height: 16px; margin: 0; cursor: pointer; }
+.sub-body { display: none; padding: 4px 16px 16px; border-top: 1px solid #f0f0f2; }
+.sub-acc.open .sub-body { display: block; }
+.sub-ctx { background: #f9fafb; border: 1px solid #eef0f2; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #374151; margin: 14px 0; white-space: pre-wrap; }
+.sub-ctx-h { font-weight: 700; margin-bottom: 5px; color: #111; }
+
 /* TOAST */
 .toast { position: fixed; bottom: 24px; right: 24px; background: #111; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 999; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .toast.show { opacity: 1; }
@@ -232,6 +248,14 @@ let trainees = [];
 let allTickets = [];
 let submissions = [];
 let submissionScores = {};
+let REVIEWED = JSON.parse(localStorage.getItem('healf_reviewed') || '{}');
+function toggleSub(id) { const el = document.getElementById('sub-' + id); if (el) el.classList.toggle('open'); }
+function toggleReviewed(id, checked) {
+  if (checked) REVIEWED[id] = true; else delete REVIEWED[id];
+  localStorage.setItem('healf_reviewed', JSON.stringify(REVIEWED));
+  const el = document.getElementById('sub-' + id);
+  if (el) el.classList.toggle('reviewed', checked);
+}
 
 async function adminLogin() {
   const pw  = document.getElementById('admin-pw').value;
@@ -418,44 +442,55 @@ function renderMarking() {
   // ── detail card ──
   const renderCard = (s, isScored) => {
     const traineeInfo = s.trainees || {};
-    const ticketInfo  = s.tickets  || {};
+    const full = allTickets.find(x => x.id === s.ticket_id) || {};
+    const ticketInfo = s.tickets || {};
+    const subj = full.subject || ticketInfo.subject || 'Unknown ticket';
+    const ideal = full.ideal_response || ticketInfo.ideal_response || '(No ideal handling set for this ticket.)';
+    const when = new Date(s.submitted_at).toLocaleString('en-GB', {dateStyle:'short', timeStyle:'short'});
+    const reviewed = REVIEWED[s.id] === true;
     return `
-      <div class="marking-card" id="sub-${s.id}">
-        <div class="marking-header">
-          <div>
-            <strong>${traineeInfo.name || 'Unknown'}</strong>
-            <div class="marking-meta">${traineeInfo.email || ''} · ${ticketInfo.subject || 'Unknown ticket'} · ${new Date(s.submitted_at).toLocaleString('en-GB', {dateStyle:'short',timeStyle:'short'})}</div>
-          </div>
+      <div class="sub-acc${reviewed ? ' reviewed' : ''}" id="sub-${s.id}">
+        <div class="sub-bar" onclick="toggleSub(${s.id})">
+          <span class="sb-name">${traineeInfo.name || 'Unknown'}</span>
+          <span class="sb-date">${when}</span>
           ${isScored ? `<span class="badge badge-${s.score}">${s.score}/3</span>` : '<span class="badge badge-pending">Needs attention</span>'}
+          <label class="sub-review" onclick="event.stopPropagation()"><input type="checkbox" ${reviewed ? 'checked' : ''} onchange="toggleReviewed(${s.id}, this.checked)"> Reviewed</label>
+          <span class="sb-caret">▾</span>
         </div>
-        <div class="reply-compare">
-          <div class="reply-panel">
-            <div class="reply-panel-title">Trainee's reply</div>
-            <div class="reply-panel-body">${escHtml(s.reply_text)}</div>
+        <div class="sub-body">
+          <div class="sub-ctx">
+            <div class="sub-ctx-h">Ticket context — ${escHtml(subj)}${full.order_number ? ' · ' + escHtml(full.order_number) : ''}</div>
+            ${full.message ? escHtml(full.message.split('⟦MARKETING⟧')[0].trim()) : '(Original customer message not available.)'}
           </div>
-          <div class="reply-panel ideal-panel">
-            <div class="reply-panel-title">Ideal handling</div>
-            <div class="reply-panel-body">${escHtml(ticketInfo.ideal_response || '(No ideal handling set for this ticket.)')}</div>
-          </div>
-        </div>
-        ${s.actions_text ? `<div style="background:#fbfaff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:12px"><strong>Trainee's actions note:</strong> ${escHtml(s.actions_text)}</div>` : ''}
-        ${isScored && s.feedback ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:4px;white-space:pre-wrap"><strong>Auto feedback:</strong>\n${escHtml(s.feedback)}</div>` : ''}
-        ${!isScored ? `
-        <div class="score-row">
-          <div>
-            <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:6px">Score manually</div>
-            <div class="score-btns" id="score-btns-${s.id}">
-              ${[1,2,3].map(n => `<button class="score-btn" onclick="selectScore(${s.id}, ${n})">${n}</button>`).join('')}
+          <div class="reply-compare">
+            <div class="reply-panel">
+              <div class="reply-panel-title">Trainee's reply</div>
+              <div class="reply-panel-body">${escHtml(s.reply_text)}</div>
+            </div>
+            <div class="reply-panel ideal-panel">
+              <div class="reply-panel-title">Ideal handling</div>
+              <div class="reply-panel-body">${escHtml(ideal)}</div>
             </div>
           </div>
-          <div class="feedback-input" style="flex:1">
-            <label style="margin-bottom:5px">Feedback for trainee</label>
-            <input type="text" id="feedback-${s.id}" placeholder="e.g. Great empathy, but missed the refund timeline." style="margin-bottom:0" />
-          </div>
-          <div style="padding-top:18px">
-            <button class="btn btn-primary" onclick="markSubmission(${s.id})">Save</button>
-          </div>
-        </div>` : ''}
+          ${s.actions_text ? `<div style="background:#fbfaff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:12px"><strong>Trainee's actions note:</strong> ${escHtml(s.actions_text)}</div>` : ''}
+          ${isScored && s.feedback ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:4px;white-space:pre-wrap"><strong>Auto feedback:</strong>\n${escHtml(s.feedback)}</div>` : ''}
+          ${!isScored ? `
+          <div class="score-row">
+            <div>
+              <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:6px">Score manually</div>
+              <div class="score-btns" id="score-btns-${s.id}">
+                ${[1,2,3].map(n => `<button class="score-btn" onclick="selectScore(${s.id}, ${n})">${n}</button>`).join('')}
+              </div>
+            </div>
+            <div class="feedback-input" style="flex:1">
+              <label style="margin-bottom:5px">Feedback for trainee</label>
+              <input type="text" id="feedback-${s.id}" placeholder="e.g. Great empathy, but missed the refund timeline." style="margin-bottom:0" />
+            </div>
+            <div style="padding-top:18px">
+              <button class="btn btn-primary" onclick="markSubmission(${s.id})">Save</button>
+            </div>
+          </div>` : ''}
+        </div>
       </div>`;
   };
 

@@ -374,7 +374,7 @@ function renderTickets() {
   const rows = catTickets.length
     ? catTickets.map(t => `
         <tr>
-          <td><strong>${t.subject}</strong></td>
+          <td><a href="practice.html?preview=${t.id}" target="_blank" rel="noopener" style="color:#7c3aed;text-decoration:none;font-weight:600">${t.subject}</a></td>
           <td>${t.customer_name}</td>
           <td>${t.order_number || '—'}</td>
           <td>${t.order_status || '—'}</td>
@@ -458,10 +458,7 @@ function renderMarking() {
           <span class="sb-caret">▾</span>
         </div>
         <div class="sub-body">
-          <div class="sub-ctx">
-            <div class="sub-ctx-h">Ticket context — ${escHtml(subj)}${full.order_number ? ' · ' + escHtml(full.order_number) : ''}</div>
-            ${full.message ? escHtml(full.message.split('⟦MARKETING⟧')[0].trim()) : '(Original customer message not available.)'}
-          </div>
+          <div style="margin:14px 0"><a href="practice.html?preview=${s.ticket_id}" target="_blank" rel="noopener" style="color:#7c3aed;font-weight:600;text-decoration:none;font-size:12px">↗ View this ticket as it appears in the simulation${full.subject ? ' — ' + escHtml(full.subject) : ''}</a></div>
           <div class="reply-compare">
             <div class="reply-panel">
               <div class="reply-panel-title">Trainee's reply</div>

@@ -739,6 +739,8 @@ const ICONS = {
 };
 
 async function init() {
+  const previewId = new URLSearchParams(location.search).get('preview');
+  if (previewId) { initPreview(Number(previewId)); return; }
   const stored = sessionStorage.getItem('trainee');
   if (!stored) { window.location.href = 'index.html'; return; }
   trainee = JSON.parse(stored);
@@ -792,6 +794,31 @@ async function init() {
   document.getElementById('ttv-count').textContent = `Showing ${tickets.length} item${tickets.length !== 1 ? 's' : ''}`;
   renderTicketTable();
   document.getElementById('loading').style.display = 'none';
+}
+
+// Read-only ticket preview, opened from the admin site as practice.html?preview=<id>.
+// Reuses the sim's own rendering so the ticket looks exactly as trainees see it, minus the reply composer.
+async function initPreview(id) {
+  trainee = { id: -1, name: 'Preview', email: '', current_category_id: null };
+  const ln = document.querySelector('.leftnav'); if (ln) ln.style.display = 'none';
+  const [catsR, macrosR, tixR] = await Promise.all([
+    db.from('categories').select('*').order('order_index'),
+    db.from('macros').select('*').order('sort_index'),
+    db.from('tickets').select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier,order_items,ideal_response').eq('id', id)
+  ]);
+  categories = catsR.data || []; macros = macrosR.data || []; tickets = tixR.data || []; submissions = [];
+  document.getElementById('loading').style.display = 'none';
+  if (!tickets.length) {
+    document.getElementById('ticket-table-view').style.display = 'none';
+    const d = document.getElementById('ticket-detail'); d.style.display = 'flex'; d.style.flexDirection = 'column';
+    document.getElementById('messages-area').innerHTML = '<div style="padding:40px;color:#6b7280">Ticket not found (you may need to be signed in to the admin panel in this browser).</div>';
+    return;
+  }
+  openTicket(id);
+  const rs = document.getElementById('reply-section'); if (rs) rs.style.display = 'none';
+  const back = document.querySelector('.td-back'); if (back) back.style.display = 'none';
+  const badge = document.getElementById('td-status-badge');
+  if (badge) { badge.textContent = 'Preview · read-only'; badge.className = 'td-status-badge badge-open'; }
 }
 
 function renderCategoryNav() {

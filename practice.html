@@ -460,6 +460,41 @@ html[data-theme="dark"] .co-head-prod .co-head-pname { color: #d4d4d8; }
 html[data-theme="dark"] .co-side-q .qt { color: #d4d4d8; }
 html[data-theme="dark"] .co-note { background: #232327; border-color: #2c2c31; color: #e6e6e9; }
 html[data-theme="dark"] .co-mode-hint { color: #a1a1aa; }
+/* ── Royal Mail tracking (UK Delivery, category 6) — simulated ── */
+.rm-courier { display:inline-flex; align-items:center; gap:6px; font-weight:800; color:#E3000F; font-size:13px; margin:2px 0 10px; letter-spacing:-.2px; }
+.track-status { font-weight:700; font-size:11px; padding:2px 9px; border-radius:8px; }
+.track-status.green { background:#dcfce7; color:#166534; }
+.track-status.amber { background:#fef3c7; color:#92400e; }
+.track-status.grey  { background:#e5e7eb; color:#374151; }
+.track-btn { margin-top:12px; width:100%; padding:9px; border:none; background:#E3000F; color:#fff; font-weight:600; font-size:12px; border-radius:7px; cursor:pointer; font-family:inherit; }
+.track-btn:hover { background:#c40010; }
+.rm-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px; }
+.rm-modal { background:#fff; border-radius:12px; max-width:460px; width:100%; max-height:88vh; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.35); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+.rm-header { background:#E3000F; color:#fff; padding:15px 20px; display:flex; align-items:center; justify-content:space-between; }
+.rm-wordmark { font-size:19px; font-weight:800; letter-spacing:-.4px; display:flex; align-items:center; gap:8px; }
+.rm-crown { font-size:16px; }
+.rm-close { background:rgba(255,255,255,.22); border:none; color:#fff; width:28px; height:28px; border-radius:50%; font-size:17px; cursor:pointer; line-height:1; }
+.rm-close:hover { background:rgba(255,255,255,.35); }
+.rm-body { padding:20px; overflow-y:auto; }
+.rm-track-no { font-size:12px; color:#6b7280; margin-bottom:2px; }
+.rm-track-no b { color:#111; font-weight:700; letter-spacing:.3px; }
+.rm-service { font-size:12px; color:#6b7280; margin-bottom:16px; }
+.rm-status-box { border-radius:10px; padding:14px 16px; margin-bottom:22px; }
+.rm-status-box.green { background:#e7f7ec; border:1px solid #b7e4c7; }
+.rm-status-box.amber { background:#fff7e6; border:1px solid #fde68a; }
+.rm-status-box.grey  { background:#f3f4f6; border:1px solid #e5e7eb; }
+.rm-status-lbl { font-size:18px; font-weight:800; color:#111; margin-bottom:2px; }
+.rm-status-sub { font-size:13px; color:#374151; }
+.rm-journey-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#9ca3af; margin-bottom:14px; }
+.rm-timeline { position:relative; padding-left:22px; }
+.rm-event { position:relative; padding-bottom:18px; }
+.rm-event:before { content:''; position:absolute; left:-22px; top:2px; width:11px; height:11px; border-radius:50%; background:#d1d5db; border:2px solid #fff; box-shadow:0 0 0 1.5px #d1d5db; z-index:1; }
+.rm-event.now:before { background:#E3000F; box-shadow:0 0 0 1.5px #E3000F; }
+.rm-event:after { content:''; position:absolute; left:-17px; top:12px; bottom:-2px; width:2px; background:#e5e7eb; }
+.rm-event:last-child:after { display:none; }
+.rm-ev-title { font-size:13px; font-weight:700; color:#111; }
+.rm-ev-loc { font-size:12px; color:#374151; margin-top:1px; }
+.rm-ev-date { font-size:11px; color:#9ca3af; margin-top:2px; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1192,6 +1227,104 @@ function rechargePanelHtml(ticket) {
     </div>`;
 }
 
+// ── Royal Mail tracking (category 6 = UK Delivery) — SIMULATED, matched to each ticket's scenario ──
+const UK_TRACKING = {
+  166:'delivered_notreceived', 167:'delivered_notreceived', 168:'delivered_notreceived', 169:'delivered_ok',
+  170:'delivered_notreceived', 171:'lost_nomovement', 172:'delivered_wrongplace', 173:'lost_nomovement',
+  174:'delivered_wrongplace', 175:'delivered_notreceived', 176:'rts', 177:'delivered_notreceived',
+  178:'delivered_notreceived', 179:'delivered_wrongplace', 180:'late_intransit', 181:'late_intransit',
+  182:'late_labelcreated', 183:'late_intransit', 184:'lost_nomovement', 185:'rts', 186:'rts', 187:'rts',
+  188:'rts', 189:'rts', 190:'lost_nomovement', 191:'lost_nomovement', 192:'delivered_ok', 193:'delivered_ok',
+  194:'delivered_ok', 195:'delivered_wrongplace'
+};
+const TRACK_CACHE = {};
+function rmNumber(t) {
+  const base = String(t.order_number || ('H' + t.id)).replace(/\D/g, '') || String(1000000 + t.id);
+  const digits = (base + '000000000').slice(0, 9);
+  const A = 'ABDEHJKR';
+  return A[t.id % A.length] + A[(t.id * 7) % A.length] + digits + 'GB';
+}
+function rmDate(daysAgo) {
+  const d = new Date(); d.setDate(d.getDate() - daysAgo);
+  const ds = d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const hh = String(8 + (daysAgo * 3) % 10).padStart(2, '0');
+  const mm = String((daysAgo * 17) % 60).padStart(2, '0');
+  return ds + ' at ' + hh + ':' + mm;
+}
+function buildTracking(t) {
+  const code = UK_TRACKING[t.id] || 'delivered_notreceived';
+  const E = (daysAgo, title, loc) => ({ daysAgo, title, loc });
+  let headline, tone, events;
+  switch (code) {
+    case 'delivered_wrongplace':
+      headline = { s:'Delivered', sub:'Item delivered — left in a safe place / with a neighbour' }; tone = 'green';
+      events = [E(1,'Delivered','Left in safe place / handed to neighbour — see delivery record'), E(1,'Out for delivery','On its way with your local delivery office'), E(2,'Arrived at delivery office','Local Delivery Office'), E(3,'In transit','Regional Distribution Centre'), E(4,'Item accepted','Sender despatching your item')];
+      break;
+    case 'rts':
+      headline = { s:'Returned to sender', sub:'We were unable to deliver this item' }; tone = 'amber';
+      events = [E(1,'Returned to sender','On its way back to the sender (Healf)'), E(2,'Delivery unsuccessful','We were unable to deliver — item being returned to sender'), E(3,'Out for delivery','On its way with your local delivery office'), E(4,'In transit','Regional Distribution Centre'), E(5,'Item accepted','Sender despatching your item')];
+      break;
+    case 'lost_nomovement':
+      headline = { s:'In transit', sub:'We have your item — no tracking updates recently' }; tone = 'grey';
+      events = [E(9,'In transit','Regional Distribution Centre — no further tracking updates'), E(10,'Item accepted','Sender despatching your item')];
+      break;
+    case 'late_labelcreated':
+      headline = { s:'Awaiting item', sub:'Sender is despatching your item' }; tone = 'grey';
+      events = [E(1,'Despatching','Sender despatching your item — not yet received by Royal Mail')];
+      break;
+    case 'late_intransit':
+      headline = { s:'In transit', sub:'On its way — running slightly behind schedule' }; tone = 'amber';
+      events = [E(0,'In transit','Regional Distribution Centre'), E(1,'Item accepted','Sender despatching your item')];
+      break;
+    case 'delivered_ok':
+    case 'delivered_notreceived':
+    default:
+      headline = { s:'Delivered', sub:'We\'ve delivered your item' }; tone = 'green';
+      events = [E(1,'Delivered','Delivered and captured on our delivery record'), E(1,'Out for delivery','On its way with your local delivery office'), E(2,'Arrived at delivery office','Local Delivery Office'), E(3,'In transit','Regional Distribution Centre'), E(4,'Item accepted','Sender despatching your item')];
+  }
+  return { num: rmNumber(t), service:'Royal Mail Tracked 24®', headline, tone, events };
+}
+function trackingPanelHtml(t) {
+  const tr = buildTracking(t); TRACK_CACHE[t.id] = tr;
+  return `
+    <div class="cs-section">
+      <div class="cs-title">Tracking</div>
+      <div class="rm-courier">♔ Royal Mail</div>
+      <div class="cs-row"><span class="cs-label">Tracking no.</span><span class="cs-value" style="font-size:11px">${tr.num}</span></div>
+      <div class="cs-row"><span class="cs-label">Status</span><span class="track-status ${tr.tone}">${tr.headline.s}</span></div>
+      <button class="track-btn" onclick="openTracking(${t.id})">Track your item →</button>
+    </div>`;
+}
+function openTracking(id) {
+  const tr = TRACK_CACHE[id]; if (!tr) return;
+  const evs = tr.events.map((e, i) => `
+    <div class="rm-event${i === 0 ? ' now' : ''}">
+      <div class="rm-ev-title">${e.title}</div>
+      <div class="rm-ev-loc">${e.loc}</div>
+      <div class="rm-ev-date">${rmDate(e.daysAgo)}</div>
+    </div>`).join('');
+  document.getElementById('rm-modal-root').innerHTML = `
+    <div class="rm-overlay" onclick="if(event.target===this)closeTracking()">
+      <div class="rm-modal">
+        <div class="rm-header">
+          <div class="rm-wordmark"><span class="rm-crown">♔</span> Royal Mail</div>
+          <button class="rm-close" onclick="closeTracking()">×</button>
+        </div>
+        <div class="rm-body">
+          <div class="rm-track-no">Tracking number <b>${tr.num}</b></div>
+          <div class="rm-service">${tr.service}</div>
+          <div class="rm-status-box ${tr.tone}">
+            <div class="rm-status-lbl">${tr.headline.s}</div>
+            <div class="rm-status-sub">${tr.headline.sub}</div>
+          </div>
+          <div class="rm-journey-title">Your item's journey</div>
+          <div class="rm-timeline">${evs}</div>
+        </div>
+      </div>
+    </div>`;
+}
+function closeTracking() { document.getElementById('rm-modal-root').innerHTML = ''; }
+
 function renderCustomerSidebar(ticket) {
   const loyaltyClass = { 'Bronze':'loyalty-bronze','Silver':'loyalty-silver','Gold':'loyalty-gold','VIP':'loyalty-vip' }[ticket.loyalty_tier] || '';
 
@@ -1219,6 +1352,7 @@ function renderCustomerSidebar(ticket) {
       ${orders.map((o, i) => orderBoxHtml(o, i === 0)).join('')}
     </div>`; })()}
     ${Number(ticket.category_id) === 5 ? rechargePanelHtml(ticket) : ''}
+    ${Number(ticket.category_id) === 6 ? trackingPanelHtml(ticket) : ''}
     <div class="cs-section">
       <div class="cs-title">Agent Notes</div>
       <textarea class="cs-notes" placeholder="Private notes (not saved)…"></textarea>
@@ -1447,5 +1581,6 @@ function openCoTicket(n) {
 init();
 renderCoNav();
 </script>
+<div id="rm-modal-root"></div>
 </body>
 </html>

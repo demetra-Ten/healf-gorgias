@@ -495,6 +495,16 @@ html[data-theme="dark"] .co-mode-hint { color: #a1a1aa; }
 .rm-ev-title { font-size:13px; font-weight:700; color:#111; }
 .rm-ev-loc { font-size:12px; color:#374151; margin-top:1px; }
 .rm-ev-date { font-size:11px; color:#9ca3af; margin-top:2px; }
+.order-ship { border-top:1px solid #f0f0f2; margin-top:12px; padding-top:12px; }
+.order-ship-title { font-size:12px; font-weight:700; color:#111; margin-bottom:8px; }
+.ship-link { color:#7c3aed; font-size:11px; text-decoration:none; word-break:break-all; }
+.ship-link:hover { text-decoration:underline; }
+.ship-code { text-align:right; max-width:180px; font-size:11px; }
+.ship-addr { font-size:12px; color:#374151; line-height:1.65; }
+html[data-theme="dark"] .order-ship { border-top-color:#2c2c31; }
+html[data-theme="dark"] .order-ship-title { color:#f4f4f5; }
+html[data-theme="dark"] .ship-addr { color:#d4d4d8; }
+html[data-theme="dark"] .ship-link { color:#b3a6f7; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1136,7 +1146,10 @@ function insertMacro(id) {
   if (!m) return;
   const t = tickets.find(x => x.id === activeTicketId);
   const first = (t && t.customer_name) ? t.customer_name.split(' ')[0] : 'there';
-  const body = m.body.replace(/\{\{\s*ticket\.customer\.firstname\s*\}\}/g, first);
+  const addr = t ? custAddress(t).fillBlock : '';
+  const body = m.body
+    .replace(/\{\{\s*ticket\.customer\.firstname\s*\}\}/g, first)
+    .replace(/\[ADD CUSTOMER ADDRESS\]/gi, addr || '[ADD CUSTOMER ADDRESS]');
   usedMacro = { name: m.name, body: body };
   const input = document.getElementById('reply-input');
   if (input) { input.value = body; input.style.border = 'none'; input.focus(); }
@@ -1190,7 +1203,7 @@ function parseOrders(ticket) {
   if (ticket.order_number) return [{ number: ticket.order_number, value: ticket.order_value || '', status: ticket.order_status || '', date: ticket.order_date || '', items: raw }];
   return [];
 }
-function orderBoxHtml(o, open) {
+function orderBoxHtml(o, open, extra) {
   const items = o.items || '';
   const n = items ? items.split('\n').filter(l => l.trim()).length : 0;
   const fs = fulfilment(o.status);
@@ -1205,6 +1218,7 @@ function orderBoxHtml(o, open) {
         <div class="order-box-body">
           ${items ? `<div class="order-lines-lbl">Line items<span class="order-lines-n">${n}</span></div><div class="cs-items">${renderProducts(items)}</div>` : '<div class="order-empty">No itemised products on file for this order yet.</div>'}
           ${o.value ? `<div class="order-total"><span>Total</span><span>${o.value}</span></div>` : ''}
+          ${extra || ''}
         </div>
       </div>`;
 }
@@ -1258,41 +1272,67 @@ function buildTracking(t) {
   switch (code) {
     case 'delivered_wrongplace':
       headline = { s:'Delivered', sub:'Item delivered — left in a safe place / with a neighbour' }; tone = 'green';
-      events = [E(1,'Delivered','Left in safe place / handed to neighbour — see delivery record'), E(1,'Out for delivery','On its way with your local delivery office'), E(2,'Arrived at delivery office','Local Delivery Office'), E(3,'In transit','Regional Distribution Centre'), E(4,'Item accepted','Sender despatching your item')];
+      events = [E(1,'Delivered','Left in safe place / handed to neighbour'), E(1,'Out for delivery','Local Delivery Office'), E(2,'Item Received','Southampton MC'), E(4,'Delivery request received','')];
       break;
     case 'rts':
       headline = { s:'Returned to sender', sub:'We were unable to deliver this item' }; tone = 'amber';
-      events = [E(1,'Returned to sender','On its way back to the sender (Healf)'), E(2,'Delivery unsuccessful','We were unable to deliver — item being returned to sender'), E(3,'Out for delivery','On its way with your local delivery office'), E(4,'In transit','Regional Distribution Centre'), E(5,'Item accepted','Sender despatching your item')];
+      events = [E(1,'Returned to sender','Southampton MC'), E(2,'Delivery unsuccessful — item being returned','Local Delivery Office'), E(3,'Out for delivery','Local Delivery Office'), E(4,'Item Received','Southampton MC'), E(6,'Delivery request received','')];
       break;
     case 'lost_nomovement':
       headline = { s:'In transit', sub:'We have your item — no tracking updates recently' }; tone = 'grey';
-      events = [E(9,'In transit','Regional Distribution Centre — no further tracking updates'), E(10,'Item accepted','Sender despatching your item')];
+      events = [E(9,'Item Received','Southampton MC — no further tracking updates'), E(11,'Delivery request received','')];
       break;
     case 'late_labelcreated':
       headline = { s:'Awaiting item', sub:'Sender is despatching your item' }; tone = 'grey';
-      events = [E(1,'Despatching','Sender despatching your item — not yet received by Royal Mail')];
+      events = [E(1,'Delivery request received','')];
       break;
     case 'late_intransit':
       headline = { s:'In transit', sub:'On its way — running slightly behind schedule' }; tone = 'amber';
-      events = [E(0,'In transit','Regional Distribution Centre'), E(1,'Item accepted','Sender despatching your item')];
+      events = [E(0,'Item Received','Southampton MC'), E(1,'Delivery request received','')];
       break;
     case 'delivered_ok':
     case 'delivered_notreceived':
     default:
       headline = { s:'Delivered', sub:'We\'ve delivered your item' }; tone = 'green';
-      events = [E(1,'Delivered','Delivered and captured on our delivery record'), E(1,'Out for delivery','On its way with your local delivery office'), E(2,'Arrived at delivery office','Local Delivery Office'), E(3,'In transit','Regional Distribution Centre'), E(4,'Item accepted','Sender despatching your item')];
+      events = [E(1,'Delivered','Delivered'), E(1,'Out for delivery','Local Delivery Office'), E(2,'Item Received','Southampton MC'), E(4,'Delivery request received','')];
   }
-  return { num: rmNumber(t), service:'Royal Mail Tracked 24®', headline, tone, events };
+  return { num: rmNumber(t), service:'Royal Mail Tracked 24™', headline, tone, events };
 }
-function trackingPanelHtml(t) {
+// Synthetic (fake) UK shipping address per ticket — stable, deterministic, no real PII.
+function custAddress(t) {
+  const s = Math.abs(t.id || 1);
+  const STREETS = ['Maple Avenue','Bridge Road','Kingfisher Close','Elm Grove','Hanover Street','Priory Lane','Whitfield Road','Cedar Court','Marlow Gardens','Ashcroft Way','Fenwick Street','Latimer Road','Sycamore Drive','Beckett Road','Rosewood Lane'];
+  const CITIES = [['London','SW'],['London','SE'],['London','N'],['London','E'],['Manchester','M'],['Bristol','BS'],['Leeds','LS'],['Brighton','BN']];
+  const num = (s * 13 % 180) + 1;
+  const st = STREETS[s % STREETS.length];
+  const flat = (s % 3 === 0) ? ('Flat ' + ((s % 5) + 1) + ', ') : '';
+  const c = CITIES[s % CITIES.length];
+  const pc = c[1] + ((s % 9) + 1) + ' ' + ((s % 8) + 1) + String.fromCharCode(65 + (s % 6)) + String.fromCharCode(65 + ((s * 3) % 6));
+  const street = flat + num + ' ' + st;
+  const cityline = c[0] + ', ENG ' + pc;
+  const name = t.customer_name || 'the customer';
+  return { name, street, cityline, lines: [name, street, cityline, 'United Kingdom'], fillBlock: [street, cityline, 'United Kingdom'].join('\n') };
+}
+// Shipping + Shipping address block rendered INSIDE the Shopify order box (UK Delivery tickets).
+function shippingBlockHtml(t) {
   const tr = buildTracking(t); TRACK_CACHE[t.id] = tr;
+  const a = custAddress(t);
+  const late = /^late_/.test(UK_TRACKING[t.id] || '');
+  const cost = late ? '£5.99' : 'Free';
+  const code = late ? 'Next Working Day Shipping (for orders placed before 12pm)' : 'Standard Tracked 24 Shipping';
+  const url = 'https://www.royalmail.com/track-your-item#/tracking-results/' + tr.num;
   return `
-    <div class="cs-section">
-      <div class="cs-title">Tracking</div>
-      <div class="rm-courier">♔ Royal Mail</div>
-      <div class="cs-row"><span class="cs-label">Tracking no.</span><span class="cs-value" style="font-size:11px">${tr.num}</span></div>
-      <div class="cs-row"><span class="cs-label">Status</span><span class="track-status ${tr.tone}">${tr.headline.s}</span></div>
-      <button class="track-btn" onclick="openTracking(${t.id})">Track your item →</button>
+    <div class="order-ship">
+      <div class="order-ship-title">Shipping</div>
+      <div class="cs-row"><span class="cs-label">Shipment status</span><span class="track-status ${tr.tone}">${tr.headline.s}</span></div>
+      <div class="cs-row"><span class="cs-label">Tracking url</span><a class="ship-link" href="#" onclick="openTracking(${t.id});return false;" title="Open Royal Mail tracking">royalmail.com/track…</a></div>
+      <div class="cs-row"><span class="cs-label">Tracking number</span><span class="cs-value" style="font-size:11px">${tr.num}</span></div>
+      <div class="cs-row"><span class="cs-label">Shipping cost</span><span class="cs-value">${cost}</span></div>
+      <div class="cs-row"><span class="cs-label">Code</span><span class="cs-value ship-code">${code}</span></div>
+    </div>
+    <div class="order-ship">
+      <div class="order-ship-title">Shipping address</div>
+      <div class="ship-addr">${a.lines.join('<br>')}</div>
     </div>`;
 }
 function openTracking(id) {
@@ -1300,7 +1340,7 @@ function openTracking(id) {
   const evs = tr.events.map((e, i) => `
     <div class="rm-event${i === 0 ? ' now' : ''}">
       <div class="rm-ev-title">${e.title}</div>
-      <div class="rm-ev-loc">${e.loc}</div>
+      ${e.loc ? `<div class="rm-ev-loc">${e.loc}</div>` : ''}
       <div class="rm-ev-date">${rmDate(e.daysAgo)}</div>
     </div>`).join('');
   document.getElementById('rm-modal-root').innerHTML = `
@@ -1344,15 +1384,16 @@ function renderCustomerSidebar(ticket) {
     </div>
     ${(function(){
       const orders = parseOrders(ticket);
-      if (!orders.length) return '';
+      const isUK = Number(ticket.category_id) === 6;
+      const ship = isUK ? shippingBlockHtml(ticket) : '';
+      if (!orders.length) return ship ? `<div class="cs-section"><div class="cs-title">Shipping</div>${ship}</div>` : '';
       const lbl = orders.length > 1 ? `Recent Orders <span class="order-lines-n">${orders.length}</span>` : 'Recent Orders';
       return `
     <div class="cs-section">
       <div class="cs-title">${lbl}</div>
-      ${orders.map((o, i) => orderBoxHtml(o, i === 0)).join('')}
+      ${orders.map((o, i) => orderBoxHtml(o, i === 0, (isUK && i === 0) ? ship : '')).join('')}
     </div>`; })()}
     ${Number(ticket.category_id) === 5 ? rechargePanelHtml(ticket) : ''}
-    ${Number(ticket.category_id) === 6 ? trackingPanelHtml(ticket) : ''}
     <div class="cs-section">
       <div class="cs-title">Agent Notes</div>
       <textarea class="cs-notes" placeholder="Private notes (not saved)…"></textarea>

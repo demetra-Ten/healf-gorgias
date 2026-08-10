@@ -490,9 +490,12 @@ html[data-theme="dark"] .co-mode-hint { color: #a1a1aa; }
     <div class="nav-section-label">Training Categories <span class="nav-section-caret">▾</span></div>
     <div id="category-nav" style="padding: 0 8px 4px 8px;"></div>
 
-    <div class="nav-divider"></div>
-    <div class="nav-section-label">Customer Obsession <span class="nav-section-caret">▾</span></div>
-    <div id="co-nav" style="padding: 0 8px 4px 8px;"></div>
+    <!-- Customer Obsession — hidden for now, kept on file. To bring it back, remove display:none on #co-section below. -->
+    <div id="co-section" style="display:none">
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Customer Obsession <span class="nav-section-caret">▾</span></div>
+      <div id="co-nav" style="padding: 0 8px 4px 8px;"></div>
+    </div>
 
     <div class="leftnav-footer">
       <div class="trainee-info" id="profile-trigger" onclick="toggleProfileMenu(event)" style="cursor:pointer">

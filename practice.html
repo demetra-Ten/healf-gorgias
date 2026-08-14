@@ -152,8 +152,8 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .reply-to-val { color: #374151; font-weight: 500; }
 .reply-textarea { width: 100%; border: none; outline: none; padding: 10px 16px 12px; font-size: 13px; font-family: inherit; resize: none; min-height: 40px; height: 110px; color: #374151; background: #fff; line-height: 1.55; }
 .reply-textarea::placeholder { color: #9ca3af; }
-.reply-box.note-mode, .reply-box.note-mode .reply-to-row { background: #fdf3ec; }
-.reply-box.note-mode .reply-textarea { background: transparent; }
+/* Note mode: only the reply typing box goes peach; everything else stays white */
+.reply-box.note-mode .reply-textarea { background: #fdf3ec; }
 .reply-channel { position: relative; }
 .channel-cur { font-weight: 500; }
 .chan-caret { color: #9ca3af; font-size: 10px; }
@@ -388,7 +388,7 @@ html[data-theme="dark"] .note-msg { background: #33301f; border-color: #4d472b; 
 html[data-theme="dark"] .msg-ava.note { background: #4d472b; color: #e8dcae; }
 html[data-theme="dark"] .note-author { color: #f2e9c4; }
 html[data-theme="dark"] .note-time { color: #d8b24a; }
-html[data-theme="dark"] .reply-box.note-mode, html[data-theme="dark"] .reply-box.note-mode .reply-to-row { background: #2f2c1e; }
+html[data-theme="dark"] .reply-box.note-mode .reply-textarea { background: #2f2c1e; }
 html[data-theme="dark"] .channel-menu { background: #232327; border-color: #2c2c31; }
 html[data-theme="dark"] .channel-opt { color: #d4d4d8; }
 html[data-theme="dark"] .channel-opt:hover { background: #2a2a30; }

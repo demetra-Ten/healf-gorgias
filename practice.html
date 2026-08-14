@@ -134,6 +134,10 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .msg-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; font-size: 13px; line-height: 1.6; color: #374151; }
 .msg-card.agent-card { background: #f5f3ff; border-color: #c4b5fd; }
 .msg-card.lola-card { background: #f4f4f5; border-color: #e9e9ec; }
+.msg-card.note-card { background: #fdf6e3; border-color: #f0e2b8; color: #5b4a1e; }
+.msg-ava.note { background: #fbe6c2; color: #92640a; }
+.note-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; background: #fbe6c2; color: #92640a; padding: 1px 6px; border-radius: 4px; }
+.note-badge svg { display: block; }
 
 /* REPLY BOX */
 .reply-box { border-top: 1px solid #e5e7eb; background: #fff; flex-shrink: 0; }
@@ -143,6 +147,19 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .reply-to-val { color: #374151; font-weight: 500; }
 .reply-textarea { width: 100%; border: none; outline: none; padding: 10px 16px 12px; font-size: 13px; font-family: inherit; resize: none; min-height: 40px; height: 110px; color: #374151; background: #fff; line-height: 1.55; }
 .reply-textarea::placeholder { color: #9ca3af; }
+.reply-box.note-mode, .reply-box.note-mode .reply-to-row { background: #fdf3ec; }
+.reply-box.note-mode .reply-textarea { background: transparent; }
+.reply-channel { position: relative; }
+.channel-cur { font-weight: 500; }
+.chan-caret { color: #9ca3af; font-size: 10px; }
+.channel-menu { position: absolute; top: 30px; left: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 4px; min-width: 168px; z-index: 40; display: none; }
+.channel-menu.open { display: block; }
+.channel-opt { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; font-size: 12px; color: #374151; cursor: pointer; }
+.channel-opt:hover { background: #f4f4f5; }
+.channel-opt.active { background: #f5f3ff; }
+.channel-opt svg { display: block; flex-shrink: 0; }
+.channel-label { font-weight: 600; color: #374151; }
+.note-hint-inline { font-size: 11px; color: #b98900; }
 .actions-note-wrap { border-top: 1px dashed #e5e7eb; background: #fbfaff; padding: 0 16px 4px; }
 .actions-note-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; }
 .actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 32px; height: 64px; color: #374151; background: transparent; line-height: 1.5; }
@@ -353,6 +370,15 @@ html[data-theme="dark"] .msg-ava.customer { background: #3a3a40; color: #d4d4d8;
 html[data-theme="dark"] .msg-ava.lola { background: #2e2a4d; color: #c4b5fd; }
 html[data-theme="dark"] .auto-chip { background: #2e2a4d; color: #c4b5fd; }
 html[data-theme="dark"] .msg-card.lola-card { background: #232327; border-color: #2c2c31; }
+html[data-theme="dark"] .msg-card.note-card { background: #33301f; border-color: #4d472b; color: #e8dcae; }
+html[data-theme="dark"] .msg-ava.note, html[data-theme="dark"] .note-badge { background: #4d472b; color: #e8dcae; }
+html[data-theme="dark"] .reply-box.note-mode, html[data-theme="dark"] .reply-box.note-mode .reply-to-row { background: #2f2c1e; }
+html[data-theme="dark"] .channel-menu { background: #232327; border-color: #2c2c31; }
+html[data-theme="dark"] .channel-opt { color: #d4d4d8; }
+html[data-theme="dark"] .channel-opt:hover { background: #2a2a30; }
+html[data-theme="dark"] .channel-opt.active { background: #2a2740; }
+html[data-theme="dark"] .channel-label { color: #e6e6e9; }
+html[data-theme="dark"] .note-hint-inline { color: #d8b24a; }
 html[data-theme="dark"] .msg-sender { color: #d4d4d8; }
 html[data-theme="dark"] .reply-box { background: #232327; border-top-color: #2c2c31; }
 html[data-theme="dark"] .reply-to-row { border-bottom-color: #2c2c31; }
@@ -691,6 +717,11 @@ const CONTACT_REASONS = [
   "Other::Healf Zone","Other::Duplicate","Other::Chargebacks","Other::Fraud","Other::Spam","Other::Placeholder","Other::HX26"
 ];
 let contactReasons = JSON.parse(localStorage.getItem('healf_contact_reasons') || '{}');
+// Composer channel: 'email' (customer-facing reply) | 'note' (internal note, CW-only). Reset per ticket.
+let replyChannel = 'email';
+// Internal notes are private to the CW team — customers never see them. Keyed by ticket id.
+const internalNotes = JSON.parse(localStorage.getItem('healf_internal_notes') || '{}');
+function saveInternalNotes() { localStorage.setItem('healf_internal_notes', JSON.stringify(internalNotes)); }
 function contactReasonOptions(selected) {
   const groups = {};
   CONTACT_REASONS.forEach(r => { const g = r.split('::')[0].trim(), s = r.split('::').slice(1).join('::').trim(); (groups[g] = groups[g] || []).push({ v: r, s }); });
@@ -736,6 +767,7 @@ const ICONS = {
   user: `<svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
   mail: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>`,
   zap: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  note: `<svg width="15" height="15" viewBox="0 0 24 24" fill="#c2721a" stroke="none"><path d="M5 3h8l6 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M13 3v6h6" fill="#fff" opacity="0.4"/></svg>`,
 };
 
 async function init() {
@@ -940,6 +972,7 @@ function showTableView() {
 function openTicket(id) {
   activeTicketId = id;
   usedMacro = null;
+  replyChannel = 'email';
   renderTicketTable();
   const ticket = tickets.find(t => t.id === id);
   const sub = getSub(id);
@@ -1029,6 +1062,19 @@ function renderMessages(ticket, sub) {
     if (p.type === 'LOLA') return bubble({ dir:'out', avaClass:'lola', ava:'L', sender:'Lola', automated:true, sub:'team@healf.com', body:p.body, cardClass:'lola-card' });
     return bubble({ dir:'out', avaClass:'agent', ava:'H', sender:'Healf', sub:'team@healf.com', body:p.body, cardClass:'agent-card' });
   }).join('');
+  // Internal notes — CW-only, rendered as warm cream bubbles with a note badge (customers never see these)
+  (internalNotes[ticket.id] || []).forEach(nt => {
+    const who = nt.author || 'You';
+    const when = nt.at ? new Date(nt.at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '';
+    html += `
+      <div class="msg-wrap out">
+        <div class="msg-ava note">${who.charAt(0).toUpperCase()}</div>
+        <div class="msg-content">
+          <div class="msg-meta"><span class="msg-sender">${who}</span><span class="note-badge">${ICONS.note} Internal note</span><span>${when}</span></div>
+          <div class="msg-card note-card">${esc(nt.body)}</div>
+        </div>
+      </div>`;
+  });
   if (sub) html += bubble({ dir:'out', avaClass:'agent', ava:trainee.name.charAt(0).toUpperCase(), sender:`${trainee.name} (you)`, sub:new Date(sub.submitted_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}), body:sub.reply_text, cardClass:'agent-card' });
   area.innerHTML = html;
   setTimeout(() => { area.scrollTop = area.scrollHeight; }, 50);
@@ -1099,12 +1145,23 @@ function renderReplySection(ticket, sub) {
         ${scored ? `<div class="score-display"><div class="score-val">${sub.score}/3</div><div class="score-label">Score</div></div>` : ''}
       </div>`;
   } else {
+    const isNote = replyChannel === 'note';
+    const chanBtn = isNote
+      ? `${ICONS.note} <span class="channel-cur">Internal note</span> <span class="chan-caret">▾</span>`
+      : `${ICONS.mail} <span class="channel-cur">Email</span> <span class="chan-caret">▾</span>`;
     section.innerHTML = `
-      <div class="reply-box">
+      <div class="reply-box ${isNote ? 'note-mode' : ''}">
         <div class="reply-to-row">
-          <button class="reply-channel-btn">${ICONS.mail} Email ▾</button>
-          <span class="reply-to-label">To:</span>
-          <span class="reply-to-val">${ticket.customer_email}</span>
+          <div class="reply-channel">
+            <button class="reply-channel-btn" onclick="toggleChannelMenu(event)">${chanBtn}</button>
+            <div class="channel-menu" id="channel-menu">
+              <div class="channel-opt ${isNote ? '' : 'active'}" onclick="setChannel('email', ${ticket.id})">${ICONS.mail} Email</div>
+              <div class="channel-opt ${isNote ? 'active' : ''}" onclick="setChannel('note', ${ticket.id})">${ICONS.note} Internal note</div>
+            </div>
+          </div>
+          ${isNote
+            ? `<span class="channel-label">Internal note</span><span class="note-hint-inline">· only the CW team can see this</span>`
+            : `<span class="reply-to-label">To:</span><span class="reply-to-val">${ticket.customer_email}</span>`}
         </div>
         <div class="macro-bar">
           <button class="macro-trigger" onclick="toggleMacroPicker(event)">${ICONS.zap} Macros</button>
@@ -1114,17 +1171,21 @@ function renderReplySection(ticket, sub) {
           </div>
         </div>
         <div class="drag-handle" data-target="reply-input" title="Drag to resize"></div>
-        <textarea class="reply-textarea" id="reply-input" placeholder="Click here to reply…"></textarea>
+        <textarea class="reply-textarea" id="reply-input" placeholder="${isNote ? 'Write an internal note for the CW team…' : 'Click here to reply…'}"></textarea>
+        ${isNote ? '' : `
         <div class="actions-note-wrap">
           <div class="drag-handle" data-target="actions-input" title="Drag to resize"></div>
           <div class="actions-note-label">Actions — the steps you'd take on Shopify / Swap / Recharge etc.</div>
           <textarea class="actions-textarea" id="actions-input" placeholder="e.g. Check the order in Shopify — unfulfilled, so cancel the OOS item (Edit → untick Restock). MO the alternative with reason 'productswap'. Log refund reason from CW Essentials…"></textarea>
-        </div>
+        </div>`}
         <div class="reply-toolbar">
-          <span class="reply-hint">Your reply and actions will be scored automatically.</span>
+          <span class="reply-hint">${isNote ? 'Internal notes are private to the CW team — customers never see them.' : 'Your reply and actions will be scored automatically.'}</span>
           <div class="reply-actions">
-            <button class="send-close-btn" onclick="submitReply(${ticket.id}, true)">Send &amp; Close</button>
-            <button class="submit-btn" id="submit-btn" onclick="submitReply(${ticket.id}, false)">Send</button>
+            ${isNote
+              ? `<button class="send-close-btn" onclick="addInternalNote(${ticket.id}, true)">Send &amp; Close</button>
+                 <button class="submit-btn" id="submit-btn" onclick="addInternalNote(${ticket.id}, false)">Send</button>`
+              : `<button class="send-close-btn" onclick="submitReply(${ticket.id}, true)">Send &amp; Close</button>
+                 <button class="submit-btn" id="submit-btn" onclick="submitReply(${ticket.id}, false)">Send</button>`}
           </div>
         </div>
       </div>`;
@@ -1187,6 +1248,8 @@ function insertMacro(id) {
 document.addEventListener('click', e => {
   const p = document.getElementById('macro-picker');
   if (p && p.classList.contains('open') && !e.target.closest('.macro-bar')) p.classList.remove('open');
+  const cm = document.getElementById('channel-menu');
+  if (cm && cm.classList.contains('open') && !e.target.closest('.reply-channel')) cm.classList.remove('open');
 });
 
 // Independently drag-resize the reply and actions boxes (drag handle up = taller, down = flatter)
@@ -1476,6 +1539,7 @@ async function submitReply(ticketId, andClose) {
         macro_body: usedMacro ? usedMacro.body : null,
         customer_name: ticket.customer_name, message: threadText(ticket),
         contact_reason: contactReasons[ticketId] || null,
+        internal_note: (internalNotes[ticketId] || []).map(n => n.body).join('\n\n') || null,
         ideal_response: ticket.ideal_response, order_items: ticketProducts(ticket),
         order_value: ticket.order_value, order_status: ticket.order_status
       })
@@ -1497,6 +1561,39 @@ async function submitReply(ticketId, andClose) {
   const badge2 = document.getElementById('td-status-badge');
   if (data.score != null) { badge2.textContent = `${data.score}/3`; badge2.className = `td-status-badge ${scoreBadgeClass(data.score)}`; }
   else { badge2.textContent = 'Submitted'; badge2.className = 'td-status-badge badge-submitted'; }
+}
+
+// ── Composer channel (Email ⇄ Internal note), Gorgias-style ──
+function toggleChannelMenu(e) {
+  if (e) e.stopPropagation();
+  const m = document.getElementById('channel-menu');
+  if (m) m.classList.toggle('open');
+}
+function setChannel(ch, ticketId) {
+  // Preserve whatever's typed when switching channel (Gorgias keeps the draft).
+  const cur = document.getElementById('reply-input');
+  const draft = cur ? cur.value : '';
+  replyChannel = ch;
+  const ticket = tickets.find(t => t.id === ticketId);
+  renderReplySection(ticket, getSub(ticketId));
+  const next = document.getElementById('reply-input');
+  if (next && draft) next.value = draft;
+}
+// Post an internal note: append it to the thread (CW-only) and persist. Not scored on its own —
+// it's folded into the scoring payload when the customer reply is sent.
+function addInternalNote(ticketId, andClose) {
+  const input = document.getElementById('reply-input');
+  const body = input ? input.value.trim() : '';
+  if (!body) { if (input) { input.style.border = '1px solid #ef4444'; input.placeholder = 'Write your internal note first.'; } return; }
+  if (!internalNotes[ticketId]) internalNotes[ticketId] = [];
+  internalNotes[ticketId].push({ body, at: new Date().toISOString(), author: trainee.name });
+  saveInternalNotes();
+  usedMacro = null;
+  const ticket = tickets.find(t => t.id === ticketId);
+  if (andClose) { showTableView(); return; }
+  replyChannel = 'note';
+  renderMessages(ticket, getSub(ticketId));
+  renderReplySection(ticket, getSub(ticketId));
 }
 
 function toggleNavSection(id, el) {

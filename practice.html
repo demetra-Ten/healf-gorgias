@@ -825,7 +825,8 @@ async function init() {
     const allCats = !trainee.current_category_id;   // no category assigned = All categories
     let query = db
       .from('tickets')
-      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier,order_items,ideal_response');
+      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier,order_items,ideal_response')
+      .not('category_id', 'is', null);   // parked tickets (category_id = null) are retired and never shown
     if (!allCats) query = query.eq('category_id', trainee.current_category_id);
     const { data: tix } = await query;
     tickets = tix || [];

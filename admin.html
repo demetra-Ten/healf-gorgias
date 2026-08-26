@@ -100,12 +100,28 @@ textarea { resize: vertical; min-height: 80px; }
 .marking-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
 .marking-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
 .marking-meta { font-size: 12px; color: #9ca3af; margin-top: 3px; }
-.reply-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.reply-compare { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px; }
 .reply-panel { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; }
 .reply-panel-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; margin-bottom: 8px; }
 .reply-panel-body { font-size: 13px; color: #374151; line-height: 1.6; white-space: pre-wrap; }
 .ideal-panel { background: #f0fdf4; border-color: #bbf7d0; }
 .ideal-panel .reply-panel-title { color: #166534; }
+/* trainer feedback on the auto-marking */
+.tf-box { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; margin:8px 0 4px; }
+.tf-box.tf-done { background:#f5f3ff; border-color:#ddd6fe; }
+.tf-head { display:flex; align-items:center; gap:8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#92400e; margin-bottom:8px; }
+.tf-box.tf-done .tf-head { color:#5b21b6; }
+.tf-saved { font-weight:600; text-transform:none; letter-spacing:0; color:#7c3aed; }
+.tf-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap; }
+.tf-lbl { font-size:11px; color:#6b7280; min-width:104px; }
+.tf-chip { border:1px solid #e5e7eb; background:#fff; border-radius:999px; padding:3px 11px; font-size:11px; cursor:pointer; color:#374151; }
+.tf-chip:hover { border-color:#c4b5fd; }
+.tf-chip.on { background:#7c3aed; border-color:#7c3aed; color:#fff; font-weight:600; }
+.tf-num { min-width:30px; }
+.tf-note { width:100%; border:1px solid #e5e7eb; border-radius:6px; padding:7px 9px; font-size:12px; font-family:inherit; color:#374151; resize:vertical; margin-top:2px; }
+.tf-actions { display:flex; justify-content:flex-end; margin-top:6px; }
+.tf-save { background:#7c3aed; color:#fff; border:none; border-radius:6px; padding:5px 14px; font-size:11px; font-weight:600; cursor:pointer; }
+.tf-save:hover { background:#6d28d9; }
 .score-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .score-btns { display: flex; gap: 6px; }
 .score-btn { width: 34px; height: 34px; border-radius: 7px; border: 2px solid #e5e7eb; background: #fff; font-size: 14px; font-weight: 700; cursor: pointer; color: #374151; transition: all 0.1s; display: flex; align-items: center; justify-content: center; }
@@ -445,7 +461,6 @@ function renderMarking() {
     const full = allTickets.find(x => x.id === s.ticket_id) || {};
     const ticketInfo = s.tickets || {};
     const subj = full.subject || ticketInfo.subject || 'Unknown ticket';
-    const ideal = full.ideal_response || ticketInfo.ideal_response || '(No ideal handling set for this ticket.)';
     const when = new Date(s.submitted_at).toLocaleString('en-GB', {dateStyle:'short', timeStyle:'short'});
     const reviewed = REVIEWED[s.id] === true;
     return `
@@ -464,13 +479,10 @@ function renderMarking() {
               <div class="reply-panel-title">Trainee's reply</div>
               <div class="reply-panel-body">${escHtml(s.reply_text)}</div>
             </div>
-            <div class="reply-panel ideal-panel">
-              <div class="reply-panel-title">Ideal handling</div>
-              <div class="reply-panel-body">${escHtml(ideal)}</div>
-            </div>
           </div>
           ${s.actions_text ? `<div style="background:#fbfaff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:12px"><strong>Trainee's actions note:</strong> ${escHtml(s.actions_text)}</div>` : ''}
           ${isScored && s.feedback ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:4px;white-space:pre-wrap"><strong>Auto feedback:</strong>\n${escHtml(s.feedback)}</div>` : ''}
+          ${isScored && s.feedback ? trainerFeedbackHtml(s) : ''}
           ${!isScored ? `
           <div class="score-row">
             <div>
@@ -585,6 +597,80 @@ function selectScore(subId, score) {
   document.querySelectorAll(`#score-btns-${subId} .score-btn`).forEach((btn, i) => {
     btn.classList.toggle('selected', i + 1 === score);
   });
+}
+
+// ── TRAINER FEEDBACK ON THE AUTO-MARKING ──
+// Demetra marks the marker. Each saved verdict becomes a gold-set case used to
+// calibrate the scoring rubric (n8n DHLJ1PVNIj9kEnsl).
+const trainerVerdict = {};   // subId -> 'too_harsh' | 'fair' | 'too_lenient'
+const trainerScoreSel = {};  // subId -> 1 | 2 | 3
+
+function trainerFeedbackHtml(s) {
+  const saved = !!s.trainer_verdict;
+  const v = trainerVerdict[s.id] !== undefined ? trainerVerdict[s.id] : (s.trainer_verdict || null);
+  const sc = trainerScoreSel[s.id] !== undefined ? trainerScoreSel[s.id] : (s.trainer_score || null);
+  const VERDICTS = [['too_harsh','Too harsh'], ['fair','Fair'], ['too_lenient','Too lenient']];
+  return `
+    <div class="tf-box" id="tf-${s.id}">
+      <div class="tf-head">
+        <span>Your verdict on this marking</span>
+        ${saved ? `<span class="tf-saved">saved ${s.trainer_reviewed_at ? new Date(s.trainer_reviewed_at).toLocaleDateString('en-GB') : ''}</span>` : ''}
+      </div>
+      <div class="tf-row">
+        <span class="tf-lbl">The mark was</span>
+        ${VERDICTS.map(([val,lbl]) => `<button type="button" class="tf-chip${v === val ? ' on' : ''}" data-v="${val}" onclick="setTrainerVerdict(${s.id},'${val}')">${lbl}</button>`).join('')}
+      </div>
+      <div class="tf-row">
+        <span class="tf-lbl">Should have been</span>
+        ${[1,2,3].map(n => `<button type="button" class="tf-chip tf-num${sc === n ? ' on' : ''}" data-n="${n}" onclick="setTrainerScore(${s.id},${n})">${n}</button>`).join('')}
+      </div>
+      <textarea class="tf-note" id="tf-note-${s.id}" rows="2"
+        placeholder="Which bullet was wrong, and what was the right call? e.g. 'the DOR point is an Actions fault, not a Response one — should be a 2'">${escHtml(s.trainer_note || '')}</textarea>
+      <div class="tf-actions">
+        <button type="button" class="tf-save" onclick="saveTrainerFeedback(${s.id})">Save verdict</button>
+      </div>
+    </div>`;
+}
+
+function setTrainerVerdict(subId, val) {
+  const cur = trainerVerdict[subId] !== undefined
+    ? trainerVerdict[subId]
+    : ((submissions.find(x => x.id === subId) || {}).trainer_verdict || null);
+  trainerVerdict[subId] = (cur === val) ? null : val;
+  const box = document.getElementById(`tf-${subId}`);
+  if (box) box.querySelectorAll('.tf-chip[data-v]').forEach(b =>
+    b.classList.toggle('on', b.dataset.v === trainerVerdict[subId]));
+}
+
+function setTrainerScore(subId, n) {
+  const cur = trainerScoreSel[subId] !== undefined
+    ? trainerScoreSel[subId]
+    : ((submissions.find(x => x.id === subId) || {}).trainer_score || null);
+  trainerScoreSel[subId] = (cur === n) ? null : n;
+  const box = document.getElementById(`tf-${subId}`);
+  if (box) box.querySelectorAll('.tf-chip[data-n]').forEach(b =>
+    b.classList.toggle('on', Number(b.dataset.n) === trainerScoreSel[subId]));
+}
+
+async function saveTrainerFeedback(subId) {
+  const sub = submissions.find(x => x.id === subId) || {};
+  const verdict = trainerVerdict[subId] !== undefined ? trainerVerdict[subId] : (sub.trainer_verdict || null);
+  const tScore  = trainerScoreSel[subId] !== undefined ? trainerScoreSel[subId] : (sub.trainer_score || null);
+  const note    = (document.getElementById(`tf-note-${subId}`) || {}).value || '';
+  if (!verdict && !tScore && !note.trim()) { toast('Add a verdict, a score, or a note first.'); return; }
+
+  const patch = {
+    trainer_verdict: verdict || null,
+    trainer_score: tScore || null,
+    trainer_note: note.trim() || null,
+    trainer_reviewed_at: new Date().toISOString(),
+  };
+  const { error } = await db.from('submissions').update(patch).eq('id', subId);
+  if (error) { toast('Error saving verdict: ' + error.message); return; }
+  Object.assign(sub, patch);
+  toast('Verdict saved ✓');
+  const box = document.getElementById(`tf-${subId}`);
+  if (box) box.classList.add('tf-done');
 }
 
 async function markSubmission(subId) {

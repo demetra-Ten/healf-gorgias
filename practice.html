@@ -708,6 +708,16 @@ const SCORING_WEBHOOK = 'https://aiwellbeing.app.n8n.cloud/webhook/score-submiss
 // Marks the boundary in a CUSTOMER message between the customer's reply and the
 // original (usually marketing) email they're replying to — revealed via the "•••" expander.
 const QUOTE_SENTINEL = '⟦MARKETING⟧';
+// Real customer-message sent time, taken from the source Gorgias ticket's created_datetime.
+// Stored as a leading sentinel on `message` (no DB column needed) e.g. ⟦SENT|2026-07-10T08:48:27Z⟧
+const SENT_SENTINEL = /^\s*⟦SENT\|([^⟧]+)⟧\s*/;
+function sentAt(ticket) {
+  const m = SENT_SENTINEL.exec(String((ticket && ticket.message) || ''));
+  if (!m) return null;
+  const d = new Date(m[1]);
+  return isNaN(d) ? null : d;
+}
+function stripSent(text) { return String(text || '').replace(SENT_SENTINEL, ''); }
 const PRODUCTS_BY_ID = {
   1: "Grass Fed Whey Protein Isolate – Unflavoured (x1) — £39.99 [pre-order]\nMagnesium Glycinate (x1) — shipped",
   2: "NMN 500mg (x1) — £15.98 [pre-order]\nFree sample: Collagen sachet (x1) — £0.00",
@@ -1035,7 +1045,7 @@ function openTicket(id) {
 // A ticket's `message` may be a thread: segments separated by [[LOLA]] / [[AGENT]] / [[CUSTOMER]]
 // marker lines. No markers = a single customer message (backward compatible).
 function parseThread(ticket) {
-  const raw = ticket.message || '';
+  const raw = stripSent(ticket.message || '');
   if (!/\[\[(LOLA|AGENT|CUSTOMER)\]\]/.test(raw)) return [{ type: 'CUSTOMER', body: raw }];
   const segs = raw.split(/\[\[(LOLA|AGENT|CUSTOMER)\]\]\s*/);
   const parts = [];
@@ -1077,6 +1087,8 @@ function parseOrderDate(s) {
   return isNaN(d) ? null : d;
 }
 function ticketMessageDate(ticket) {
+  const real = sentAt(ticket);            // real date from the source Gorgias ticket
+  if (real) return real;
   if (ticket && ticket.message_at) {
     const d = new Date(ticket.message_at);
     if (!isNaN(d)) return d;
@@ -1126,7 +1138,7 @@ function renderMessages(ticket, sub) {
         <div class="msg-wrap in">
           <div class="msg-ava customer">${initials(ticket.customer_name)}</div>
           <div class="msg-content">
-            <div class="msg-meta"><span class="msg-sender">${ticket.customer_name}</span><span>${ticket.customer_email}</span>${Number(ticket.category_id) === 5 ? `<span class="msg-when">${fmtMsgWhen(ticketMessageDate(ticket))}</span>` : ''}</div>
+            <div class="msg-meta"><span class="msg-sender">${ticket.customer_name}</span><span>${ticket.customer_email}</span>${(Number(ticket.category_id) !== 6 && sentAt(ticket)) ? `<span class="msg-when">${fmtMsgWhen(sentAt(ticket))}</span>` : ''}</div>
             <div class="msg-card">${esc(main)}</div>
             ${quotedHtml}
           </div>

@@ -1067,8 +1067,9 @@ function threadText(ticket) {
 }
 
 // ── Message timestamps (Gorgias shows a sent date on every message) ──
-// Prefers the real sent time stored on the ticket (message_at). Falls back to deriving
-// one from the ticket's most recent order date, so a date always shows.
+// Subscription tickets only (category 5) - other categories show no date, as before.
+// Prefers the real sent time stored on the ticket (message_at); falls back to deriving
+// one from the most recent order date until the real value is backfilled.
 function parseOrderDate(s) {
   const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (!m) return null;
@@ -1125,7 +1126,7 @@ function renderMessages(ticket, sub) {
         <div class="msg-wrap in">
           <div class="msg-ava customer">${initials(ticket.customer_name)}</div>
           <div class="msg-content">
-            <div class="msg-meta"><span class="msg-sender">${ticket.customer_name}</span><span>${ticket.customer_email}</span><span class="msg-when">${fmtMsgWhen(ticketMessageDate(ticket))}</span></div>
+            <div class="msg-meta"><span class="msg-sender">${ticket.customer_name}</span><span>${ticket.customer_email}</span>${Number(ticket.category_id) === 5 ? `<span class="msg-when">${fmtMsgWhen(ticketMessageDate(ticket))}</span>` : ''}</div>
             <div class="msg-card">${esc(main)}</div>
             ${quotedHtml}
           </div>

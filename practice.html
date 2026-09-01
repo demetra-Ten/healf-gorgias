@@ -1748,8 +1748,14 @@ async function submitReply(ticketId, andClose) {
   const btn = document.getElementById('submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
 
+  // Persist what the trainee actually chose/left, so the review view can show it and the
+  // scorer's judgement on them can be audited (both are sent to the scorer either way).
+  const notes = internalNotes[ticketId] || [];
   const { data, error } = await db.from('submissions').insert({
-    trainee_id: trainee.id, ticket_id: ticketId, reply_text: reply, actions_text: actions
+    trainee_id: trainee.id, ticket_id: ticketId, reply_text: reply, actions_text: actions,
+    contact_reason: contactReasons[ticketId] || null,
+    internal_note: notes.map(n => n.body).join('\n\n') || null,
+    internal_note_at: notes.length ? notes[0].at : null
   }).select().single();
 
   if (error) { if (btn) { btn.disabled = false; btn.textContent = 'Send'; } alert('Error: ' + error.message); return; }

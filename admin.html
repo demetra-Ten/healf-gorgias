@@ -107,6 +107,12 @@ textarea { resize: vertical; min-height: 80px; }
 .ideal-panel { background: #f0fdf4; border-color: #bbf7d0; }
 .ideal-panel .reply-panel-title { color: #166534; }
 /* trainer feedback on the auto-marking */
+.sub-meta-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.sub-meta { display:flex; align-items:center; gap:7px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:6px 11px; }
+.sub-meta-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#9ca3af; }
+.sub-meta-val { font-size:12px; font-weight:600; color:#374151; }
+.sub-meta-val.none { font-weight:500; color:#9ca3af; font-style:italic; }
+.sub-note { background:#fffbf0; border:1px solid #fde9c8; border-radius:8px; padding:10px 14px; font-size:12px; color:#374151; margin-bottom:12px; white-space:pre-wrap; }
 .tf-box { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; margin:8px 0 4px; }
 .tf-box.tf-done { background:#f5f3ff; border-color:#ddd6fe; }
 .tf-head { display:flex; align-items:center; gap:8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#92400e; margin-bottom:8px; }
@@ -480,6 +486,21 @@ function renderMarking() {
               <div class="reply-panel-body">${escHtml(s.reply_text)}</div>
             </div>
           </div>
+          <div class="sub-meta-row">
+            <div class="sub-meta">
+              <span class="sub-meta-lbl">Contact reason</span>
+              ${s.contact_reason
+                ? `<span class="sub-meta-val">${escHtml(s.contact_reason)}</span>`
+                : `<span class="sub-meta-val none">none assigned</span>`}
+            </div>
+            <div class="sub-meta">
+              <span class="sub-meta-lbl">Internal note</span>
+              ${s.internal_note
+                ? `<span class="sub-meta-val">left${s.internal_note_at ? ' &middot; ' + new Date(s.internal_note_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : ''}</span>`
+                : `<span class="sub-meta-val none">none left</span>`}
+            </div>
+          </div>
+          ${s.internal_note ? `<div class="sub-note"><strong>Their internal note:</strong> ${escHtml(s.internal_note)}</div>` : ''}
           ${s.actions_text ? `<div style="background:#fbfaff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:12px"><strong>Trainee's actions note:</strong> ${escHtml(s.actions_text)}</div>` : ''}
           ${isScored && s.feedback ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:12px;color:#374151;margin-bottom:4px;white-space:pre-wrap"><strong>Auto feedback:</strong>\n${escHtml(s.feedback)}</div>` : ''}
           ${isScored && s.feedback ? trainerFeedbackHtml(s) : ''}

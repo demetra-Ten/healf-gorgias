@@ -18,3 +18,10 @@ alter table submissions add column if not exists trainer_reviewed_at timestamptz
 -- null the app derives a date from the ticket's most recent order, so it always
 -- shows something sensible. Populate it to reflect the real source ticket.
 alter table tickets add column if not exists message_at timestamptz;
+
+-- ── What the trainee chose / left (added 2026-09-01) ──
+-- Both are already sent to the scorer and marked on, but were never stored, so the
+-- review view could not show them and replays had to guess. Now saved on submit.
+alter table submissions add column if not exists contact_reason   text;
+alter table submissions add column if not exists internal_note    text;
+alter table submissions add column if not exists internal_note_at timestamptz;

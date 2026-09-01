@@ -225,9 +225,6 @@ html[data-theme="dark"] .quoted-email { background: #1d1d21; border-left-color: 
 .recharge-status { font-weight: 700; color: #111827; letter-spacing: 0.3px; }
 .recharge-sub { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6; }
 .cs-sublabel { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
-.recharge-empty { margin-top: 8px; padding: 10px 11px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; }
-.recharge-empty-t { font-size: 12px; font-weight: 700; color: #9a3412; margin-bottom: 3px; }
-.recharge-empty-s { font-size: 11px; color: #7c2d12; line-height: 1.45; }
 .recharge-prod { margin-top: 9px; padding: 8px 10px; background: #fbfaff; border: 1px solid #eceaf5; border-radius: 8px; }
 .recharge-prod-brand { font-size: 9.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: #9ca3af; margin-bottom: 2px; }
 .recharge-prod-name { font-size: 12px; font-weight: 600; color: #4c1d95; line-height: 1.35; }
@@ -236,10 +233,7 @@ html[data-theme="dark"] .quoted-email { background: #1d1d21; border-left-color: 
 .order-box + .order-box { margin-top: 8px; }
 html[data-theme="dark"] .recharge-status { color: #f3f4f6; }
 html[data-theme="dark"] .recharge-sub { border-top-color: #2c2c31; }
-html[data-theme="dark"] .recharge-empty { background: #2a1a0f; border-color: #4a2a12; }
-html[data-theme="dark"] .recharge-empty-t { color: #fdba74; }
-html[data-theme="dark"] .recharge-empty-s { color: #d9a077; }
-html[data-theme="dark"] .recharge-prod { background: #1d1d21; border-color: #2c2c31; }
+html[data-theme="dark"] html[data-theme="dark"] html[data-theme="dark"] html[data-theme="dark"] .recharge-prod { background: #1d1d21; border-color: #2c2c31; }
 html[data-theme="dark"] .recharge-prod-name { color: #c4b5fd; }
 html[data-theme="dark"] .recharge-badge { background: #14311f; color: #4ade80; border-color: #1c4a2e; }
 .reply-actions { display: flex; gap: 8px; }
@@ -1539,19 +1533,9 @@ function subscribedProduct(ticket) {
 function rechargePanelHtml(ticket) {
   const orders = parseOrders(ticket);
   const p = subscribedProduct(ticket);
-  // No orders under this email = nothing to find in Recharge. This is a real scenario
-  // (the subscription sits under a different email), and the correct handling is to ask
-  // the customer for an order reference — so the panel must not imply an active sub.
-  if (!orders.length) {
-    return `
-    <div class="cs-section">
-      <div class="cs-title recharge-head"><span class="recharge-mark">↻</span> Recharge <span class="recharge-cust">${ticket.customer_name}</span></div>
-      <div class="recharge-empty">
-        <div class="recharge-empty-t">No subscription found</div>
-        <div class="recharge-empty-s">Nothing is linked to ${ticket.customer_email}. If they have one, it may sit under a different email — ask for an order reference.</div>
-      </div>
-    </div>`;
-  }
+  // No orders under this email = no Shopify/Recharge match, so Gorgias would show no
+  // integration at all. Render nothing rather than implying a subscription exists.
+  if (!orders.length) return '';
   const upd = (orders[0] && orders[0].date) ? orders[0].date : 'Recently';
   return `
     <div class="cs-section">

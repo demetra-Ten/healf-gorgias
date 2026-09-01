@@ -1,0 +1,250 @@
+[
+ {
+  "sim": 47,
+  "cat": 2,
+  "name": "James Carter",
+  "gid": "274366545",
+  "created": "2026-07-16T10:06:18",
+  "score": 1.0
+ },
+ {
+  "sim": 48,
+  "cat": 2,
+  "name": "Olivia Hughes",
+  "gid": "274363798",
+  "created": "2026-07-16T09:54:39",
+  "score": 1.0
+ },
+ {
+  "sim": 57,
+  "cat": 2,
+  "name": "Amelia Knight",
+  "gid": "271258855",
+  "created": "2026-06-29T17:26:41",
+  "score": 1.0
+ },
+ {
+  "sim": 59,
+  "cat": 2,
+  "name": "Isla Marsh",
+  "gid": "270465170",
+  "created": "2026-06-24T20:55:43",
+  "score": 1.0
+ },
+ {
+  "sim": 74,
+  "cat": 2,
+  "name": "Faye Holt",
+  "gid": "263401805",
+  "created": "2026-05-15T07:25:01",
+  "score": 0.72
+ },
+ {
+  "sim": 76,
+  "cat": 2,
+  "name": "Tara Lamb",
+  "gid": "261505295",
+  "created": "2026-05-05T06:08:45",
+  "score": 0.92
+ },
+ {
+  "sim": 77,
+  "cat": 2,
+  "name": "Gina Mills",
+  "gid": "259713409",
+  "created": "2026-04-24T08:39:24",
+  "score": 0.99
+ },
+ {
+  "sim": 80,
+  "cat": 2,
+  "name": "Owen Read",
+  "gid": "259132152",
+  "created": "2026-04-21T10:27:20",
+  "score": 0.99
+ },
+ {
+  "sim": 89,
+  "cat": 3,
+  "name": "Kojo Mensah",
+  "gid": "271841202",
+  "created": "2026-07-02T10:31:57",
+  "score": 1.0
+ },
+ {
+  "sim": 93,
+  "cat": 3,
+  "name": "Steph Dunn",
+  "gid": "273669582",
+  "created": "2026-07-12T19:17:32",
+  "score": 1.0
+ },
+ {
+  "sim": 95,
+  "cat": 3,
+  "name": "Lena Frost",
+  "gid": "274358820",
+  "created": "2026-07-04T15:42:57",
+  "score": 0.99
+ },
+ {
+  "sim": 96,
+  "cat": 3,
+  "name": "Aisha Khan",
+  "gid": "261967819",
+  "created": "2026-05-07T08:45:32",
+  "score": 1.0
+ },
+ {
+  "sim": 103,
+  "cat": 3,
+  "name": "Ellie Shaw",
+  "gid": "265580117",
+  "created": "2026-05-27T19:51:41",
+  "score": 1.0
+ },
+ {
+  "sim": 107,
+  "cat": 3,
+  "name": "Leo Marsh",
+  "gid": "260263883",
+  "created": "2026-04-27T20:37:27",
+  "score": 0.99
+ },
+ {
+  "sim": 109,
+  "cat": 3,
+  "name": "Cara Nolan",
+  "gid": "260004280",
+  "created": "2026-04-26T10:29:42",
+  "score": 1.0
+ },
+ {
+  "sim": 110,
+  "cat": 3,
+  "name": "Sam Pryce",
+  "gid": "260527518",
+  "created": "2026-04-29T08:29:28",
+  "score": 0.99
+ },
+ {
+  "sim": 111,
+  "cat": 3,
+  "name": "Ryan Dockery",
+  "gid": "260125771",
+  "created": "2026-04-27T08:31:51",
+  "score": 0.98
+ },
+ {
+  "sim": 112,
+  "cat": 3,
+  "name": "Toni Fields",
+  "gid": "262659805",
+  "created": "2026-05-11T12:08:43",
+  "score": 0.71
+ },
+ {
+  "sim": 131,
+  "cat": 4,
+  "name": "Beth Harding",
+  "gid": "272678647",
+  "created": "2026-07-07T08:58:44",
+  "score": 0.99
+ },
+ {
+  "sim": 135,
+  "cat": 4,
+  "name": "Mira Shah",
+  "gid": "274348720",
+  "created": "2026-07-16T08:39:04",
+  "score": 0.94
+ },
+ {
+  "sim": 138,
+  "cat": 5,
+  "name": "Sasha Iqbal",
+  "gid": "271653933",
+  "created": "2026-07-01T13:49:29",
+  "score": 1.0
+ },
+ {
+  "sim": 139,
+  "cat": 5,
+  "name": "Dominic Yeo",
+  "gid": "272035475",
+  "created": "2026-07-03T10:02:30",
+  "score": 1.0
+ },
+ {
+  "sim": 141,
+  "cat": 5,
+  "name": "Amara Obi",
+  "gid": "273672143",
+  "created": "2026-07-12T19:44:10",
+  "score": 0.97
+ },
+ {
+  "sim": 144,
+  "cat": 5,
+  "name": "Kian Patel",
+  "gid": "274492866",
+  "created": "2026-07-16T23:27:55",
+  "score": 0.99
+ },
+ {
+  "sim": 146,
+  "cat": 5,
+  "name": "Ivo Kral",
+  "gid": "263841153",
+  "created": "2026-05-18T09:11:50",
+  "score": 0.99
+ },
+ {
+  "sim": 151,
+  "cat": 5,
+  "name": "Leah Concannon",
+  "gid": "273782607",
+  "created": "2026-07-13T11:36:45",
+  "score": 1.0
+ },
+ {
+  "sim": 152,
+  "cat": 5,
+  "name": "Otis Brand",
+  "gid": "274147785",
+  "created": "2026-07-15T08:08:30",
+  "score": 1.0
+ },
+ {
+  "sim": 155,
+  "cat": 5,
+  "name": "Freya Rowe",
+  "gid": "264039978",
+  "created": "2026-05-19T08:37:03",
+  "score": 0.99
+ },
+ {
+  "sim": 160,
+  "cat": 5,
+  "name": "Tess Harlow",
+  "gid": "268378704",
+  "created": "2026-06-12T10:22:28",
+  "score": 1.0
+ },
+ {
+  "sim": 161,
+  "cat": 5,
+  "name": "Noel Keane",
+  "gid": "273684465",
+  "created": "2026-07-12T22:00:11",
+  "score": 1.0
+ },
+ {
+  "sim": 164,
+  "cat": 5,
+  "name": "Effie Munro",
+  "gid": "263405882",
+  "created": "2026-05-15T07:51:07",
+  "score": 0.99
+ }
+]

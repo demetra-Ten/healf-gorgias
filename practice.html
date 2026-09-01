@@ -166,7 +166,15 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .channel-label { font-weight: 600; color: #374151; }
 .note-hint-inline { font-size: 11px; color: #b98900; }
 .actions-note-wrap { border-top: 1px dashed #e5e7eb; background: #fbfaff; padding: 0 16px 4px; }
-.actions-note-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; }
+.actions-note-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; display: block; line-height: 1.45; }
+.an-title { font-weight: 700; text-decoration: underline; color: #374151; }
+.an-hint { font-weight: 400; color: #9ca3af; }
+/* Actions is a rich box (not a textarea) so the sub-headings can be bold and the
+   step list auto-numbers natively as the trainee presses Enter inside the <ol>. */
+.actions-doc { width: 100%; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; min-height: 34px; height: 158px; overflow-y: auto; color: #374151; background: transparent; line-height: 1.65; outline: none; }
+.actions-doc b { font-weight: 700; color: #374151; }
+.actions-doc ol { margin: 2px 0 0; padding-left: 22px; }
+.actions-doc li { margin: 0 0 3px; }
 .actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 32px; height: 124px; color: #374151; background: transparent; line-height: 1.5; }
 .actions-textarea::placeholder { color: #b6bac2; }
 .drag-handle { height: 9px; cursor: ns-resize; display: flex; align-items: center; justify-content: center; background: inherit; touch-action: none; }
@@ -406,6 +414,10 @@ html[data-theme="dark"] .reply-to-row { border-bottom-color: #2c2c31; }
 html[data-theme="dark"] .reply-textarea { background: transparent; color: #e6e6e9; }
 html[data-theme="dark"] .actions-note-wrap { background: #1e1e22; border-top-color: #2c2c31; }
 html[data-theme="dark"] .actions-textarea { color: #e6e6e9; }
+html[data-theme="dark"] .actions-doc,
+html[data-theme="dark"] .actions-doc b,
+html[data-theme="dark"] .an-title { color: #e6e6e9; }
+html[data-theme="dark"] .an-hint { color: #8b8b93; }
 html[data-theme="dark"] .drag-handle::before { background: #3a3a42; }
 html[data-theme="dark"] .drag-handle:hover::before { background: #52525b; }
 html[data-theme="dark"] .reply-toolbar { border-top-color: #2c2c31; }
@@ -1149,7 +1161,38 @@ function fmtToolbar() {
 }
 // Scaffold the trainee fills in for their Actions note. Keeping the shape consistent
 // makes the actions easier to write, easier to review, and easier to mark accurately.
+// Plain-text reference used only for the "did they actually fill it in?" check.
 const ACTIONS_TEMPLATE = 'Order status: \nTicket summary: \n\nActions:\n1. \n2. ';
+// The box is contenteditable so the sub-headings can be bold. The steps live in a real
+// <ol>, which means the browser auto-numbers a new step each time Enter is pressed.
+const ACTIONS_TEMPLATE_HTML =
+  '<div><b>Order status:</b>&nbsp;</div>' +
+  '<div><br></div>' +
+  '<div><b>Ticket summary:</b>&nbsp;</div>' +
+  '<div><br></div>' +
+  '<div><b>Actions:</b></div>' +
+  '<ol><li><br></li><li><br></li></ol>';
+
+// Flatten the rich Actions box back to plain text for storage + scoring.
+function actionsToText(el) {
+  if (!el) return '';
+  const out = [];
+  const clean = s => String(s || '').replace(/ /g, ' ').replace(/[ \t]+/g, ' ').trim();
+  el.childNodes.forEach(node => {
+    if (node.nodeType === 3) { const t = clean(node.textContent); if (t) out.push(t); return; }
+    if (node.nodeType !== 1) return;
+    if (node.tagName === 'OL') {
+      let i = 1;
+      node.querySelectorAll(':scope > li').forEach(li => out.push((i++) + '. ' + clean(li.textContent)));
+    } else if (node.tagName === 'UL') {
+      node.querySelectorAll(':scope > li').forEach(li => out.push('- ' + clean(li.textContent)));
+    } else {
+      out.push(clean(node.textContent));
+    }
+  });
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 // True when the box still holds the untouched scaffold (nothing actually filled in).
 function isBlankActionsTemplate(v) {
   return String(v || '').replace(/[\s\d.]/g, '') === ACTIONS_TEMPLATE.replace(/[\s\d.]/g, '');
@@ -1224,8 +1267,8 @@ function renderReplySection(ticket, sub) {
         ${isNote ? '' : `
         <div class="actions-note-wrap">
           <div class="drag-handle" data-target="actions-input" title="Drag to resize"></div>
-          <div class="actions-note-label">Actions — fill in each line: what the order status is, what the ticket is about, then the steps you'd take on Shopify / Swap / Recharge etc.</div>
-          <textarea class="actions-textarea" id="actions-input" placeholder="Order status: …&#10;Ticket summary: …&#10;&#10;Actions:&#10;1. …&#10;2. …">${ACTIONS_TEMPLATE}</textarea>
+          <div class="actions-note-label"><span class="an-title">Actions</span> <span class="an-hint">(fill in each line: what the order status is, what the ticket is about, then the steps you'd take on Shopify / Swap / Recharge etc.)</span></div>
+          <div class="actions-doc" id="actions-input" contenteditable="true" spellcheck="true">${ACTIONS_TEMPLATE_HTML}</div>
         </div>`}
         ${fmtToolbar()}
         <div class="reply-toolbar">
@@ -1300,6 +1343,45 @@ document.addEventListener('click', e => {
   if (p && p.classList.contains('open') && !e.target.closest('.macro-bar')) p.classList.remove('open');
   const cm = document.getElementById('channel-menu');
   if (cm && cm.classList.contains('open') && !e.target.closest('.reply-channel')) cm.classList.remove('open');
+});
+
+// Enter inside the Actions step list starts a new numbered step. Handled explicitly
+// rather than relying on the browser's default contenteditable behaviour, which does
+// not reliably split an <li>.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+  const box = document.getElementById('actions-input');
+  if (!box) return;
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  if (!box.contains(range.startContainer)) return;
+  // Only take over when the caret is inside one of the numbered steps.
+  let li = range.startContainer;
+  li = (li.nodeType === 1) ? li : li.parentNode;
+  while (li && li !== box && li.tagName !== 'LI') li = li.parentNode;
+  if (!li || li.tagName !== 'LI') return;
+
+  e.preventDefault();
+  range.deleteContents();
+  // Everything after the caret moves down into the new step.
+  const tail = document.createRange();
+  tail.selectNodeContents(li);
+  tail.setStart(range.endContainer, range.endOffset);
+  const frag = tail.extractContents();
+
+  const nli = document.createElement('li');
+  if ((frag.textContent || '').trim()) nli.appendChild(frag);
+  else nli.appendChild(document.createElement('br'));
+  if (!li.textContent.trim()) { li.innerHTML = ''; li.appendChild(document.createElement('br')); }
+  li.parentNode.insertBefore(nli, li.nextSibling);
+
+  const caret = document.createRange();
+  caret.setStart(nli, 0);
+  caret.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(caret);
+  nli.scrollIntoView({ block: 'nearest' });
 });
 
 // Independently drag-resize the reply and actions boxes (drag handle up = taller, down = flatter)
@@ -1553,7 +1635,7 @@ async function submitReply(ticketId, andClose) {
     return;
   }
   const actionsInput = document.getElementById('actions-input');
-  const actionsRaw = actionsInput ? actionsInput.value.trim() : '';
+  const actionsRaw = actionsToText(actionsInput);
   // An untouched scaffold is not an answer — send it as empty so it is not marked as real actions.
   const actions = isBlankActionsTemplate(actionsRaw) ? '' : actionsRaw;
 

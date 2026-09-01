@@ -167,7 +167,7 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .note-hint-inline { font-size: 11px; color: #b98900; }
 .actions-note-wrap { border-top: 1px dashed #e5e7eb; background: #fbfaff; padding: 0 16px 4px; }
 .actions-note-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; }
-.actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 32px; height: 64px; color: #374151; background: transparent; line-height: 1.5; }
+.actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 32px; height: 124px; color: #374151; background: transparent; line-height: 1.5; }
 .actions-textarea::placeholder { color: #b6bac2; }
 .drag-handle { height: 9px; cursor: ns-resize; display: flex; align-items: center; justify-content: center; background: inherit; touch-action: none; }
 .drag-handle::before { content: ''; width: 26px; height: 3px; border-radius: 2px; background: #e5e7eb; transition: background 0.12s; }
@@ -1147,6 +1147,14 @@ function fmtToolbar() {
       <button type="button" class="fmt-btn" title="Attach file"><svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
     </div>`;
 }
+// Scaffold the trainee fills in for their Actions note. Keeping the shape consistent
+// makes the actions easier to write, easier to review, and easier to mark accurately.
+const ACTIONS_TEMPLATE = 'Order status: \nTicket summary: \n\nActions:\n1. \n2. ';
+// True when the box still holds the untouched scaffold (nothing actually filled in).
+function isBlankActionsTemplate(v) {
+  return String(v || '').replace(/[\s\d.]/g, '') === ACTIONS_TEMPLATE.replace(/[\s\d.]/g, '');
+}
+
 function renderReplySection(ticket, sub) {
   const section = document.getElementById('reply-section');
   if (sub) {
@@ -1216,8 +1224,8 @@ function renderReplySection(ticket, sub) {
         ${isNote ? '' : `
         <div class="actions-note-wrap">
           <div class="drag-handle" data-target="actions-input" title="Drag to resize"></div>
-          <div class="actions-note-label">Actions — the steps you'd take on Shopify / Swap / Recharge etc.</div>
-          <textarea class="actions-textarea" id="actions-input" placeholder="e.g. Check the order in Shopify — unfulfilled, so cancel the OOS item (Edit → untick Restock). MO the alternative with reason 'productswap'. Log refund reason from CW Essentials…"></textarea>
+          <div class="actions-note-label">Actions — fill in each line: what the order status is, what the ticket is about, then the steps you'd take on Shopify / Swap / Recharge etc.</div>
+          <textarea class="actions-textarea" id="actions-input" placeholder="Order status: …&#10;Ticket summary: …&#10;&#10;Actions:&#10;1. …&#10;2. …">${ACTIONS_TEMPLATE}</textarea>
         </div>`}
         ${fmtToolbar()}
         <div class="reply-toolbar">
@@ -1545,7 +1553,9 @@ async function submitReply(ticketId, andClose) {
     return;
   }
   const actionsInput = document.getElementById('actions-input');
-  const actions = actionsInput ? actionsInput.value.trim() : '';
+  const actionsRaw = actionsInput ? actionsInput.value.trim() : '';
+  // An untouched scaffold is not an answer — send it as empty so it is not marked as real actions.
+  const actions = isBlankActionsTemplate(actionsRaw) ? '' : actionsRaw;
 
   const btn = document.getElementById('submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }

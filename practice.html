@@ -128,6 +128,7 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
 .msg-ava.lola { background: #ede9fe; color: #7c3aed; }
 .msg-content { display: flex; flex-direction: column; align-items: flex-start; max-width: 74%; min-width: 0; }
 .msg-wrap.out .msg-content { align-items: flex-end; }
+.msg-when { margin-left: auto; color: #9ca3af; white-space: nowrap; }
 .msg-meta { font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
 .msg-sender { font-weight: 600; color: #374151; }
 .auto-chip { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; background: #ede9fe; color: #7c3aed; padding: 1px 6px; border-radius: 4px; }
@@ -224,14 +225,17 @@ html[data-theme="dark"] .quoted-email { background: #1d1d21; border-left-color: 
 .recharge-status { font-weight: 700; color: #111827; letter-spacing: 0.3px; }
 .recharge-sub { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6; }
 .cs-sublabel { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+.recharge-prod { margin-top: 9px; padding: 8px 10px; background: #fbfaff; border: 1px solid #eceaf5; border-radius: 8px; }
+.recharge-prod-brand { font-size: 9.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: #9ca3af; margin-bottom: 2px; }
+.recharge-prod-name { font-size: 12px; font-weight: 600; color: #4c1d95; line-height: 1.35; }
+.recharge-prod-meta { font-size: 11px; color: #6b7280; margin-top: 2px; }
 .recharge-badge { display: inline-block; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: 6px; padding: 2px 9px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; }
-.recharge-cancel { display: block; margin-top: 10px; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #374151; cursor: pointer; }
-.recharge-cancel:hover { background: #f9fafb; }
 .order-box + .order-box { margin-top: 8px; }
 html[data-theme="dark"] .recharge-status { color: #f3f4f6; }
 html[data-theme="dark"] .recharge-sub { border-top-color: #2c2c31; }
+html[data-theme="dark"] .recharge-prod { background: #1d1d21; border-color: #2c2c31; }
+html[data-theme="dark"] .recharge-prod-name { color: #c4b5fd; }
 html[data-theme="dark"] .recharge-badge { background: #14311f; color: #4ade80; border-color: #1c4a2e; }
-html[data-theme="dark"] .recharge-cancel { background: #1d1d21; border-color: #2c2c31; color: #d1d5db; }
 .reply-actions { display: flex; gap: 8px; }
 .macro-bar { position: relative; padding: 0; }
 .macro-trigger { display: flex; align-items: center; gap: 11px; width: 100%; background: transparent; border: none; border-top: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; border-radius: 0; padding: 9px 16px; font-size: 13px; color: #9ca3af; cursor: text; font-family: inherit; }
@@ -837,7 +841,7 @@ async function init() {
     const allCats = !trainee.current_category_id;   // no category assigned = All categories
     let query = db
       .from('tickets')
-      .select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier,order_items,ideal_response')
+      .select('*')
       .not('category_id', 'is', null);   // parked tickets (category_id = null) are retired and never shown
     if (!allCats) query = query.eq('category_id', trainee.current_category_id);
     const { data: tix } = await query;
@@ -870,7 +874,7 @@ async function initPreview(id) {
   const [catsR, macrosR, tixR] = await Promise.all([
     db.from('categories').select('*').order('order_index'),
     db.from('macros').select('*').order('sort_index'),
-    db.from('tickets').select('id,category_id,customer_name,customer_email,order_number,subject,message,order_value,order_status,loyalty_tier,order_items,ideal_response').eq('id', id)
+    db.from('tickets').select('*').eq('id', id)
   ]);
   categories = catsR.data || []; macros = macrosR.data || []; tickets = tixR.data || []; submissions = [];
   document.getElementById('loading').style.display = 'none';
@@ -1062,6 +1066,40 @@ function threadText(ticket) {
   }).join('\n\n');
 }
 
+// ── Message timestamps (Gorgias shows a sent date on every message) ──
+// Prefers the real sent time stored on the ticket (message_at). Falls back to deriving
+// one from the ticket's most recent order date, so a date always shows.
+function parseOrderDate(s) {
+  const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return isNaN(d) ? null : d;
+}
+function ticketMessageDate(ticket) {
+  if (ticket && ticket.message_at) {
+    const d = new Date(ticket.message_at);
+    if (!isNaN(d)) return d;
+  }
+  // Derived: the day after the most recent order, at a stable per-ticket time.
+  const dates = parseOrders(ticket).map(o => parseOrderDate(o.date)).filter(Boolean);
+  if (!dates.length) return null;
+  const latest = new Date(Math.max.apply(null, dates.map(d => d.getTime())));
+  latest.setDate(latest.getDate() + 1);
+  const id = Number(ticket.id) || 0;
+  latest.setHours(9 + (id * 7) % 9, (id * 23) % 60, 0, 0);
+  return latest;
+}
+function fmtMsgWhen(d) {
+  if (!d) return '';
+  const now = new Date();
+  const y = new Date(now); y.setDate(y.getDate() - 1);
+  const same = (a, b) => a.toDateString() === b.toDateString();
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  if (same(d, now)) return 'Today at ' + time;
+  if (same(d, y)) return 'Yesterday at ' + time;
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ' at ' + time;
+}
+
 function renderMessages(ticket, sub) {
   const area = document.getElementById('messages-area');
   const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
@@ -1087,7 +1125,7 @@ function renderMessages(ticket, sub) {
         <div class="msg-wrap in">
           <div class="msg-ava customer">${initials(ticket.customer_name)}</div>
           <div class="msg-content">
-            <div class="msg-meta"><span class="msg-sender">${ticket.customer_name}</span><span>${ticket.customer_email}</span></div>
+            <div class="msg-meta"><span class="msg-sender">${ticket.customer_name}</span><span>${ticket.customer_email}</span><span class="msg-when">${fmtMsgWhen(ticketMessageDate(ticket))}</span></div>
             <div class="msg-card">${esc(main)}</div>
             ${quotedHtml}
           </div>
@@ -1446,9 +1484,32 @@ function orderBoxHtml(o, open, extra) {
 }
 // Recharge (subscriptions) integration panel — mirrors what Gorgias shows: the customer's
 // subscription is ACTIVE (amendments are made in Recharge, not here).
+// The subscribed item is the product that recurs across the customer's orders —
+// ignoring free samples and the welcome handbook, which appear on every order.
+function subscribedProduct(ticket) {
+  const counts = {}, meta = {};
+  parseOrders(ticket).forEach(o => {
+    String(o.items || '').split('\n').forEach(ln => {
+      const m = ln.trim().match(/^\[(.+?)\]\((.*?)\)\s*\(x(\d+)\)\s*—\s*£([\d.]+)/);
+      if (!m) return;
+      const title = m[1];
+      if (/sample|welcome handbook/i.test(title)) return;
+      if (parseFloat(m[4]) === 0) return;
+      counts[title] = (counts[title] || 0) + 1;
+      // Orders are listed newest first, so keep the first price/vendor we see.
+      if (!meta[title]) meta[title] = { price: '£' + m[4], vendor: ((ln.match(/@@(.+?)\s*$/) || [])[1] || '').trim() };
+    });
+  });
+  const titles = Object.keys(counts);
+  if (!titles.length) return null;
+  titles.sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
+  return Object.assign({ title: titles[0], orders: counts[titles[0]] }, meta[titles[0]]);
+}
+
 function rechargePanelHtml(ticket) {
   const orders = parseOrders(ticket);
   const upd = (orders[0] && orders[0].date) ? orders[0].date : 'Recently';
+  const p = subscribedProduct(ticket);
   return `
     <div class="cs-section">
       <div class="cs-title recharge-head"><span class="recharge-mark">↻</span> Recharge <span class="recharge-cust">${ticket.customer_name}</span></div>
@@ -1458,7 +1519,12 @@ function rechargePanelHtml(ticket) {
       <div class="recharge-sub">
         <div class="cs-sublabel">Subscription</div>
         <span class="recharge-badge">ACTIVE</span>
-        <button class="recharge-cancel" onclick="return false" title="Amendments are made in Recharge">⊘ Cancel</button>
+        ${p ? `<div class="recharge-prod">
+                 ${p.vendor ? `<div class="recharge-prod-brand">${p.vendor}</div>` : ''}
+                 <div class="recharge-prod-name">${p.title}</div>
+                 <div class="recharge-prod-meta">${p.price}${p.orders > 1 ? ` · ${p.orders} orders` : ''}</div>
+               </div>`
+             : '<div class="recharge-prod"><div class="recharge-prod-meta">No recurring product on file.</div></div>'}
       </div>
     </div>`;
 }

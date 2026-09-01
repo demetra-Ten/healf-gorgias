@@ -12,3 +12,9 @@ alter table submissions add column if not exists trainer_reviewed_at timestamptz
 -- Quick view of everything awaiting calibration
 -- select id, ticket_id, score, trainer_score, trainer_verdict, trainer_note
 --   from submissions where trainer_verdict is not null order by trainer_reviewed_at desc;
+
+-- ── Customer message sent-date (added later) ──
+-- Gorgias shows a sent date on every message; the sim now does too. Where this is
+-- null the app derives a date from the ticket's most recent order, so it always
+-- shows something sensible. Populate it to reflect the real source ticket.
+alter table tickets add column if not exists message_at timestamptz;

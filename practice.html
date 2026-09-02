@@ -1733,30 +1733,9 @@ function subscribedProduct(ticket) {
 // able to "check Shopify" inside the sim, as at the day the customer wrote.
 // { ticketId: { product, status, eta, note } }  status: in_stock | oos | preorder | discontinued
 const STOCK_AS_AT = {
-  1: { product: 'Whey Protein Unflavored', status: 'preorder', eta: '5 August 2026', note: 'Chocolate whey isolate is in stock now.' },
-  2: { product: 'IBS PRO', status: 'preorder', eta: '12 August 2026' },
-  3: { product: 'K53 Advance', status: 'preorder', eta: '8 August 2026' },
-  4: { product: 'Ratfish Liver Oil', status: 'preorder', eta: '2 September 2026' },
-  5: { product: 'Pregnancy Stretch Mark Oil', status: 'preorder', eta: '11 May 2026', note: 'Back in stock 11/05; dispatches same day.' },
-  6: { product: 'Daily SPF Notox', status: 'preorder', eta: '20 May 2026' },
-  8: { product: 'NMN Pro 250 Sustained Release', status: 'preorder', eta: '15 August 2026' },
-  19: { product: 'Rewind Liquid Collagen - Blueberry', status: 'discontinued', note: 'Being discontinued and will not be restocked.' },
-  20: { product: 'Sun Balm', status: 'preorder', note: 'Pre-order. No confirmed restock date on file.' },
-  24: { product: 'True Ashwagandha Pouch', status: 'preorder', note: 'Rest of the order already shipped; this item follows when stock lands.' },
-  25: { product: 'Matcha Set - Matte White + Frosted', status: 'preorder', note: 'The everyday matcha the customer asked for IS in stock.' },
-  27: { product: 'TMG 1000mg', status: 'preorder', note: 'Rest of the order is Fulfilment in Progress.' },
-  28: { product: 'Hyaluronic Acid - 200 mg', status: 'preorder', note: 'Will not arrive before the customer\'s Wednesday deadline.' },
-  29: { product: 'Maui Nui Venison Bone Broth', status: 'preorder', note: 'Order still unfulfilled. No direct fish bone broth replacement in stock.' },
-  30: { product: 'Apollo Wearable + SmartVibes AI', status: 'preorder', note: 'Only the device is pre-order; the rest of the order ships separately.' },
-  31: { product: 'Lion\'s Mane Calm', status: 'preorder', note: 'NOT discontinued - it is on pre-order. The customer was given incorrect information.' },
-  32: { product: 'Astaxanthin - 12 mg', status: 'oos', note: 'Shows out of stock but sits as Fulfilment in Progress - a system error.' },
-  33: { product: 'Kids Iron Immunity', status: 'preorder', note: 'Restock is only a few days away. No fitting in-stock replacement.' },
-  34: { product: 'Kids Fussy Essentials Multivitamin', status: 'preorder', note: 'The other flavours are also pre-order / not in stock.' },
-  35: { product: 'Whey Protein Unflavored', status: 'preorder', note: 'Vanilla and Chocolate whey isolate are both in stock.' },
-  37: { product: 'Oura Ring Gen3 Heritage - Gold', status: 'preorder', note: 'Pre-order. Ring sizing kit ships separately.' },
-  38: { product: 'NAC - N-Acetylcysteine', status: 'preorder', note: 'The two pre-order items are in different fulfilment states.' },
-  146: { product: 'Perfect Amino Electrolytes - Unflavoured & Unsweetened', status: 'in_stock', note: 'Came back into stock 16/05/2026. Subscription next charge date 20/06/2026.' },
-  154: { product: 'Ceremonial Grade Yame Matcha - Pouch - 100g', status: 'discontinued', note: 'Discontinued, which is why the replacement order sits unshipped. Jenki Uji Matcha is in stock.' },
+  146: { product: 'Perfect Amino Electrolytes - Unflavoured & Unsweetened',
+         status: 'in_stock',
+         note: 'Came back into stock 16/05/2026. Subscription next charge date 20/06/2026.' }
 };
 const STOCK_LABEL = { in_stock:'IN STOCK', oos:'OUT OF STOCK', preorder:'PRE-ORDER', discontinued:'DISCONTINUED' };
 function stockPanelHtml(ticket) {

@@ -278,7 +278,16 @@ html[data-theme="dark"] .recharge-badge { background: #14311f; color: #4ade80; b
 .score-display { margin-left: auto; text-align: center; background: #fff; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 16px; }
 .score-val { font-size: 22px; font-weight: 800; color: #7c3aed; }
 .score-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
-.feedback-box { background: #f5f3ff; border: 1px solid #c4b5fd; border-radius: 8px; padding: 12px 16px; margin: 0 20px 14px; font-size: 13px; color: #374151; line-height: 1.55; }
+.feedback-wrap { margin: 0 20px 14px; }
+.fb-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: #ede9fe; border: 1px solid #c4b5fd; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; user-select: none; }
+.fb-bar-t { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #5b21b6; }
+.fb-bar-caret { margin-left: auto; color: #7c3aed; font-size: 11px; transition: transform .15s; }
+.feedback-wrap.collapsed .fb-bar { border-bottom: 1px solid #c4b5fd; border-radius: 8px; }
+.feedback-wrap.collapsed .fb-bar-caret { transform: rotate(-90deg); }
+.feedback-wrap.collapsed .feedback-box,
+.feedback-wrap.collapsed .fb-resize { display: none; }
+.feedback-box { background: #f5f3ff; border: 1px solid #c4b5fd; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 16px; font-size: 13px; color: #374151; line-height: 1.55; height: 300px; min-height: 60px; overflow-y: auto; }
+.fb-resize { background: transparent; }
 
 /* CUSTOMER SIDEBAR */
 .customer-sidebar { width: 256px; min-width: 240px; background: #fff; border-left: 1px solid #e5e7eb; overflow-y: auto; flex-shrink: 0; }
@@ -446,6 +455,8 @@ html[data-theme="dark"] .submitted-sub { color: #86b799; }
 html[data-theme="dark"] .score-display { background: #232327; border-color: #2c2c31; }
 html[data-theme="dark"] .score-val { color: #b3a6f7; }
 html[data-theme="dark"] .feedback-box { background: #24223a; border-color: #4c4470; color: #d4d4d8; }
+html[data-theme="dark"] .fb-bar { background: #2b2748; border-color: #4c4470; }
+html[data-theme="dark"] .fb-bar-t { color: #c4b5fd; }
 html[data-theme="dark"] .customer-sidebar { background: #1d1d21; border-left-color: #2c2c31; }
 html[data-theme="dark"] .cs-section { border-bottom-color: #2c2c31; }
 html[data-theme="dark"] .cs-name, html[data-theme="dark"] .cs-value { color: #e6e6e9; }
@@ -1346,6 +1357,13 @@ function isBlankActionsTemplate(v) {
   return String(v || '').replace(/[\s\d.]/g, '') === ACTIONS_TEMPLATE.replace(/[\s\d.]/g, '');
 }
 
+let feedbackCollapsed = false;   // remembered while the trainee moves between tickets
+function toggleFeedback() {
+  feedbackCollapsed = !feedbackCollapsed;
+  const w = document.getElementById('feedback-wrap');
+  if (w) w.classList.toggle('collapsed', feedbackCollapsed);
+}
+
 function renderReplySection(ticket, sub) {
   const section = document.getElementById('reply-section');
   if (sub) {
@@ -1369,12 +1387,22 @@ function renderReplySection(ticket, sub) {
       if (m) { rf = m[1].trim(); af = m[2].trim(); }
       else { rf = sub.feedback.trim(); }
     }
-    const fbHtml = scored
-      ? `<div class="feedback-box">
-           <div class="fb-section"><div class="fb-head">Response</div>${formatFeedback(rf)}</div>
-           <div class="fb-section"><div class="fb-head">Actions</div>${formatFeedback(af)}</div>
+    // Feedback can be long, so the box is collapsible and drag-resizable (the caret
+    // collapses it to just the bar; the handle at the bottom sets the height).
+    const fbBody = scored
+      ? `<div class="fb-section"><div class="fb-head">Response</div>${formatFeedback(rf)}</div>
+         <div class="fb-section"><div class="fb-head">Actions</div>${formatFeedback(af)}</div>`
+      : (sub.feedback ? `<strong>Trainer feedback:</strong>${formatFeedback(sub.feedback)}` : '');
+    const fbHtml = fbBody
+      ? `<div class="feedback-wrap${feedbackCollapsed ? ' collapsed' : ''}" id="feedback-wrap">
+           <div class="fb-bar" onclick="toggleFeedback()" title="Click to collapse or expand">
+             <span class="fb-bar-t">Feedback</span>
+             <span class="fb-bar-caret">▾</span>
+           </div>
+           <div class="feedback-box" id="feedback-box">${fbBody}</div>
+           <div class="drag-handle fb-resize" data-target="feedback-box" title="Drag to resize"></div>
          </div>`
-      : (sub.feedback ? `<div class="feedback-box"><strong>Trainer feedback:</strong>${formatFeedback(sub.feedback)}</div>` : '');
+      : '';
     section.innerHTML = `
       ${fbHtml}
       <div class="submitted-banner">
@@ -1599,14 +1627,17 @@ document.addEventListener('pointerdown', e => {
   if (!handle) return;
   const ta = document.getElementById(handle.dataset.target);
   if (!ta) return;
-  _resize = { ta, handle, startY: e.clientY, startH: ta.offsetHeight };
+  // Handles above their box grow it when dragged up; a handle below it (the feedback
+  // box) has to grow when dragged down instead.
+  const below = handle.classList.contains('fb-resize');
+  _resize = { ta, handle, startY: e.clientY, startH: ta.offsetHeight, dir: below ? -1 : 1 };
   handle.classList.add('dragging');
   document.body.style.userSelect = 'none';
   e.preventDefault();
 });
 document.addEventListener('pointermove', e => {
   if (!_resize) return;
-  const next = _resize.startH + (_resize.startY - e.clientY); // drag up → taller
+  const next = _resize.startH + (_resize.startY - e.clientY) * _resize.dir;
   _resize.ta.style.height = Math.max(34, Math.min(window.innerHeight * 0.6, next)) + 'px';
 });
 document.addEventListener('pointerup', () => {

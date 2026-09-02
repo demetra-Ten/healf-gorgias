@@ -110,3 +110,49 @@ done. Judge only on information visible on the ticket.
   cancelled the subscription under this account. Ticket now shows that single real order,
   with the real message date (11/05/2026 from source ticket 262633886).
   **Rule: never invent order history. Mark and build against what the real ticket shows.**
+
+
+---
+
+## H. PENDING — mark only on what the trainee could see (2026-09-02)
+
+Demetra, on ticket 146 (Ivo Kral): *"the real ticket did have a shopify ETA and Nimue could
+find it and answer this correctly. In this case though, it is now september … answering a
+query talking about stock in june is outdated and will affect trainees reply and training."*
+
+Her actions note read *"check shopify for product preorder day - there is nothing for this
+quantity"* — correct behaviour — and the marker faulted her for not confirming the item was
+back in stock, a fact that only existed on Shopify in May. Scored 1/3 unfairly.
+
+**Two-part fix. Part one is DONE** (the point-in-time `STOCK_AS_AT` panel in practice.html —
+the trainee can now check Shopify inside the sim, as at the ticket date).
+
+**Part two is PENDING — blocked because n8n's `update_workflow` came back from a reconnect
+rejecting its `operations` array.** Add this block to the Score Reply system prompt,
+immediately after the two-axes paragraph, then `publish_workflow`:
+
+> === MARK ONLY ON WHAT THE TRAINEE COULD SEE — THIS OVERRIDES EVERYTHING BELOW ===
+> These are REAL tickets, dated months in the past, practised long after the event. The
+> trainee CANNOT look up live Shopify, Recharge or Slack — today's stock levels, ETAs and
+> prices no longer match the day the customer wrote. Everything they can legitimately know
+> is what the simulator shows: the message thread (including any earlier Lola/agent email),
+> the order box, the "Shopify - product status (as at ...)" panel where one is shown, and
+> the Recharge panel.
+>
+> - NEVER fault a trainee for not knowing a stock level, ETA, back-in-stock date, dispatch
+>   date, price or availability that is NOT visible in the simulator. If the ideal handling
+>   relies on such a fact and the ticket does not show it, treat their handling as correct
+>   so long as the approach was sound, and mention it under "Suggested improvements" at most.
+> - NEVER tell them they "should have checked the product page / Shopify / Slack" for a live
+>   value. Checking is the right instinct and must be credited, not faulted, even when what
+>   they found does not match the ideal handling.
+> - If a trainee says they could not find an ETA or stock date, that is a legitimate finding,
+>   NOT an error. Credit the check and mark the rest of the handling.
+> - Do NOT fault any specific date the trainee gives, and do NOT treat a date in the ideal
+>   handling as the required answer.
+> - Where the thread or the product-status panel DOES state the position, expect them to use
+>   it, and it is fair to note if they missed it.
+
+**Still to populate:** 38 tickets depend on a point-in-time stock/ETA fact — cat1 25, cat3 6,
+cat5 5, cat2 1, cat6 1. Only 146 has its panel so far. Source the value from the ticket's own
+thread or ideal_response where it is stated; the rest need Demetra's input.

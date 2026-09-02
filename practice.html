@@ -283,11 +283,12 @@ html[data-theme="dark"] .recharge-badge { background: #14311f; color: #4ade80; b
 .fb-bar-t { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #5b21b6; }
 .fb-bar-caret { margin-left: auto; color: #7c3aed; font-size: 11px; transition: transform .15s; }
 .feedback-wrap.collapsed .fb-bar { border-bottom: 1px solid #c4b5fd; border-radius: 8px; }
+.fb-bar { border-bottom: none; }
 .feedback-wrap.collapsed .fb-bar-caret { transform: rotate(-90deg); }
 .feedback-wrap.collapsed .feedback-box,
 .feedback-wrap.collapsed .fb-resize { display: none; }
 .feedback-box { background: #f5f3ff; border: 1px solid #c4b5fd; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 16px; font-size: 13px; color: #374151; line-height: 1.55; height: 300px; min-height: 60px; overflow-y: auto; }
-.fb-resize { background: transparent; }
+.fb-resize { background: #f5f3ff; border-left: 1px solid #c4b5fd; border-right: 1px solid #c4b5fd; border-top: 1px solid #c4b5fd; }
 
 /* CUSTOMER SIDEBAR */
 .customer-sidebar { width: 256px; min-width: 240px; background: #fff; border-left: 1px solid #e5e7eb; overflow-y: auto; flex-shrink: 0; }
@@ -784,6 +785,13 @@ let contactReasons = JSON.parse(localStorage.getItem('healf_contact_reasons') ||
 let replyChannel = 'email';
 // Internal notes are private to the CW team — customers never see them. Keyed by ticket id.
 const internalNotes = JSON.parse(localStorage.getItem('healf_internal_notes') || '{}');
+// Replies sent with plain "Send" — the ticket stays open, nothing is marked yet, and the
+// trainee can keep adding messages or an internal note. "Send & Close" is what submits
+// everything for marking, exactly like Gorgias.
+const sentReplies = JSON.parse(localStorage.getItem('healf_sent_replies') || '{}');
+function saveSentReplies() {
+  try { localStorage.setItem('healf_sent_replies', JSON.stringify(sentReplies)); } catch (e) {}
+}
 function saveInternalNotes() { localStorage.setItem('healf_internal_notes', JSON.stringify(internalNotes)); }
 function contactReasonOptions(selected) {
   const groups = {};
@@ -1177,7 +1185,13 @@ function renderMessages(ticket, sub) {
         <div class="note-body">${esc(nt.body)}</div>
       </div>`;
   });
-  if (sub) html += bubble({ dir:'out', avaClass:'agent', ava:trainee.name.charAt(0).toUpperCase(), sender:`${trainee.name} (you)`, sub:new Date(sub.submitted_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}), body:sub.reply_text, cardClass:'agent-card' });
+  (sentReplies[ticket.id] || []).forEach(m => {
+    html += bubble({ dir:'out', avaClass:'agent', ava:trainee.name.charAt(0).toUpperCase(),
+      sender:`${trainee.name} (you)`,
+      sub:new Date(m.at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}),
+      body:m.body, cardClass:'agent-card' });
+  });
+  if (sub && !(sentReplies[ticket.id] || []).length) html += bubble({ dir:'out', avaClass:'agent', ava:trainee.name.charAt(0).toUpperCase(), sender:`${trainee.name} (you)`, sub:new Date(sub.submitted_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}), body:sub.reply_text, cardClass:'agent-card' });
   area.innerHTML = html;
   setTimeout(() => { area.scrollTop = area.scrollHeight; }, 50);
 }
@@ -1399,8 +1413,8 @@ function renderReplySection(ticket, sub) {
              <span class="fb-bar-t">Feedback</span>
              <span class="fb-bar-caret">▾</span>
            </div>
-           <div class="feedback-box" id="feedback-box">${fbBody}</div>
            <div class="drag-handle fb-resize" data-target="feedback-box" title="Drag to resize"></div>
+           <div class="feedback-box" id="feedback-box">${fbBody}</div>
          </div>`
       : '';
     section.innerHTML = `
@@ -1451,8 +1465,8 @@ function renderReplySection(ticket, sub) {
           <div class="reply-actions">
             ${isNote
               ? `<button class="submit-btn" id="submit-btn" onclick="addInternalNote(${ticket.id}, false)">Send</button>
-                 <button class="send-close-btn" onclick="addInternalNote(${ticket.id}, true)">Send &amp; Close</button>`
-              : `<button class="submit-btn" id="submit-btn" onclick="submitReply(${ticket.id}, false)">Send</button>
+                 <button class="send-close-btn" onclick="submitReply(${ticket.id}, true)">Send &amp; Close</button>`
+              : `<button class="submit-btn" id="submit-btn" onclick="sendReply(${ticket.id})">Send</button>
                  <button class="send-close-btn" onclick="submitReply(${ticket.id}, true)">Send &amp; Close</button>`}
           </div>
           ${isNote ? '' : `<span class="reply-hint">Your reply and actions will be scored automatically.</span>`}
@@ -1627,17 +1641,14 @@ document.addEventListener('pointerdown', e => {
   if (!handle) return;
   const ta = document.getElementById(handle.dataset.target);
   if (!ta) return;
-  // Handles above their box grow it when dragged up; a handle below it (the feedback
-  // box) has to grow when dragged down instead.
-  const below = handle.classList.contains('fb-resize');
-  _resize = { ta, handle, startY: e.clientY, startH: ta.offsetHeight, dir: below ? -1 : 1 };
+  _resize = { ta, handle, startY: e.clientY, startH: ta.offsetHeight };
   handle.classList.add('dragging');
   document.body.style.userSelect = 'none';
   e.preventDefault();
 });
 document.addEventListener('pointermove', e => {
   if (!_resize) return;
-  const next = _resize.startH + (_resize.startY - e.clientY) * _resize.dir;
+  const next = _resize.startH + (_resize.startY - e.clientY); // drag up → taller
   _resize.ta.style.height = Math.max(34, Math.min(window.innerHeight * 0.6, next)) + 'px';
 });
 document.addEventListener('pointerup', () => {
@@ -1898,16 +1909,42 @@ function renderCustomerSidebar(ticket) {
     </div>`;
 }
 
-async function submitReply(ticketId, andClose) {
+// Plain "Send": deliver the typed message and leave the ticket open. No marking — the
+// trainee can send again, or switch to an internal note, then Send & Close when done.
+function sendReply(ticketId) {
   const input = document.getElementById('reply-input');
   const reply = input ? input.value.trim() : '';
   if (!reply) { if (input) { input.style.border = '1px solid #ef4444'; input.placeholder = 'Please write a reply first.'; } return; }
-  // Contact reason is required before a ticket can be sent/closed (like Gorgias)
+  if (!sentReplies[ticketId]) sentReplies[ticketId] = [];
+  sentReplies[ticketId].push({ body: reply, at: new Date().toISOString() });
+  saveSentReplies();
+  usedMacro = null;
+  const ticket = tickets.find(t => t.id === ticketId);
+  renderMessages(ticket, getSub(ticketId));
+  renderReplySection(ticket, getSub(ticketId));
+  const hint = document.querySelector('.reply-hint');
+  if (hint) { hint.textContent = 'Sent. Add an internal note or another reply, then Send & Close to finish.'; hint.style.color = '#6b7280'; }
+}
+
+// "Send & Close": nothing more can be added, and this is what triggers marking.
+async function submitReply(ticketId, andClose) {
+  const input = document.getElementById('reply-input');
+  const typed = input ? input.value.trim() : '';
+  // Anything still in the composer counts as a final message.
+  if (typed) {
+    if (!sentReplies[ticketId]) sentReplies[ticketId] = [];
+    sentReplies[ticketId].push({ body: typed, at: new Date().toISOString() });
+    saveSentReplies();
+  }
+  const sentList = sentReplies[ticketId] || [];
+  if (!sentList.length) { if (input) { input.style.border = '1px solid #ef4444'; input.placeholder = 'Please write a reply first.'; } return; }
+  const reply = sentList.map(m => m.body).join('\n\n');
+  // Contact reason is required before a ticket can be closed (like Gorgias)
   if (!contactReasons[ticketId]) {
     const sel = document.querySelector('.cs-cr-select');
     if (sel) { sel.style.borderColor = '#ef4444'; sel.focus(); }
     const hint = document.querySelector('.reply-hint');
-    if (hint) { hint.textContent = '⚠ Assign a contact reason before sending.'; hint.style.color = '#ef4444'; }
+    if (hint) { hint.textContent = '⚠ Assign a contact reason before closing.'; hint.style.color = '#ef4444'; }
     return;
   }
   const actionsInput = document.getElementById('actions-input');
@@ -2006,7 +2043,6 @@ function addInternalNote(ticketId, andClose) {
   saveInternalNotes();
   usedMacro = null;
   const ticket = tickets.find(t => t.id === ticketId);
-  if (andClose) { showTableView(); return; }
   replyChannel = 'note';
   renderMessages(ticket, getSub(ticketId));
   renderReplySection(ticket, getSub(ticketId));

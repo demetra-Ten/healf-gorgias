@@ -1224,9 +1224,96 @@ const ACTIONS_TEMPLATE = 'Order status: \nTicket summary: \n\nActions:';
 // Each row is a locked bold label plus a separate editable value span. The label is
 // contenteditable="false" so it cannot be edited or deleted, and because what the trainee
 // types goes into .an-val (not inside the <b>), it is never picked up as bold.
+const ACTIONS_LABELS = ['Order status:', 'Ticket summary:', 'Actions:'];
 const ACTIONS_ROW = (label) =>
   '<div class="an-row"><b class="an-lbl" contenteditable="false">' + label +
   '</b><span class="an-val">&nbsp;</span></div>';
+
+// contenteditable="false" stops a label being TYPED over, but not deleted — a backspace
+// from the start of a value, or a selection dragged across it, still removes it. These two
+// keep the scaffold intact: a guard that refuses such edits, and a repair that puts back
+// anything that slipped through.
+function actionsLabelGuard(e) {
+  const box = document.getElementById('actions-input');
+  if (!box) return;
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const r = sel.getRangeAt(0);
+  if (!box.contains(r.startContainer)) return;
+  const labels = [...box.querySelectorAll('.an-lbl')];
+  // A selection that covers any part of a label must not be edited or deleted.
+  if (!r.collapsed && labels.some(l => { try { return r.intersectsNode(l); } catch (_) { return false; } })) {
+    e.preventDefault(); return;
+  }
+  if (!r.collapsed) return;
+  const host = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
+  const val = host && host.closest ? host.closest('.an-val') : null;
+  if (!val) return;
+  const before = document.createRange();
+  before.selectNodeContents(val);
+  before.setEnd(r.startContainer, r.startOffset);
+  const after = document.createRange();
+  after.selectNodeContents(val);
+  after.setStart(r.startContainer, r.startOffset);
+  const isEmpty = s => !String(s || '').replace(/ /g, ' ').trim();
+  // Backspace at the start of a value would eat the label to its left.
+  if (e.inputType === 'deleteContentBackward' && isEmpty(before.toString())) { e.preventDefault(); return; }
+  // Delete at the end of a value would pull in the next row (and its label).
+  if (e.inputType === 'deleteContentForward' && isEmpty(after.toString())) { e.preventDefault(); }
+}
+
+function repairActionsScaffold() {
+  const box = document.getElementById('actions-input');
+  if (!box) return;
+  const rows = [...box.querySelectorAll('.an-row')];
+  // Restore a label whose text was altered, in place, so the caret is not disturbed.
+  rows.forEach((row, i) => {
+    const l = row.querySelector('.an-lbl');
+    const want = ACTIONS_LABELS[i];
+    if (l && want && l.textContent.trim() !== want) l.textContent = want;
+    if (!l && want) {
+      const b = document.createElement('b');
+      b.className = 'an-lbl'; b.setAttribute('contenteditable', 'false'); b.textContent = want;
+      row.insertBefore(b, row.firstChild);
+    }
+    if (!row.querySelector('.an-val')) {
+      const v = document.createElement('span');
+      v.className = 'an-val'; v.innerHTML = '&nbsp;';
+      row.appendChild(v);
+    }
+  });
+  // A whole row deleted: rebuild the scaffold, keeping whatever was already typed.
+  if (rows.length < ACTIONS_LABELS.length) {
+    const kept = {};
+    rows.forEach(r => {
+      const l = r.querySelector('.an-lbl'), v = r.querySelector('.an-val');
+      if (l && v) kept[l.textContent.trim()] = v.innerHTML;
+    });
+    const ol = box.querySelector('ol');
+    const frag = document.createDocumentFragment();
+    ACTIONS_LABELS.forEach((lab, i) => {
+      const d = document.createElement('div');
+      d.innerHTML = ACTIONS_ROW(lab);
+      const row = d.firstChild;
+      if (kept[lab] !== undefined) row.querySelector('.an-val').innerHTML = kept[lab];
+      frag.appendChild(row);
+      if (i < ACTIONS_LABELS.length - 1) {
+        const spacer = document.createElement('div');
+        spacer.appendChild(document.createElement('br'));
+        frag.appendChild(spacer);
+      }
+    });
+    box.innerHTML = '';
+    box.appendChild(frag);
+    if (ol) box.appendChild(ol);
+  }
+}
+
+document.addEventListener('beforeinput', actionsLabelGuard);
+document.addEventListener('input', e => {
+  const box = document.getElementById('actions-input');
+  if (box && e.target === box) repairActionsScaffold();
+});
 const ACTIONS_TEMPLATE_HTML =
   ACTIONS_ROW('Order status:') +
   '<div><br></div>' +

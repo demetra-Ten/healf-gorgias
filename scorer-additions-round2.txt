@@ -107,3 +107,10 @@ do not exist.
 SWAP RETURNS: the refund / gift card / exchange choice a customer made in the Swap portal CANNOT
 be edited by the agent - it has to be handled manually. Never instruct a trainee to change that
 option in Swap.
+
+ATTACHMENTS. The ticket payload now carries an "attachments" field listing what the customer
+actually attached. If it is populated, the evidence is ALREADY ON THE TICKET: do NOT fault the
+trainee for failing to request photos, and do NOT suggest asking for them - treat requesting
+evidence that is already there as a fault, not a suggestion, because it delays the customer.
+Where the SOP says "get photo/video proof", that step is SATISFIED. If the field is empty and
+the SOP calls for evidence, then asking for it is correct.

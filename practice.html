@@ -229,12 +229,16 @@ html[data-theme="dark"] .quoted-email { background: #1d1d21; border-left-color: 
 .recharge-prod-brand { font-size: 9.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: #9ca3af; margin-bottom: 2px; }
 .recharge-prod-name { font-size: 12px; font-weight: 600; color: #4c1d95; line-height: 1.35; }
 .recharge-prod-meta { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.recharge-status.off { color: #9ca3af; }
+.recharge-badge.cancelled { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
 .recharge-badge { display: inline-block; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: 6px; padding: 2px 9px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; }
 .order-box + .order-box { margin-top: 8px; }
 html[data-theme="dark"] .recharge-status { color: #f3f4f6; }
 html[data-theme="dark"] .recharge-sub { border-top-color: #2c2c31; }
 html[data-theme="dark"] html[data-theme="dark"] html[data-theme="dark"] html[data-theme="dark"] .recharge-prod { background: #1d1d21; border-color: #2c2c31; }
 html[data-theme="dark"] .recharge-prod-name { color: #c4b5fd; }
+html[data-theme="dark"] .recharge-badge.cancelled { background: #3a1518; color: #fca5a5; border-color: #5b1d22; }
+html[data-theme="dark"] .recharge-status.off { color: #8b8b93; }
 html[data-theme="dark"] .recharge-badge { background: #14311f; color: #4ade80; border-color: #1c4a2e; }
 .reply-actions { display: flex; gap: 8px; }
 .macro-bar { position: relative; padding: 0; }
@@ -1543,8 +1547,14 @@ function subscribedProduct(ticket) {
   return Object.assign({ title: titles[0], orders: counts[titles[0]] }, meta[titles[0]]);
 }
 
+// Recharge subscription state per ticket. Default is an ACTIVE subscription; list a
+// ticket here when the subscription was already cancelled BEFORE the customer wrote,
+// so the panel matches what the agent would actually see in Gorgias.
+const RECHARGE_CANCELLED = { 163: true };
+
 function rechargePanelHtml(ticket) {
   const orders = parseOrders(ticket);
+  const cancelled = RECHARGE_CANCELLED[Number(ticket.id)] === true;
   const p = subscribedProduct(ticket);
   // No orders under this email = no Shopify/Recharge match, so Gorgias would show no
   // integration at all. Render nothing rather than implying a subscription exists.
@@ -1553,12 +1563,12 @@ function rechargePanelHtml(ticket) {
   return `
     <div class="cs-section">
       <div class="cs-title recharge-head"><span class="recharge-mark">↻</span> Recharge <span class="recharge-cust">${ticket.customer_name}</span></div>
-      <div class="cs-row"><span class="cs-label">Status</span><span class="cs-value recharge-status">ACTIVE</span></div>
+      <div class="cs-row"><span class="cs-label">Status</span><span class="cs-value recharge-status${cancelled ? ' off' : ''}">${cancelled ? 'INACTIVE' : 'ACTIVE'}</span></div>
       <div class="cs-row"><span class="cs-label">Updated at</span><span class="cs-value">${upd}</span></div>
       <div class="cs-row"><span class="cs-label">Processor type</span><span class="cs-value">shopify_payments</span></div>
       <div class="recharge-sub">
         <div class="cs-sublabel">Subscription</div>
-        <span class="recharge-badge">ACTIVE</span>
+        <span class="recharge-badge${cancelled ? ' cancelled' : ''}">${cancelled ? 'CANCELLED' : 'ACTIVE'}</span>
         ${p ? `<div class="recharge-prod">
                  ${p.vendor ? `<div class="recharge-prod-brand">${p.vendor}</div>` : ''}
                  <div class="recharge-prod-name">${p.title}</div>

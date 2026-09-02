@@ -228,6 +228,16 @@ html[data-theme="dark"] .quoted-email { background: #1d1d21; border-left-color: 
 .recharge-status { font-weight: 700; color: #111827; letter-spacing: 0.3px; }
 .recharge-sub { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6; }
 .cs-sublabel { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+.stk-asat { font-weight: 400; text-transform: none; letter-spacing: 0; color: #9ca3af; }
+.stk-box { margin-top: 8px; }
+.stk-prod { font-size: 12px; font-weight: 600; color: #4c1d95; line-height: 1.35; margin-bottom: 6px; }
+.stk-badge { display: inline-block; border-radius: 6px; padding: 2px 9px; font-size: 10.5px; font-weight: 700; letter-spacing: .3px; }
+.stk-in_stock { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.stk-oos { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.stk-preorder { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+.stk-discontinued { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; }
+.stk-row { display: flex; justify-content: space-between; font-size: 12px; color: #6b7280; margin-top: 8px; }
+.stk-note { font-size: 11px; color: #6b7280; line-height: 1.45; margin-top: 7px; }
 .recharge-prod { margin-top: 9px; padding: 8px 10px; background: #fbfaff; border: 1px solid #eceaf5; border-radius: 8px; }
 .recharge-prod-brand { font-size: 9.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: #9ca3af; margin-bottom: 2px; }
 .recharge-prod-name { font-size: 12px; font-weight: 600; color: #4c1d95; line-height: 1.35; }
@@ -1718,6 +1728,33 @@ function subscribedProduct(ticket) {
   return Object.assign({ title: titles[0], orders: counts[titles[0]] }, meta[titles[0]]);
 }
 
+// Stock / ETA as it stood ON THE TICKET DATE. Tickets are real and dated in the past, so
+// looking up live Shopify today gives a state that never matches — the trainee has to be
+// able to "check Shopify" inside the sim, as at the day the customer wrote.
+// { ticketId: { product, status, eta, note } }  status: in_stock | oos | preorder | discontinued
+const STOCK_AS_AT = {
+  146: { product: 'Perfect Amino Electrolytes - Unflavoured & Unsweetened',
+         status: 'in_stock',
+         note: 'Came back into stock 16/05/2026. Subscription next charge date 20/06/2026.' }
+};
+const STOCK_LABEL = { in_stock:'IN STOCK', oos:'OUT OF STOCK', preorder:'PRE-ORDER', discontinued:'DISCONTINUED' };
+function stockPanelHtml(ticket) {
+  const st = STOCK_AS_AT[Number(ticket.id)];
+  if (!st) return '';
+  const when = fmtMsgWhen(sentAt(ticket));
+  const cls = 'stk-' + st.status;
+  return `
+    <div class="cs-section">
+      <div class="cs-title">Shopify — product status${when ? ` <span class="stk-asat">as at ${when.replace(/ at .*/,'')}</span>` : ''}</div>
+      <div class="stk-box">
+        <div class="stk-prod">${st.product}</div>
+        <span class="stk-badge ${cls}">${STOCK_LABEL[st.status] || st.status}</span>
+        ${st.eta ? `<div class="stk-row"><span>Expected back</span><strong>${st.eta}</strong></div>` : ''}
+        ${st.note ? `<div class="stk-note">${st.note}</div>` : ''}
+      </div>
+    </div>`;
+}
+
 // Recharge subscription state per ticket. Default is an ACTIVE subscription; list a
 // ticket here when the subscription was already cancelled BEFORE the customer wrote,
 // so the panel matches what the agent would actually see in Gorgias.
@@ -1902,6 +1939,7 @@ function renderCustomerSidebar(ticket) {
       <div class="cs-title">${lbl}</div>
       ${orders.map((o, i) => orderBoxHtml(o, i === 0, (isUK && i === 0) ? ship : '')).join('')}
     </div>`; })()}
+    ${stockPanelHtml(ticket)}
     ${Number(ticket.category_id) === 5 ? rechargePanelHtml(ticket) : ''}
     <div class="cs-section">
       <div class="cs-title">Agent Notes</div>

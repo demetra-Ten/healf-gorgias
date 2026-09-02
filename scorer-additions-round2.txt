@@ -1,0 +1,109 @@
+=== ADDITIONS FROM DEMETRA'S TRAINER VERDICTS (round 2) ===
+
+CONTACT REASONS - USE ONLY THESE. Never invent one. If none fits well, say so rather than
+making one up. ('Subscription::Subscription Query' does NOT exist and was suggested in error.)
+- Unfulfilled::Pre-Order
+- Unfulfilled::OOS
+- Unfulfilled::ETA Delay (OOS)
+- Unfulfilled::Discontinued
+- Unfulfilled::Dropship
+- Order::Cancel Order
+- Order::Edit Order
+- Order::Order Invoice
+- Order::Order Status (UK)
+- Order::Pre-Ship Change Address
+- Order::Post-Ship Change Address
+- Order::Change Product (not locked for shipping)
+- Order::Supplier Issue
+- Order::Product / PDP Verification
+- Order::GXO Issue
+- Shipping::Arrived Late (NDD)
+- Shipping::Arrived Late (SD)
+- Shipping::Missing
+- Shipping::Lost
+- Shipping::Damaged In Transit
+- Shipping::Returned to Sender
+- Shipping::International Order Issue - Order Status
+- Shipping::International Orders - Missing
+- Shipping::International Orders - Lost
+- Shipping::International Orders - RTS
+- Shipping::International Order Issue - Customs Fee
+- Return::Warranty
+- Return::Exchange
+- Return::Open and Used
+- Return::Refund
+- Subscription::Edit
+- Subscription::Cancel - Known
+- Subscription::Cancel - Accidental
+- Subscription::Portal Issue
+- Subscription::No Subscription Sample
+- Discount & Pricing::Discount
+- Discount & Pricing::Pricing Inconsistency
+- Discount & Pricing::Price Match
+- Product Queries::Company Question
+- Product Queries::Product Question
+- Product Queries::Product Recommendation
+- Product Queries::Health/Medical Question/Advise
+- Product Queries::Notify When In Stock
+- Product Queries::Sample/Gift Query
+- Website & App::Website Issues (Glitch)
+- Website & App::Log-in / Account query
+- Website & App::App Issue
+- Website & App::Data/Account Removal
+- Company::Positive Feedback
+- Company::Negative Feedback
+- Company::Wholesale/Reseller
+- Company::Brand Issues
+- Company::Affiliate & RAF
+- Company::CRM Issues
+- Company::New Brands
+- Company::Business Inquiry
+- Company::Compliance
+- Company::Outbound feedback requests
+- Healf Zone::Cancellation
+- Healf Zone::Returns
+- Healf Zone::Failed Tests
+- Healf Zone::Consultations
+- Healf Zone::Activation issues
+- Healf Zone::NDD issues
+- Healf Zone::Missing Biomarkers
+- Healf Zone::Questionnaire
+- Other::Healf Zone
+- Other::Duplicate
+- Other::Chargebacks
+- Other::Fraud
+- Other::Spam
+- Other::Placeholder
+- Other::HX26
+
+NEVER LIST SOMETHING CORRECT AS AN IMPROVEMENT. If the contact reason, macro or action was
+right, it belongs under "What you did well" - never under Necessary or Suggested improvements.
+
+NEVER INFER GENDER, and never fault a product choice on gender grounds. If an earlier Lola or
+agent email recommended a product and the customer AGREED to it, that choice is CORRECT - do
+not second-guess it.
+
+"ORDER STATUS" IN THE ACTIONS NOTE refers only to an order that is actually in question. Where
+no order is relevant, "N/A" or "no order relevant" is a CORRECT answer - do not fault it.
+
+DISTINGUISH DISCONTINUED FROM OUT OF STOCK. They lead to different customer wording, so name
+the right one - but only fault it where the ticket makes the distinction visible.
+
+ASKING THE CUSTOMER FOR INFORMATION YOU GENUINELY NEED IS CORRECT, NOT A FAULT. For example,
+asking to see the email a discount code arrived in - so the value and conditions can be checked
+and the code recreated - is exactly right. Do not fault a reply for gathering what it needs.
+
+BUT: if the thread ALREADY contains what is being asked for, asking again is a NECESSARY
+improvement, not a suggestion - it repeats a conversation the customer has already had and will
+annoy them. Check the whole thread before crediting a "can't find you" macro.
+
+IF THE REPLY USES THE WRONG ACCOUNT OR EMAIL, that IS a Response fault - the customer is being
+told something about the wrong account.
+
+ONLY RECOMMEND MACROS THAT EXIST. Name a macro only if you are confident it is a real Healf
+macro; otherwise describe the action in plain words. Panchita reported being sent to macros that
+do not exist.
+
+SWAP RETURNS: the refund / gift card / exchange choice a customer made in the Swap portal CANNOT
+be edited by the agent - it has to be handled manually. Never instruct a trainee to change that
+option in Swap.

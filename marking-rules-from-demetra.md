@@ -124,35 +124,34 @@ Her actions note read *"check shopify for product preorder day - there is nothin
 quantity"* — correct behaviour — and the marker faulted her for not confirming the item was
 back in stock, a fact that only existed on Shopify in May. Scored 1/3 unfairly.
 
-**Two-part fix. Part one is DONE** (the point-in-time `STOCK_AS_AT` panel in practice.html —
-the trainee can now check Shopify inside the sim, as at the ticket date).
+**A point-in-time stock panel was built and then REVERTED at Demetra's instruction:**
+*"i want the trainee to check shopify and learn how to do that."* Showing the stock position
+in the sim removes the very skill the ticket is meant to teach. **Do not re-add it.**
 
-**Part two is PENDING — blocked because n8n's `update_workflow` came back from a reconnect
-rejecting its `operations` array.** Add this block to the Score Reply system prompt,
-immediately after the two-axes paragraph, then `publish_workflow`:
+**So the fix belongs entirely in the marking.** Trainees keep checking live Shopify; the
+scorer must stop penalising them for what they find there. Add this to the Score Reply
+system prompt, after the two-axes paragraph, then `publish_workflow`:
 
 > === MARK ONLY ON WHAT THE TRAINEE COULD SEE — THIS OVERRIDES EVERYTHING BELOW ===
 > These are REAL tickets, dated months in the past, practised long after the event. The
-> trainee CANNOT look up live Shopify, Recharge or Slack — today's stock levels, ETAs and
-> prices no longer match the day the customer wrote. Everything they can legitimately know
-> is what the simulator shows: the message thread (including any earlier Lola/agent email),
-> the order box, the "Shopify - product status (as at ...)" panel where one is shown, and
-> the Recharge panel.
+> trainee is expected to check Shopify, Recharge and Slack themselves — that is a skill
+> being taught — but today's stock levels, ETAs and prices no longer match the day the
+> customer wrote.
 >
-> - NEVER fault a trainee for not knowing a stock level, ETA, back-in-stock date, dispatch
->   date, price or availability that is NOT visible in the simulator. If the ideal handling
->   relies on such a fact and the ticket does not show it, treat their handling as correct
->   so long as the approach was sound, and mention it under "Suggested improvements" at most.
-> - NEVER tell them they "should have checked the product page / Shopify / Slack" for a live
->   value. Checking is the right instinct and must be credited, not faulted, even when what
->   they found does not match the ideal handling.
-> - If a trainee says they could not find an ETA or stock date, that is a legitimate finding,
->   NOT an error. Credit the check and mark the rest of the handling.
+> - NEVER fault a trainee for a stock level, ETA, back-in-stock date, dispatch date, price
+>   or availability that no longer matches the ideal handling. If the ideal handling relies
+>   on such a fact, treat their handling as correct so long as the approach was sound, and
+>   mention the fact under "Suggested improvements" at most.
+> - ALWAYS credit checking Shopify / Recharge / Slack as the right instinct, even when what
+>   they found does not match the ideal handling. Never say they "should have checked" a
+>   live value they clearly did check.
+> - If a trainee reports they could not find an ETA or stock date, that is a legitimate
+>   finding, NOT an error. Credit the check and mark the rest of the handling.
 > - Do NOT fault any specific date the trainee gives, and do NOT treat a date in the ideal
 >   handling as the required answer.
-> - Where the thread or the product-status panel DOES state the position, expect them to use
->   it, and it is fair to note if they missed it.
+> - Where the ticket thread itself states the position (e.g. an earlier Lola email), expect
+>   them to use it, and it is fair to note if they missed it.
 
-**Still to populate:** 38 tickets depend on a point-in-time stock/ETA fact — cat1 25, cat3 6,
-cat5 5, cat2 1, cat6 1. Only 146 has its panel so far. Source the value from the ticket's own
-thread or ideal_response where it is stated; the rest need Demetra's input.
+Blocked so far because n8n `update_workflow` rejects its `operations` array after a
+reconnect. Retry, then replay submission 97 (ticket 146) to confirm it no longer faults the
+missing ETA.

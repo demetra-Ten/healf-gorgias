@@ -54,3 +54,29 @@ message are in the seed file; zero warehouse matches for any cat-1 phrase).
 
 Remaining without a real date: cat2 27, cat3 21, cat4 22, cat5 10 (plus cat1's 30 that
 cannot have one). Likely causes: hand-rewritten during anonymisation, or also seeded.
+
+
+## Order history must be AS AT the message date (fixed 2026-09-01)
+
+**The bug Demetra caught on ticket 145 (Nora Beck):** the original enrichment took the
+customer's ~5 MOST RECENT Shopify orders as of the day it ran — not as of the ticket date.
+So a customer who wrote on 11 May was shown orders from June and July, i.e. orders that had
+not happened yet when they got in touch. Her words: *"orders have been placed after the 11th
+of may (in July) making the dates all off here."*
+
+**Rule: a sim ticket must show the real customer's order history exactly as it stood on the
+day they wrote — no order dated after `⟦SENT|…⟧`.**
+
+`rebuild-order-history.py <sim_ticket_id> <saved_get_ticket_file> [apply]` does this:
+pulls `customer.integrations[*].orders` (real Shopify) out of a saved `get_ticket`
+(`with_customer=true`) response, keeps only orders created on/before the ticket's sent date,
+takes the 5 most recent of those, and rewrites `order_items` plus the
+`order_number`/`order_value`/`order_status` columns. Run without `apply` for a dry run.
+
+Line format is rebuilt from the real fields: `title - variant_title`, real `product_id` for
+the admin URL, real quantity, price, per-line `fulfillment_status` and vendor. Only product
+and order data is copied — never the shipping/billing address or contact details.
+
+**Fixed:** 145 Nora Beck, 160 Tess Harlow, 165 Raj Sethi, 143 Elsa Lind, 146 Ivo Kral.
+Those were the only 5 of 105 dated tickets with a future-dated order. Re-scan after any
+enrichment work: for every ticket, assert no `@@ORDER` date is later than its `⟦SENT|…⟧`.

@@ -1,0 +1,43 @@
+################################################################################
+# PASTE A — Score Reply node, SYSTEM MESSAGE box.
+# FIND this paragraph (it starts "Quality Score:") and REPLACE the whole thing:
+#
+#   Quality Score: 3 = both Response and Actions correct and the reply would
+#   resolve the ticket if sent as-is (suggested improvements do NOT reduce it);
+#   2 = exactly ONE of Response or Actions has a genuine fault; 1 = BOTH have
+#   genuine, independent faults. ONLY items you list under "Necessary
+#   improvements" may reduce the score. Items under "Suggested improvements"
+#   must never affect it.
+#
+# with everything between the two ---- lines below.
+################################################################################
+--------------------------------------------------------------------------------
+QUALITY SCORE — WORK IT OUT MECHANICALLY, DO NOT JUDGE IT SEPARATELY. After you have written both feedback strings, count how many of the TWO axes have at least one real bullet under "Necessary improvements" (a "- Nothing — this was correct." line does not count as one):
+- 0 axes faulted  ->  score 3
+- 1 axis faulted   ->  score 2
+- 2 axes faulted  ->  score 1
+That arithmetic is binding and overrides your instinct. Never soften the score because the reply was warm or well-meant, and never harden it because you listed a lot of suggestions. Items under "Suggested improvements" NEVER affect the score. If you have written a necessary improvement on BOTH axes, the score IS 1 — do not return 2.
+
+CONTACT REASON — ONLY MARK IT IF ONE WAS ACTUALLY ASSIGNED. If the contact reason is 'none assigned', empty or absent, say NOTHING about it: no bullet under Necessary improvements, no bullet under Suggested improvements, and no mention anywhere in either string. A missing contact reason is NEVER a fault and must never reduce the score. Only judge a contact reason the trainee actually chose.
+
+ATTACHMENTS. The ticket may carry the customer's own photos or files, listed for you above. If the evidence the process needs is ALREADY attached, asking the customer to send it again is a NECESSARY improvement — they have already done it once and being asked twice is exactly what annoys them. If the attachments do NOT cover what the process needs (for example no photo of the batch or best-before date, or no photo of the outer box), then asking for that specific missing photo is CORRECT and belongs under "What you did well".
+
+RECHARGE / SUBSCRIPTION STATE. Use only the Recharge panel text given to you above — that is what the trainee could see. Never assert a subscription was "still active" or "already cancelled" unless that panel says so, and never fault a trainee for not spotting a state the panel does not show. If the panel says there is no integration at all, the customer cannot be matched to a subscription and asking them for an order number or alternative email is CORRECT.
+--------------------------------------------------------------------------------
+
+
+################################################################################
+# PASTE B — Score Reply node, the MESSAGE box (the one above the system message,
+# starting "Ticket category:").
+#
+# FIND this line:
+#   Contact reason assigned by trainee: {{ ... }}
+# and paste the block below DIRECTLY ABOVE it.
+################################################################################
+--------------------------------------------------------------------------------
+Attachments already on the ticket (the customer's own photos/files — this evidence ALREADY exists):
+{{ $('Trainee Submission').item.json.body.attachments || 'none attached' }}
+
+Recharge / subscription panel exactly as the trainee saw it:
+{{ $('Trainee Submission').item.json.body.recharge_state || 'No Recharge panel shown on this ticket.' }}
+--------------------------------------------------------------------------------

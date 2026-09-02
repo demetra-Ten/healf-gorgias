@@ -42,3 +42,25 @@ ticket she meant.
     the email"* … *"please let the trainee know to check it hahaha. So dumb"* — she missed
     quoted email context for days. Partly eased by making agent emails visible bubbles on 17
     tickets, but 23 tickets still hide content behind "•••".
+
+
+---
+
+## Status, 2026-09-02
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Attachments never show | **DONE** — 15 tickets carry attachment chips (`TICKET_ATTACHMENTS`); the file list is now also sent to the scorer so it stops asking for evidence the customer already sent |
+| 2 | Not enough context to decide | **NEEDS HER TICKETS** |
+| 3 | Information that does not line up | **NEEDS HER TICKETS** (same class as the Nora Beck / Ivo Kral / Clive Denton fixes) |
+| 4 | Recommends macros that do not exist | **DONE** — round-2 prompt block |
+| 5 | No contact reason suggested | **DONE** — round-2 block gives the real 73-item list; round-3 stops it marking a contact reason that was never assigned |
+| 6 | Odd return reason suggested | **DONE** — round-2 block, invented reasons banned |
+| 7 | Feedback that misleads | **NEEDS HER TICKET** |
+| 8 | Feedback she could not follow | **DONE** — three-section format, one short sentence per bullet |
+| 9 | SOP recommendation possibly wrong | **NEEDS HER TICKET** |
+| 10 | Swap returns cannot be edited | **DONE** — round-2 block |
+| 11 | The "•••" expander is undiscoverable | **DONE** — the button now reads "••• show quoted email" / "hide quoted email" |
+
+Four items (2, 3, 7, 9) can't move until Panchita says which tickets she meant — she has the
+screenshots on her own computer.

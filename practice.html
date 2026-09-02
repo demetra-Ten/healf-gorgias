@@ -1810,6 +1810,19 @@ function closeAttachment() { document.getElementById('rm-modal-root').innerHTML 
 const RECHARGE_CANCELLED = { 163: true };
 
 
+// The scorer was never told what the Recharge panel shows and started inventing a
+// subscription state ("still showed as active") that contradicted the ticket. This sends
+// it the same text the trainee sees, or says plainly that there is no integration.
+function rechargeStateText(ticket) {
+  const orders = parseOrders(ticket);
+  if (!orders.length) return 'No Shopify/Recharge match for this customer — Gorgias shows no integration panel at all.';
+  const cancelled = RECHARGE_CANCELLED[Number(ticket.id)] === true;
+  const p = subscribedProduct(ticket);
+  return 'Recharge panel shows subscription ' + (cancelled ? 'CANCELLED / INACTIVE' : 'ACTIVE')
+    + (p ? ('. Subscribed product: ' + p.title + (p.vendor ? ' (' + p.vendor + ')' : '') + ' at ' + p.price + '.')
+         : '. No recurring product on file.');
+}
+
 function rechargePanelHtml(ticket) {
   const orders = parseOrders(ticket);
   const cancelled = RECHARGE_CANCELLED[Number(ticket.id)] === true;
@@ -2081,6 +2094,7 @@ async function submitReply(ticketId, andClose) {
         contact_reason: contactReasons[ticketId] || null,
         internal_note: (internalNotes[ticketId] || []).map(n => n.body).join('\n\n') || null,
         attachments: attachmentsFor(ticket).map(f => f.n + ' \u2014 ' + f.d).join('; ') || null,
+        recharge_state: rechargeStateText(ticket),
         ideal_response: ticket.ideal_response, order_items: ticketProducts(ticket),
         order_value: ticket.order_value, order_status: ticket.order_status
       })

@@ -174,6 +174,9 @@ table.ticket-table tbody td:first-child { width: 36px; padding-right: 0; }
    step list auto-numbers natively as the trainee presses Enter inside the <ol>. */
 .actions-doc { width: 100%; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; min-height: 34px; height: 158px; overflow-y: auto; color: #374151; background: transparent; line-height: 1.65; outline: none; }
 .actions-doc b { font-weight: 700; color: #374151; }
+.actions-doc .an-lbl { font-weight: 700; cursor: default; -webkit-user-select: none; user-select: none; }
+/* what the trainee types lives here — never bold, never inside the label */
+.actions-doc .an-val { font-weight: 400; }
 .actions-doc ol { margin: 2px 0 0; padding-left: 22px; }
 .actions-doc li { margin: 0 0 3px; }
 .actions-textarea { width: 100%; border: none; outline: none; padding: 4px 0 8px; font-size: 12.5px; font-family: inherit; resize: none; min-height: 32px; height: 124px; color: #374151; background: transparent; line-height: 1.5; }
@@ -1218,12 +1221,18 @@ function fmtToolbar() {
 const ACTIONS_TEMPLATE = 'Order status: \nTicket summary: \n\nActions:';
 // The box is contenteditable so the sub-headings can be bold. The steps live in a real
 // <ol>, which means the browser auto-numbers a new step each time Enter is pressed.
+// Each row is a locked bold label plus a separate editable value span. The label is
+// contenteditable="false" so it cannot be edited or deleted, and because what the trainee
+// types goes into .an-val (not inside the <b>), it is never picked up as bold.
+const ACTIONS_ROW = (label) =>
+  '<div class="an-row"><b class="an-lbl" contenteditable="false">' + label +
+  '</b><span class="an-val">&nbsp;</span></div>';
 const ACTIONS_TEMPLATE_HTML =
-  '<div><b>Order status:</b>&nbsp;</div>' +
+  ACTIONS_ROW('Order status:') +
   '<div><br></div>' +
-  '<div><b>Ticket summary:</b>&nbsp;</div>' +
+  ACTIONS_ROW('Ticket summary:') +
   '<div><br></div>' +
-  '<div><b>Actions:</b></div>';
+  ACTIONS_ROW('Actions:');
 
 // Flatten the rich Actions box back to plain text for storage + scoring.
 function actionsToText(el) {
@@ -1397,6 +1406,29 @@ document.addEventListener('click', e => {
   if (cm && cm.classList.contains('open') && !e.target.closest('.reply-channel')) cm.classList.remove('open');
 });
 
+// Clicking a locked Actions label (or the blank space of its row) puts the caret in that
+// row's value span — i.e. straight after the ':' — rather than doing nothing or landing
+// inside the bold label. mousedown + preventDefault stops the browser placing it first.
+document.addEventListener('mousedown', e => {
+  const box = document.getElementById('actions-input');
+  if (!box || !e.target || !box.contains(e.target)) return;
+  const el = e.target.nodeType === 1 ? e.target : e.target.parentElement;
+  if (!el) return;
+  if (el.closest('.an-val') || el.closest('li')) return;   // already a valid target
+  const row = el.closest('.an-row');
+  if (!row) return;
+  const val = row.querySelector('.an-val');
+  if (!val) return;
+  e.preventDefault();
+  box.focus();
+  const r = document.createRange();
+  r.selectNodeContents(val);
+  r.collapse(false);          // end of the value = right after the colon
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+});
+
 // Enter inside the Actions step list starts a new numbered step. Handled explicitly
 // rather than relying on the browser's default contenteditable behaviour, which does
 // not reliably split an <li>.
@@ -1423,19 +1455,31 @@ document.addEventListener('keydown', e => {
 
     e.preventDefault();
     const after = block.nextElementSibling;
+    // Anything already typed after "Actions:" becomes step 1 rather than being left
+    // stranded inline, so the caret lands on step 2 ready for the next one.
+    const val = block.querySelector('.an-val');
+    const typed = val ? val.textContent.replace(/ /g, ' ').trim() : '';
+    const made = [];
     const first = document.createElement('li');
-    first.appendChild(document.createElement('br'));
-    if (after && after.tagName === 'OL') {
-      after.insertBefore(first, after.firstChild);
+    if (typed) {
+      first.textContent = typed;
+      val.innerHTML = '&nbsp;';
+      const second = document.createElement('li');
+      second.appendChild(document.createElement('br'));
+      made.push(first, second);
     } else {
-      const ol = document.createElement('ol');
-      ol.appendChild(first);
-      box.insertBefore(ol, block.nextSibling);
+      first.appendChild(document.createElement('br'));
+      made.push(first);
     }
+    let ol = (after && after.tagName === 'OL') ? after : null;
+    if (!ol) { ol = document.createElement('ol'); box.insertBefore(ol, block.nextSibling); }
+    const anchor = ol.firstChild;
+    made.forEach(n => ol.insertBefore(n, anchor));
+    const caretLi = made[made.length - 1];
     const c = document.createRange();
-    c.setStart(first, 0); c.collapse(true);
+    c.setStart(caretLi, 0); c.collapse(true);
     sel.removeAllRanges(); sel.addRange(c);
-    first.scrollIntoView({ block: 'nearest' });
+    caretLi.scrollIntoView({ block: 'nearest' });
     return;
   }
 

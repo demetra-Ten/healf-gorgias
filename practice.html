@@ -924,7 +924,7 @@ const TOUR_STEPS = {
       body: '<b>To action</b> is everything still waiting on you. Once a ticket is marked it moves to <b>Marked</b>, where you can reread your reply alongside the feedback.' },
     { sel: '.sidebar-nav, #nav-mytickets-icon', title: 'Topics',
       body: 'Tickets are grouped by topic — Fulfilment, GXO, Returns, Discounts, Subscriptions, Delivery. You may be assigned a single topic to focus on, or all of them.' },
-    { sel: '#ticket-tbody tr', title: 'Open a ticket to carry on',
+    { sel: '#ticket-tbody', clickThrough: true, title: 'Open a ticket to carry on',
       body: 'That is the inbox. <b>Click any ticket to open it</b> — the walkthrough carries on there and shows you how to answer one.' }
   ],
   ticket: [
@@ -1036,6 +1036,9 @@ function tourShow() {
       const q = rects[i];
       pane.style.top = q.top + 'px'; pane.style.left = q.left + 'px';
       pane.style.width = q.w + 'px'; pane.style.height = q.h + 'px';
+      // On a step that asks them to DO something, nothing may be blocked — cutting a
+      // hole round one row still left every other row under a pane.
+      pane.style.pointerEvents = step.clickThrough ? 'none' : 'auto';
     });
 
     const isLast = tourIdx >= steps.length - 1;

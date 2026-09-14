@@ -1991,18 +1991,23 @@ const TICKET_ATTACHMENTS = {
         { n:'aarke-warranty-2.png', k:'img', z:'588 KB', d:'Second screenshot of the same exchange with Aarke.' }],
   61:  [{ n:'order-confirmation.pdf', k:'doc', z:'112 KB', d:'The order, with the missing line highlighted: Grass-Fed Protein + Bars \u2014 Oatmeal Chocolate Chip (TL-GFPB-OCC).' }],
   66:  [{ n:'IMG_2287.jpeg', k:'img', z:'1.9 MB', d:'Front of the pumpkin powder pouch. The best-before date and batch/lot number are not in shot.' }],
-  69:  [{ n:'IMG_5514.jpeg', k:'img', z:'2.6 MB', d:'Condition of the package on arrival.' },
-        { n:'IMG_5515.jpeg', k:'img', z:'2.2 MB', d:'Liquid Morning Multivitamin Hair Growth \u2014 Peach Mango, leaked.' }],
+  69:  [{ n:'IMG_0715.jpeg', k:'img', z:'2.5 MB', p:'69/photo1.jpg', d:'The Liquid Morning Multivitamin bottle standing in soaked bubble wrap, contents leaked out around it.' },
+        { n:'IMG_0721.jpeg', k:'img', z:'2.9 MB', p:'69/photo2.jpg', d:'Inside the box \u2014 packaging soaked through, with the rest of the order underneath.' }],
+  // The customer said she attached photos but they never came through on Gorgias
+  // ("It looks like your photos didn't attach on our side"), so there is nothing to show.
   71:  [{ n:'IMG_1043.jpeg', k:'img', z:'2.0 MB', d:'Contents of the box coated in white powder.' },
         { n:'IMG_1044.jpeg', k:'img', z:'1.7 MB', d:'The creatine sachet with a small hole in it.' }],
-  72:  [{ n:'IMG_8820.jpeg', k:'img', z:'2.3 MB', d:'Adult cod liver oil leaked inside the box; seal on, lid not fully closed.' }],
+  72:  [{ n:'20260511_200147.jpg', k:'img', z:'2.1 MB', p:'72/photo1.jpg', d:'The adult cod liver oil bottle held up, label torn and soaked where it has leaked.' },
+        { n:'20260511_200149.jpg', k:'img', z:'2.0 MB', p:'72/photo2.jpg', d:'The same bottle with the cap still on, oil visible around the neck.' },
+        { n:'20260511_200129.jpg', k:'img', z:'3.2 MB', p:'72/photo3.jpg', d:'The bottle as it arrived in the box, wrapped in bubble wrap.' }],
   74:  [{ n:'IMG_6602.jpeg', k:'img', z:'2.1 MB', d:'The order received, which is not what was placed.' }],
   80:  [{ n:'IMG_9917.jpeg', k:'img', z:'1.9 MB', d:'The product received, labelled Trace Mineral Complex.' },
         { n:'IMG_9918.jpeg', k:'img', z:'1.5 MB', d:'The packaging it arrived in.' }],
   95:  [{ n:'IMG_7731.jpeg', k:'img', z:'1.8 MB', d:'The returned package, marked by the post office as rejected by the recipient.' }],
   165: [{ n:'order-confirmation.png', k:'img', z:'420 KB', d:'Order confirmation email for the subscription the customer had cancelled.' }],
-  194: [{ n:'IMG_2255.jpeg', k:'img', z:'2.5 MB', d:'Products unsealed and leaked over the packaging and other items.' },
-        { n:'IMG_2256.jpeg', k:'img', z:'2.2 MB', d:'The affected chocolate bar.' }]
+  194: [{ n:'IMG_3599.jpeg', k:'img', z:'2.9 MB', p:'194/photo1.jpg', d:'An avocado oil mayonnaise jar with the lid seal broken and the contents pushed up under the lid.' },
+        { n:'IMG_3598.jpeg', k:'img', z:'2.8 MB', p:'194/photo2.jpg', d:'Three jars together \u2014 the nearest one unsealed, the others intact.' },
+        { n:'IMG_3601.jpeg', k:'img', z:'4.7 MB', p:'194/photo3.jpg', d:'The packing paper inside the box, stained where the contents leaked.' }]
 };
 function attachmentsFor(t) { return TICKET_ATTACHMENTS[Number(t && t.id)] || []; }
 function attachmentsRowHtml(t) {

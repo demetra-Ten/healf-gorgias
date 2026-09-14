@@ -240,6 +240,37 @@ html[data-theme="dark"] .fb-sub { color: #d1d5db; }
 html[data-theme="dark"] .fb-sub.fb-good { color: #4ade80; }
 html[data-theme="dark"] .fb-sub.fb-improve { color: #fbbf24; }
 html[data-theme="dark"] .fb-list li, html[data-theme="dark"] .fb-p { color: #d1d5db; }
+/* ── First-login walkthrough ──────────────────────────────────────────────
+   New joiners get a spotlight tour over the REAL interface rather than a
+   separate help page, so what they are told and what they are looking at
+   can never drift apart. Runs once per trainee; replayable from the
+   profile menu. */
+.tour-mask { position: fixed; inset: 0; z-index: 9000; pointer-events: auto; }
+.tour-hole { position: fixed; z-index: 9001; border-radius: 10px; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(17, 17, 20, 0.62); border: 2px solid #7c3aed;
+  transition: top .22s ease, left .22s ease, width .22s ease, height .22s ease; }
+.tour-pop { position: fixed; z-index: 9002; width: 320px; max-width: calc(100vw - 32px);
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 17px 13px;
+  box-shadow: 0 12px 34px rgba(0,0,0,0.22); transition: top .22s ease, left .22s ease; }
+.tour-step { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #9ca3af; margin-bottom: 6px; }
+.tour-title { font-size: 14.5px; font-weight: 650; color: #18181b; margin-bottom: 6px; }
+.tour-body { font-size: 12.5px; line-height: 1.55; color: #4b5563; }
+.tour-body b { color: #18181b; font-weight: 600; }
+.tour-foot { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.tour-skip { font-size: 11.5px; color: #9ca3af; cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
+.tour-skip:hover { color: #6b7280; }
+.tour-spacer { flex: 1; }
+.tour-btn { padding: 6px 13px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; border: 1px solid #e5e7eb; background: #fff; color: #374151; }
+.tour-btn:hover { background: #f9fafb; }
+.tour-btn.primary { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.tour-btn.primary:hover { background: #6d28d9; }
+html[data-theme="dark"] .tour-pop { background: #1d1d21; border-color: #2c2c31; }
+html[data-theme="dark"] .tour-title { color: #f4f4f5; }
+html[data-theme="dark"] .tour-body { color: #a1a1aa; }
+html[data-theme="dark"] .tour-body b { color: #f4f4f5; }
+html[data-theme="dark"] .tour-btn { background: #2a2a30; border-color: #2c2c31; color: #d4d4d8; }
+html[data-theme="dark"] .tour-hole { box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.68); }
+
 .quoted-wrap { margin-top: 6px; }
 .quoted-dots { border: 1px solid #e5e7eb; background: #f3f4f6; border-radius: 8px; padding: 1px 9px; cursor: pointer; color: #9ca3af; font-size: 13px; letter-spacing: 1px; line-height: 1.6; }
 .quoted-dots:hover { background: #e5e7eb; color: #6b7280; }
@@ -672,6 +703,8 @@ html[data-theme="dark"] .ship-link { color:#b3a6f7; }
         <div class="pm-divider"></div>
         <div class="pm-row" onclick="toggleTheme(event)"><span>Dark mode</span><span class="pm-toggle" id="pm-theme"></span></div>
         <div class="pm-divider"></div>
+        <div class="pm-row" onclick="startTour('list', true)">Replay the walkthrough</div>
+        <div class="pm-divider"></div>
         <div class="pm-row pm-signout" onclick="signOut()">Sign out</div>
       </div>
     </div>
@@ -870,6 +903,159 @@ const ICONS = {
   note: `<svg width="15" height="15" viewBox="0 0 24 24" fill="#c2721a" stroke="none"><path d="M5 3h8l6 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M13 3v6h6" fill="#fff" opacity="0.4"/></svg>`,
 };
 
+
+// ── First-login walkthrough ────────────────────────────────────────────────
+// Spotlights the real interface instead of describing it on a separate page.
+// Two parts: the ticket list runs on first login, the ticket itself runs the
+// first time they open one — the composer and sidebar don't exist until then.
+// A step whose target is missing is skipped, so this degrades quietly rather
+// than trapping anyone behind a highlight pointing at nothing.
+const TOUR_STEPS = {
+  list: [
+    { sel: null, title: 'Welcome to the practice inbox',
+      body: 'This is a copy of Gorgias built for training. The tickets are real ones customers sent us, with personal details removed. Nothing you do here reaches a customer — reply exactly as you would on a live ticket.' },
+    { sel: '#ticket-tbody tr', title: 'Your tickets',
+      body: 'Each row is a ticket to answer. Work down the list in your own time — there is no timer and no limit on how many you attempt.' },
+    { sel: '#tab-toaction', title: 'To action vs Marked',
+      body: '<b>To action</b> is everything still waiting on you. Once a ticket is marked it moves to <b>Marked</b>, where you can reread your reply alongside the feedback.' },
+    { sel: '.sidebar-nav, #nav-mytickets-icon', title: 'Topics',
+      body: 'Tickets are grouped by topic — Fulfilment, GXO, Returns, Discounts, Subscriptions, Delivery. You may be assigned a single topic to focus on, or all of them.' },
+    { sel: null, title: 'Open a ticket to carry on',
+      body: 'That is the inbox. Open any ticket and the walkthrough will pick up again to show you how to answer one.' }
+  ],
+  ticket: [
+    { sel: '#messages-area', title: 'The customer thread',
+      body: 'Read the whole thread before replying. Earlier emails from Lola or another agent appear here too — what they already promised the customer matters. Where a message shows <b>show quoted email</b>, click it: there is more underneath.' },
+    { sel: '.att-row', title: 'Attachments',
+      body: 'When a customer says they attached a photo, it is here. Click one to see what it shows — it often decides the outcome, and asking for evidence they already sent is a mark down.' },
+    { sel: '#customer-sidebar', title: 'Shopify, Recharge and order history',
+      body: 'Their orders, order status and subscription sit here, exactly as in Gorgias. <b>Always check this before replying</b> — a reply that contradicts the order history is the most common mistake.' },
+    { sel: '.macro-btn, #macro-picker', title: 'Macros',
+      body: 'Pick the macro the situation calls for, then edit it to fit. Choosing the right macro is part of what is marked, so do not force one that nearly fits.' },
+    { sel: '#reply-input', title: 'Your reply',
+      body: 'This is what the customer reads. You are marked on whether it answers their actual question, whether it is accurate, and the tone.' },
+    { sel: '#actions-input', title: 'Actions',
+      body: 'Write what you would <b>do</b> behind the scenes — cancel the order, raise a Manual Order, update Recharge. The headings are fixed; type after each colon, and press Enter in Actions to add a numbered step. This is marked separately from your reply.' },
+    { sel: '.cs-cr-select', title: 'Contact reason',
+      body: 'Set the contact reason before closing, the same as on a live ticket. It is part of your Actions mark.' },
+    { sel: '#submit-btn', title: 'Send vs Send & Close',
+      body: '<b>Send</b> sends your message and leaves the ticket open — use it if you want to add an internal note or send again. <b>Send &amp; Close</b> finishes the ticket and triggers the marking, so only use it when you are done.' },
+    { sel: null, title: 'Your feedback',
+      body: 'After you close a ticket you get a mark out of 3 and written feedback, split into what went well, what needed improving, and optional suggestions. <b>Only the necessary improvements affect your mark</b> — suggestions never do.' }
+  ]
+};
+
+let tourName = null, tourIdx = 0;
+
+function tourKey() { return 'tourSeen:' + ((trainee && trainee.id) || 'anon'); }
+function tourSeen() { try { return JSON.parse(localStorage.getItem(tourKey()) || '{}'); } catch (e) { return {}; } }
+function markTourSeen(name) {
+  try { const s = tourSeen(); s[name] = true; localStorage.setItem(tourKey(), JSON.stringify(s)); } catch (e) {}
+}
+
+function startTour(name, force) {
+  if (!TOUR_STEPS[name]) return;
+  if (!force && tourSeen()[name]) return;
+  const menu = document.getElementById('profile-menu');
+  if (menu) menu.classList.remove('open');
+  tourName = name; tourIdx = 0;
+  if (!document.querySelector('.tour-mask')) {
+    const mask = document.createElement('div');
+    mask.className = 'tour-mask';
+    mask.onclick = function (e) { if (e.target === mask) tourNext(); };
+    document.body.appendChild(mask);
+    const hole = document.createElement('div'); hole.className = 'tour-hole'; document.body.appendChild(hole);
+    const pop  = document.createElement('div'); pop.className  = 'tour-pop';  document.body.appendChild(pop);
+  }
+  tourShow();
+}
+
+function tourEnd() {
+  ['.tour-mask', '.tour-hole', '.tour-pop'].forEach(function (c) {
+    const el = document.querySelector(c); if (el) el.remove();
+  });
+  if (tourName) markTourSeen(tourName);
+  tourName = null;
+}
+
+function tourNext() { tourGo(1); }
+function tourBack() { tourGo(-1); }
+function tourGo(dir) {
+  const steps = TOUR_STEPS[tourName] || [];
+  let i = tourIdx + dir;
+  // Skip past anything that isn't on screen for this ticket (e.g. no attachments).
+  while (i >= 0 && i < steps.length && steps[i].sel && !document.querySelector(steps[i].sel)) i += dir;
+  if (i < 0) return;
+  if (i >= steps.length) { tourEnd(); return; }
+  tourIdx = i; tourShow();
+}
+
+function tourShow() {
+  const steps = TOUR_STEPS[tourName] || [];
+  const step  = steps[tourIdx];
+  if (!step) { tourEnd(); return; }
+  const hole = document.querySelector('.tour-hole');
+  const pop  = document.querySelector('.tour-pop');
+  if (!hole || !pop) return;
+
+  const target = step.sel ? document.querySelector(step.sel) : null;
+  if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+  window.setTimeout(function () {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    if (target) {
+      const r = target.getBoundingClientRect();
+      const pad = 6;
+      hole.style.display = 'block';
+      hole.style.top = (r.top - pad) + 'px';
+      hole.style.left = (r.left - pad) + 'px';
+      hole.style.width = (r.width + pad * 2) + 'px';
+      hole.style.height = (r.height + pad * 2) + 'px';
+    } else {
+      // No target: dim everything and centre the card.
+      hole.style.display = 'block';
+      hole.style.top = (vh / 2) + 'px'; hole.style.left = (vw / 2) + 'px';
+      hole.style.width = '0px'; hole.style.height = '0px';
+    }
+
+    const isLast = tourIdx >= steps.length - 1;
+    pop.innerHTML =
+      '<div class="tour-step">Step ' + (tourIdx + 1) + ' of ' + steps.length + '</div>' +
+      '<div class="tour-title">' + step.title + '</div>' +
+      '<div class="tour-body">' + step.body + '</div>' +
+      '<div class="tour-foot">' +
+        '<button class="tour-skip" onclick="tourEnd()">Skip</button>' +
+        '<span class="tour-spacer"></span>' +
+        (tourIdx > 0 ? '<button class="tour-btn" onclick="tourBack()">Back</button>' : '') +
+        '<button class="tour-btn primary" onclick="' + (isLast ? 'tourEnd()' : 'tourNext()') + '">' +
+          (isLast ? 'Got it' : 'Next') + '</button>' +
+      '</div>';
+
+    // Place the card clear of the highlight, then nudge it back inside the viewport.
+    const pr = pop.getBoundingClientRect();
+    let top, left;
+    if (target) {
+      const r = target.getBoundingClientRect();
+      const below = r.bottom + 14;
+      top  = (below + pr.height < vh - 10) ? below : Math.max(10, r.top - pr.height - 14);
+      left = r.left + r.width / 2 - pr.width / 2;
+    } else {
+      top  = vh / 2 - pr.height / 2;
+      left = vw / 2 - pr.width / 2;
+    }
+    pop.style.top  = Math.min(Math.max(10, top),  vh - pr.height - 10) + 'px';
+    pop.style.left = Math.min(Math.max(10, left), vw - pr.width  - 10) + 'px';
+  }, target ? 260 : 0);
+}
+
+window.addEventListener('resize', function () { if (tourName) tourShow(); });
+document.addEventListener('keydown', function (e) {
+  if (!tourName) return;
+  if (e.key === 'Escape') tourEnd();
+  else if (e.key === 'ArrowRight') tourNext();
+  else if (e.key === 'ArrowLeft') tourBack();
+});
+
 async function init() {
   const previewId = new URLSearchParams(location.search).get('preview');
   if (previewId) { initPreview(Number(previewId)); return; }
@@ -927,6 +1113,9 @@ async function init() {
   document.getElementById('ttv-count').textContent = `Showing ${tickets.length} item${tickets.length !== 1 ? 's' : ''}`;
   renderTicketTable();
   document.getElementById('loading').style.display = 'none';
+  // New joiners land straight into the walkthrough; anyone who has submitted before
+  // has already seen it, and it never reappears once finished or skipped.
+  if (!submissions.length) window.setTimeout(function () { startTour('list'); }, 400);
 }
 
 // Read-only ticket preview, opened from the admin site as practice.html?preview=<id>.
@@ -1072,6 +1261,9 @@ function showTableView() {
 
 function openTicket(id) {
   activeTicketId = id;
+  // The composer and sidebar only exist once a ticket is open, so the second half
+  // of the walkthrough waits until now.
+  window.setTimeout(function () { startTour('ticket'); }, 500);
   usedMacro = null;
   replyChannel = 'email';
   renderTicketTable();

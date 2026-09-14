@@ -245,9 +245,13 @@ html[data-theme="dark"] .fb-list li, html[data-theme="dark"] .fb-p { color: #d1d
    separate help page, so what they are told and what they are looking at
    can never drift apart. Runs once per trainee; replayable from the
    profile menu. */
-.tour-mask { position: fixed; inset: 0; z-index: 9000; pointer-events: auto; }
+/* The dimmer is four panes AROUND the target rather than one sheet over
+   everything, so the highlighted element stays genuinely clickable — the
+   walkthrough asks them to open a ticket, and a full-screen blocker made that
+   impossible. */
+.tour-pane { position: fixed; z-index: 9000; background: rgba(17, 17, 20, 0.62); pointer-events: auto; }
 .tour-hole { position: fixed; z-index: 9001; border-radius: 10px; pointer-events: none;
-  box-shadow: 0 0 0 9999px rgba(17, 17, 20, 0.62); border: 2px solid #7c3aed;
+  border: 2px solid #7c3aed;
   transition: top .22s ease, left .22s ease, width .22s ease, height .22s ease; }
 .tour-pop { position: fixed; z-index: 9002; width: 320px; max-width: calc(100vw - 32px);
   background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 17px 13px;
@@ -269,7 +273,7 @@ html[data-theme="dark"] .tour-title { color: #f4f4f5; }
 html[data-theme="dark"] .tour-body { color: #a1a1aa; }
 html[data-theme="dark"] .tour-body b { color: #f4f4f5; }
 html[data-theme="dark"] .tour-btn { background: #2a2a30; border-color: #2c2c31; color: #d4d4d8; }
-html[data-theme="dark"] .tour-hole { box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.68); }
+html[data-theme="dark"] .tour-pane { background: rgba(0, 0, 0, 0.68); }
 
 .quoted-wrap { margin-top: 6px; }
 .quoted-dots { border: 1px solid #e5e7eb; background: #f3f4f6; border-radius: 8px; padding: 1px 9px; cursor: pointer; color: #9ca3af; font-size: 13px; letter-spacing: 1px; line-height: 1.6; }
@@ -920,8 +924,8 @@ const TOUR_STEPS = {
       body: '<b>To action</b> is everything still waiting on you. Once a ticket is marked it moves to <b>Marked</b>, where you can reread your reply alongside the feedback.' },
     { sel: '.sidebar-nav, #nav-mytickets-icon', title: 'Topics',
       body: 'Tickets are grouped by topic — Fulfilment, GXO, Returns, Discounts, Subscriptions, Delivery. You may be assigned a single topic to focus on, or all of them.' },
-    { sel: null, title: 'Open a ticket to carry on',
-      body: 'That is the inbox. Open any ticket and the walkthrough will pick up again to show you how to answer one.' }
+    { sel: '#ticket-tbody tr', title: 'Open a ticket to carry on',
+      body: 'That is the inbox. <b>Click any ticket to open it</b> — the walkthrough carries on there and shows you how to answer one.' }
   ],
   ticket: [
     { sel: '#messages-area', title: 'The customer thread',
@@ -947,7 +951,10 @@ const TOUR_STEPS = {
 
 let tourName = null, tourIdx = 0;
 
-function tourKey() { return 'tourSeen:' + ((trainee && trainee.id) || 'anon'); }
+// Bump TOUR_VERSION to show the walkthrough again to everyone, including trainees
+// who have already dismissed it (v2: first run for people who started before it existed).
+const TOUR_VERSION = 2;
+function tourKey() { return 'tourSeen:v' + TOUR_VERSION + ':' + ((trainee && trainee.id) || 'anon'); }
 function tourSeen() { try { return JSON.parse(localStorage.getItem(tourKey()) || '{}'); } catch (e) { return {}; } }
 function markTourSeen(name) {
   try { const s = tourSeen(); s[name] = true; localStorage.setItem(tourKey(), JSON.stringify(s)); } catch (e) {}
@@ -958,22 +965,24 @@ function startTour(name, force) {
   if (!force && tourSeen()[name]) return;
   const menu = document.getElementById('profile-menu');
   if (menu) menu.classList.remove('open');
+  // Opening a ticket mid-walkthrough hands over to the ticket part; retire the
+  // one being left behind so it does not replay on the next login.
+  if (tourName && tourName !== name) markTourSeen(tourName);
+  tourClear();
   tourName = name; tourIdx = 0;
-  if (!document.querySelector('.tour-mask')) {
-    const mask = document.createElement('div');
-    mask.className = 'tour-mask';
-    mask.onclick = function (e) { if (e.target === mask) tourNext(); };
-    document.body.appendChild(mask);
-    const hole = document.createElement('div'); hole.className = 'tour-hole'; document.body.appendChild(hole);
-    const pop  = document.createElement('div'); pop.className  = 'tour-pop';  document.body.appendChild(pop);
+  for (let i = 0; i < 4; i++) {
+    const pane = document.createElement('div'); pane.className = 'tour-pane'; document.body.appendChild(pane);
   }
+  const hole = document.createElement('div'); hole.className = 'tour-hole'; document.body.appendChild(hole);
+  const pop  = document.createElement('div'); pop.className  = 'tour-pop';  document.body.appendChild(pop);
   tourShow();
 }
 
+function tourClear() {
+  document.querySelectorAll('.tour-pane, .tour-hole, .tour-pop').forEach(function (el) { el.remove(); });
+}
 function tourEnd() {
-  ['.tour-mask', '.tour-hole', '.tour-pop'].forEach(function (c) {
-    const el = document.querySelector(c); if (el) el.remove();
-  });
+  tourClear();
   if (tourName) markTourSeen(tourName);
   tourName = null;
 }
@@ -1003,20 +1012,31 @@ function tourShow() {
 
   window.setTimeout(function () {
     const vw = window.innerWidth, vh = window.innerHeight;
+    const panes = document.querySelectorAll('.tour-pane');
+    let box = null;
     if (target) {
       const r = target.getBoundingClientRect();
       const pad = 6;
+      box = { top: r.top - pad, left: r.left - pad, w: r.width + pad * 2, h: r.height + pad * 2 };
       hole.style.display = 'block';
-      hole.style.top = (r.top - pad) + 'px';
-      hole.style.left = (r.left - pad) + 'px';
-      hole.style.width = (r.width + pad * 2) + 'px';
-      hole.style.height = (r.height + pad * 2) + 'px';
+      hole.style.top = box.top + 'px'; hole.style.left = box.left + 'px';
+      hole.style.width = box.w + 'px'; hole.style.height = box.h + 'px';
     } else {
-      // No target: dim everything and centre the card.
-      hole.style.display = 'block';
-      hole.style.top = (vh / 2) + 'px'; hole.style.left = (vw / 2) + 'px';
-      hole.style.width = '0px'; hole.style.height = '0px';
+      hole.style.display = 'none';
+      box = { top: 0, left: 0, w: 0, h: 0 };   // no cut-out: dim the whole screen
     }
+    // top / bottom / left / right of the cut-out
+    const rects = [
+      { top: 0, left: 0, w: vw, h: Math.max(0, box.top) },
+      { top: box.top + box.h, left: 0, w: vw, h: Math.max(0, vh - (box.top + box.h)) },
+      { top: box.top, left: 0, w: Math.max(0, box.left), h: box.h },
+      { top: box.top, left: box.left + box.w, w: Math.max(0, vw - (box.left + box.w)), h: box.h }
+    ];
+    panes.forEach(function (pane, i) {
+      const q = rects[i];
+      pane.style.top = q.top + 'px'; pane.style.left = q.left + 'px';
+      pane.style.width = q.w + 'px'; pane.style.height = q.h + 'px';
+    });
 
     const isLast = tourIdx >= steps.length - 1;
     pop.innerHTML =
@@ -1113,9 +1133,10 @@ async function init() {
   document.getElementById('ttv-count').textContent = `Showing ${tickets.length} item${tickets.length !== 1 ? 's' : ''}`;
   renderTicketTable();
   document.getElementById('loading').style.display = 'none';
-  // New joiners land straight into the walkthrough; anyone who has submitted before
-  // has already seen it, and it never reappears once finished or skipped.
-  if (!submissions.length) window.setTimeout(function () { startTour('list'); }, 400);
+  // Everyone who has not seen this version of the walkthrough gets it once on login,
+  // including trainees who started before it existed. It never reappears once
+  // finished or skipped (see TOUR_VERSION).
+  window.setTimeout(function () { startTour('list'); }, 400);
 }
 
 // Read-only ticket preview, opened from the admin site as practice.html?preview=<id>.

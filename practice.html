@@ -952,25 +952,26 @@ const TOUR_STEPS = {
 
 let tourName = null, tourIdx = 0, tourForced = false;
 
-// Bump TOUR_VERSION to show the walkthrough again to everyone, including trainees
-// who have already dismissed it (v2: first run for people who started before it
-// existed; v3: reset so the auto-start on login could be trialled end to end;
-// v4: Skip removed, so the first run has to be completed).
-const TOUR_VERSION = 4;
-function tourKey() { return 'tourSeen:v' + TOUR_VERSION + ':' + ((trainee && trainee.id) || 'anon'); }
-function tourSeen() { try { return JSON.parse(localStorage.getItem(tourKey()) || '{}'); } catch (e) { return {}; } }
-function markTourSeen(name) {
-  try { const s = tourSeen(); s[name] = true; localStorage.setItem(tourKey(), JSON.stringify(s)); } catch (e) {}
+// Whether someone has done the walkthrough is stored against the TRAINEE ROW, not in
+// the browser: localStorage meant it reappeared on a new browser, in a private window,
+// and every time the version was bumped. tour_done_at is set once they finish it and
+// it never auto-runs again after that.
+function tourDone() { return !!(trainee && trainee.tour_done_at); }
+async function markTourDone() {
+  if (!trainee || trainee.id == null || trainee.id < 0 || trainee.tour_done_at) return;
+  const at = new Date().toISOString();
+  trainee.tour_done_at = at;
+  try {
+    sessionStorage.setItem('trainee', JSON.stringify(trainee));
+    await db.from('trainees').update({ tour_done_at: at }).eq('id', trainee.id);
+  } catch (e) { /* the walkthrough is not worth blocking on */ }
 }
 
 function startTour(name, force) {
   if (!TOUR_STEPS[name]) return;
-  if (!force && tourSeen()[name]) return;
+  if (!force && tourDone()) return;
   const menu = document.getElementById('profile-menu');
   if (menu) menu.classList.remove('open');
-  // Opening a ticket mid-walkthrough hands over to the ticket part; retire the
-  // one being left behind so it does not replay on the next login.
-  if (tourName && tourName !== name) markTourSeen(tourName);
   tourClear();
   tourName = name; tourIdx = 0; tourForced = !!force;
   for (let i = 0; i < 4; i++) {
@@ -985,9 +986,12 @@ function tourClear() {
   document.querySelectorAll('.tour-pane, .tour-hole, .tour-pop').forEach(function (el) { el.remove(); });
 }
 function tourEnd() {
+  const finished = tourName;
   tourClear();
-  if (tourName) markTourSeen(tourName);
   tourName = null;
+  // Completing the ticket half is the end of the walkthrough. Stopping after the
+  // inbox half leaves it unfinished, so they get it again next login.
+  if (finished === 'ticket' && !tourForced) markTourDone();
 }
 
 function tourNext() { tourGo(1); }
@@ -1139,10 +1143,8 @@ async function init() {
   document.getElementById('ttv-count').textContent = `Showing ${tickets.length} item${tickets.length !== 1 ? 's' : ''}`;
   renderTicketTable();
   document.getElementById('loading').style.display = 'none';
-  // Everyone who has not seen this version of the walkthrough gets it once on login,
-  // including trainees who started before it existed. It never reappears once
-  // finished or skipped (see TOUR_VERSION).
-  window.setTimeout(function () { startTour('list'); }, 400);
+  // Only someone who has never completed the walkthrough gets it.
+  if (!tourDone()) window.setTimeout(function () { startTour('list'); }, 400);
 }
 
 // Read-only ticket preview, opened from the admin site as practice.html?preview=<id>.

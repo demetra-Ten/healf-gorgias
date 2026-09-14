@@ -275,6 +275,7 @@ html[data-theme="dark"] .tour-body b { color: #f4f4f5; }
 html[data-theme="dark"] .tour-btn { background: #2a2a30; border-color: #2c2c31; color: #d4d4d8; }
 html[data-theme="dark"] .tour-pane { background: rgba(0, 0, 0, 0.68); }
 
+.att-img { display: block; max-width: 100%; max-height: 62vh; margin: 0 auto; border-radius: 8px; }
 .quoted-wrap { margin-top: 6px; }
 .quoted-dots { border: 1px solid #e5e7eb; background: #f3f4f6; border-radius: 8px; padding: 1px 9px; cursor: pointer; color: #9ca3af; font-size: 13px; letter-spacing: 1px; line-height: 1.6; }
 .quoted-dots:hover { background: #e5e7eb; color: #6b7280; }
@@ -1975,8 +1976,9 @@ function subscribedProduct(ticket) {
 // Descriptions mirror only what the customer already claims in their own message —
 // they never add a fact the trainee would otherwise have to go and check.
 const TICKET_ATTACHMENTS = {
-  47:  [{ n:'IMG_4218.jpeg', k:'img', z:'2.1 MB', d:'One of the four packages split open, contents leaked inside the delivery box.' },
-        { n:'IMG_4219.jpeg', k:'img', z:'1.8 MB', d:'The other three packages, sealed and undamaged.' }],
+  47:  [{ n:'IMG_4218.jpeg', k:'img', z:'2.1 MB', p:'47/photo1.jpg', d:'One of the four packages split open, contents leaked inside the delivery box.' },
+        { n:'IMG_4219.jpeg', k:'img', z:'1.8 MB', p:'47/photo2.jpg', d:'The damaged pouch lifted out of the box.' },
+        { n:'IMG_4220.jpeg', k:'img', z:'2.2 MB', p:'47/photo3.jpg', d:'The back of the pouch showing the batch code and best-before date.' }],
   48:  [{ n:'IMG_0712.jpeg', k:'img', z:'2.4 MB', d:'Bioactive Quercetin bottle with no shrink-wrap, no foil seal and no seal inside the cap.' }],
   49:  [{ n:'IMG_3390.jpeg', k:'img', z:'1.6 MB', d:'Close-up of the expiry date printed on the product, sent as Lola requested.' }],
   50:  [{ n:'suri-invoice.pdf', k:'doc', z:'96 KB', d:'Purchase invoice for the Suri toothbrush, showing it is still within warranty.' }],
@@ -2006,22 +2008,38 @@ function attachmentsRowHtml(t) {
       `<span class="att-ico ${f.k}">${f.k === 'doc' ? 'PDF' : 'IMG'}</span>` +
       `<span class="att-name">${f.n}</span><span class="att-size">${f.z}</span></div>`).join('') + '</div>';
 }
-function openAttachment(tid, idx) {
+// Where p is set the ticket carries the customer's REAL photo. Those live in a
+// PRIVATE Supabase bucket and are fetched with a short-lived signed URL, so they
+// are only ever visible to a signed-in trainee and never published with the site.
+// Anything without p falls back to the written description.
+async function openAttachment(tid, idx) {
   const f = (TICKET_ATTACHMENTS[tid] || [])[idx];
   if (!f) return;
-  document.getElementById('rm-modal-root').innerHTML =
+  const shell = (inner, foot) =>
     `<div class="rm-overlay" onclick="if(event.target===this)closeAttachment()">
       <div class="att-modal">
         <div class="att-head"><span class="att-ico ${f.k}">${f.k === 'doc' ? 'PDF' : 'IMG'}</span>` +
           `<span class="att-name">${f.n}</span>` +
           `<button class="att-close" onclick="closeAttachment()">&times;</button></div>
-        <div class="att-stage"><div class="att-frame">
-          <div class="att-glyph">${f.k === 'doc' ? '\u{1F4C4}' : '\u{1F5BC}'}</div>
-          <div class="att-desc">${f.d}</div>
-        </div></div>
-        <div class="att-foot">Simulated attachment \u2014 stands in for the customer\u2019s real file</div>
+        <div class="att-stage">${inner}</div>
+        <div class="att-foot">${foot}</div>
       </div>
     </div>`;
+  const placeholder = `<div class="att-frame">
+          <div class="att-glyph">${f.k === 'doc' ? '\u{1F4C4}' : '\u{1F5BC}'}</div>
+          <div class="att-desc">${f.d}</div>
+        </div>`;
+  const root = document.getElementById('rm-modal-root');
+  if (!f.p) { root.innerHTML = shell(placeholder, 'Simulated attachment \u2014 stands in for the customer\u2019s real file'); return; }
+
+  root.innerHTML = shell('<div class="att-frame"><div class="att-desc">Loading\u2026</div></div>', 'Loading the attachment\u2026');
+  let url = null;
+  try {
+    const { data } = await db.storage.from('ticket-attachments').createSignedUrl(f.p, 600);
+    url = data && data.signedUrl;
+  } catch (e) { url = null; }
+  if (!url) { root.innerHTML = shell(placeholder, 'Attachment could not be loaded \u2014 showing a description instead'); return; }
+  root.innerHTML = shell(`<img class="att-img" src="${url}" alt="${f.d}">`, f.d);
 }
 function closeAttachment() { document.getElementById('rm-modal-root').innerHTML = ''; }
 

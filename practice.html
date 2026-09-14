@@ -952,8 +952,9 @@ const TOUR_STEPS = {
 let tourName = null, tourIdx = 0;
 
 // Bump TOUR_VERSION to show the walkthrough again to everyone, including trainees
-// who have already dismissed it (v2: first run for people who started before it existed).
-const TOUR_VERSION = 2;
+// who have already dismissed it (v2: first run for people who started before it
+// existed; v3: reset so the auto-start on login could be trialled end to end).
+const TOUR_VERSION = 3;
 function tourKey() { return 'tourSeen:v' + TOUR_VERSION + ':' + ((trainee && trainee.id) || 'anon'); }
 function tourSeen() { try { return JSON.parse(localStorage.getItem(tourKey()) || '{}'); } catch (e) { return {}; } }
 function markTourSeen(name) {

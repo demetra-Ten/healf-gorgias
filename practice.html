@@ -1814,6 +1814,10 @@ const RECHARGE_CANCELLED = { 163: true };
 // subscription state ("still showed as active") that contradicted the ticket. This sends
 // it the same text the trainee sees, or says plainly that there is no integration.
 function rechargeStateText(ticket) {
+  // The panel is only rendered on Subscription tickets, so that is the only place the
+  // trainee could have seen it. Sending it on other categories invented an "active
+  // subscription" the trainee never saw, and the scorer duly faulted them for ignoring it.
+  if (Number(ticket.category_id) !== 5) return 'No Recharge panel on this ticket.';
   const orders = parseOrders(ticket);
   if (!orders.length) return 'No Shopify/Recharge match for this customer — Gorgias shows no integration panel at all.';
   const cancelled = RECHARGE_CANCELLED[Number(ticket.id)] === true;

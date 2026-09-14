@@ -949,12 +949,13 @@ const TOUR_STEPS = {
   ]
 };
 
-let tourName = null, tourIdx = 0;
+let tourName = null, tourIdx = 0, tourForced = false;
 
 // Bump TOUR_VERSION to show the walkthrough again to everyone, including trainees
 // who have already dismissed it (v2: first run for people who started before it
-// existed; v3: reset so the auto-start on login could be trialled end to end).
-const TOUR_VERSION = 3;
+// existed; v3: reset so the auto-start on login could be trialled end to end;
+// v4: Skip removed, so the first run has to be completed).
+const TOUR_VERSION = 4;
 function tourKey() { return 'tourSeen:v' + TOUR_VERSION + ':' + ((trainee && trainee.id) || 'anon'); }
 function tourSeen() { try { return JSON.parse(localStorage.getItem(tourKey()) || '{}'); } catch (e) { return {}; } }
 function markTourSeen(name) {
@@ -970,7 +971,7 @@ function startTour(name, force) {
   // one being left behind so it does not replay on the next login.
   if (tourName && tourName !== name) markTourSeen(tourName);
   tourClear();
-  tourName = name; tourIdx = 0;
+  tourName = name; tourIdx = 0; tourForced = !!force;
   for (let i = 0; i < 4; i++) {
     const pane = document.createElement('div'); pane.className = 'tour-pane'; document.body.appendChild(pane);
   }
@@ -1048,7 +1049,7 @@ function tourShow() {
       '<div class="tour-title">' + step.title + '</div>' +
       '<div class="tour-body">' + step.body + '</div>' +
       '<div class="tour-foot">' +
-        '<button class="tour-skip" onclick="tourEnd()">Skip</button>' +
+        (tourForced ? '<button class="tour-skip" onclick="tourEnd()">Close</button>' : '') +
         '<span class="tour-spacer"></span>' +
         (tourIdx > 0 ? '<button class="tour-btn" onclick="tourBack()">Back</button>' : '') +
         '<button class="tour-btn primary" onclick="' + (isLast ? 'tourEnd()' : 'tourNext()') + '">' +
@@ -1075,7 +1076,7 @@ function tourShow() {
 window.addEventListener('resize', function () { if (tourName) tourShow(); });
 document.addEventListener('keydown', function (e) {
   if (!tourName) return;
-  if (e.key === 'Escape') tourEnd();
+  if (e.key === 'Escape') { if (tourForced) tourEnd(); }   // first run must be completed
   else if (e.key === 'ArrowRight') tourNext();
   else if (e.key === 'ArrowLeft') tourBack();
 });

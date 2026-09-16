@@ -155,3 +155,34 @@ system prompt, after the two-axes paragraph, then `publish_workflow`:
 Blocked so far because n8n `update_workflow` rejects its `operations` array after a
 reconnect. Retry, then replay submission 97 (ticket 146) to confirm it no longer faults the
 missing ETA.
+
+---
+
+## I. Stop inventing a #customer-feedback / Ops step on pre-order & OOS (2026-09-16)
+
+Demetra: *"nowhere in the SOP do they need to 'Flagging the delay to #customer-feedback /
+Ops is the right instinct for a delay of this nature' or 'Logging the delay in
+#customer-feedback / flagging to Ops is recommended for delay' — this is inaccurate
+marking, so please remove this when there is an ETA date we can provide for the customer."*
+
+**Cause:** the Fulfilment SOP ended with a blanket line, *"Delays over a week: flag to
+#customer-feedback / Ops"*, and the marker applied it to every unfulfilled/OOS/pre-order
+ticket regardless of whether an ETA was available.
+
+**Fix (live in the Resolve SOP node):** that line is gone, replaced with an explicit
+prohibition — logging to #customer-feedback or flagging Ops is not part of handling these
+tickets and must never appear as a necessary improvement, a suggested improvement, or
+praise whenever an ETA can be given. The two genuine exceptions are kept: a listing still
+showing pre-order when Shopify says in stock (raise in #inventory), and a delay with no
+ETA anywhere.
+
+**Verified** by replaying subs 28, 38 and 101 (all Fulfilment): zero mentions of
+#customer-feedback or Ops. Sub 28 moved 1 -> 2, so the invented step had been costing a mark.
+
+## J. Back in stock since the ticket was written (2026-09-16)
+
+The sim carries no live stock and the tickets are months old, so a trainee checking Shopify
+now usually finds the item available again. That is the expected case: saying so and using
+the real macro **'Unfulfilled Back in Stock Sooner'** is CORRECT, even where the customer
+asked to cancel or swap — the macro is written for exactly that. The reply must still move
+the order forward (released for shipping, tracking to follow), not just report stock.

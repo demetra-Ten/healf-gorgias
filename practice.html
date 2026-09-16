@@ -1593,10 +1593,17 @@ function repairActionsScaffold() {
   }
 }
 
+// The Actions note belongs to the TICKET, not to the message being written, so it has to
+// survive switching between Email and Internal note. Kept per ticket and restored on render.
+const actionsDrafts = {};
+function stashActions() {
+  const box = document.getElementById('actions-input');
+  if (box && activeTicketId != null) actionsDrafts[activeTicketId] = box.innerHTML;
+}
 document.addEventListener('beforeinput', actionsLabelGuard);
 document.addEventListener('input', e => {
   const box = document.getElementById('actions-input');
-  if (box && e.target === box) repairActionsScaffold();
+  if (box && e.target === box) { repairActionsScaffold(); stashActions(); }
 });
 const ACTIONS_TEMPLATE_HTML =
   ACTIONS_ROW('Order status:') +
@@ -1713,12 +1720,11 @@ function renderReplySection(ticket, sub) {
         </div>
         <div class="drag-handle" data-target="reply-input" title="Drag to resize"></div>
         <textarea class="reply-textarea" id="reply-input" placeholder="${isNote ? 'Write an internal note for the CW team…' : 'Click here to reply…'}"></textarea>
-        ${isNote ? '' : `
         <div class="actions-note-wrap">
           <div class="drag-handle" data-target="actions-input" title="Drag to resize"></div>
           <div class="actions-note-label"><span class="an-title">ACTIONS</span> <span class="an-hint">(fill in each line: what the order status is, what the ticket is about, then the steps you'd take on Shopify / Swap / Recharge etc.)</span></div>
-          <div class="actions-doc" id="actions-input" contenteditable="true" spellcheck="true">${ACTIONS_TEMPLATE_HTML}</div>
-        </div>`}
+          <div class="actions-doc" id="actions-input" contenteditable="true" spellcheck="true">${actionsDrafts[ticket.id] || ACTIONS_TEMPLATE_HTML}</div>
+        </div>
         ${fmtToolbar()}
         <div class="reply-toolbar">
           <div class="reply-actions">
@@ -2330,6 +2336,7 @@ async function submitReply(ticketId, andClose) {
   if (error) { if (btn) { btn.disabled = false; btn.textContent = 'Send'; } alert('Error: ' + error.message); return; }
 
   submissions.push(data);
+  delete actionsDrafts[ticketId];   // the ticket is answered; don't carry the note forward
   const ticket = tickets.find(t => t.id === ticketId);
   renderMessages(ticket, data);
 
@@ -2388,6 +2395,7 @@ function toggleChannelMenu(e) {
 }
 function setChannel(ch, ticketId) {
   // Preserve whatever's typed when switching channel (Gorgias keeps the draft).
+  stashActions();
   const cur = document.getElementById('reply-input');
   const draft = cur ? cur.value : '';
   replyChannel = ch;

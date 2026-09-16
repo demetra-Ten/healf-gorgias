@@ -954,6 +954,9 @@ const TOUR_STEPS = {
 };
 
 let tourName = null, tourIdx = 0, tourForced = false;
+// The admin "view ticket" link opens this page read-only. It is not a trainee session,
+// so the walkthrough must not run and the viewer's own internal notes must not appear.
+let isPreview = false;
 
 // Whether someone has done the walkthrough is stored against the TRAINEE ROW, not in
 // the browser: localStorage meant it reappeared on a new browser, in a private window,
@@ -972,6 +975,7 @@ async function markTourDone() {
 
 function startTour(name, force) {
   if (!TOUR_STEPS[name]) return;
+  if (isPreview) return;
   if (!force && tourDone()) return;
   const menu = document.getElementById('profile-menu');
   if (menu) menu.classList.remove('open');
@@ -1153,6 +1157,7 @@ async function init() {
 // Read-only ticket preview, opened from the admin site as practice.html?preview=<id>.
 // Reuses the sim's own rendering so the ticket looks exactly as trainees see it, minus the reply composer.
 async function initPreview(id) {
+  isPreview = true;
   trainee = { id: -1, name: 'Preview', email: '', current_category_id: null };
   const ln = document.querySelector('.leftnav'); if (ln) ln.style.display = 'none';
   const [catsR, macrosR, tixR] = await Promise.all([
@@ -1426,7 +1431,7 @@ function renderMessages(ticket, sub) {
     return bubble({ dir:'out', avaClass:'agent', ava:'H', sender:'Healf', sub:'team@healf.com', body:p.body, cardClass:'agent-card' });
   }).join('');
   // Internal notes — CW-only, rendered as full-width tinted message blocks like Gorgias (customers never see these)
-  (internalNotes[ticket.id] || []).forEach(nt => {
+  (isPreview ? [] : (internalNotes[ticket.id] || [])).forEach(nt => {
     const who = nt.author || 'You';
     const when = nt.at ? new Date(nt.at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '';
     html += `

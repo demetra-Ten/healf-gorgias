@@ -279,6 +279,13 @@ html[data-theme="dark"] .tour-btn { background: #2a2a30; border-color: #2c2c31; 
 html[data-theme="dark"] .tour-pane { background: rgba(0, 0, 0, 0.68); }
 
 .att-img { display: block; max-width: 100%; max-height: 62vh; margin: 0 auto; border-radius: 8px; }
+.li-status { display: inline-block; margin-left: 7px; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.2px; vertical-align: middle; }
+.li-status.pre { background: #fef3c7; color: #92400e; }
+.li-status.unf { background: #fee2e2; color: #991b1b; }
+.li-status.ful { background: #dcfce7; color: #166534; }
+html[data-theme="dark"] .li-status.pre { background: #422006; color: #fcd34d; }
+html[data-theme="dark"] .li-status.unf { background: #450a0a; color: #fca5a5; }
+html[data-theme="dark"] .li-status.ful { background: #052e16; color: #86efac; }
 .quoted-wrap { margin-top: 6px; }
 .quoted-dots { border: 1px solid #e5e7eb; background: #f3f4f6; border-radius: 8px; padding: 1px 9px; cursor: pointer; color: #9ca3af; font-size: 13px; letter-spacing: 1px; line-height: 1.6; }
 .quoted-dots:hover { background: #e5e7eb; color: #6b7280; }
@@ -893,9 +900,19 @@ function renderProducts(str) {
     let qty = '', price = '';
     const qm = rest.match(/\(x?(\d+)\)/i); if (qm) qty = '×' + qm[1];
     const pm = rest.match(/£[\d.,]+/); if (pm) price = pm[0];
-    const meta = [qty, price].filter(Boolean).join(' · ');  // no status text — matches how Gorgias shows order lines
+    const meta = [qty, price].filter(Boolean).join(' · ');
+    // Per-line status. On a part-shipped order the trainee has to know WHICH line is
+    // still outstanding — that is the one whose ETA they go and check on Shopify.
+    const sm = rest.match(/\[([^\]]+)\]/);
+    const st = sm ? sm[1].trim().toLowerCase() : '';
+    let chip = '';
+    if (st) {
+      const cls = /pre-?order/.test(st) ? 'pre' : (st === 'fulfilled' ? 'ful' : 'unf');
+      const label = /pre-?order/.test(st) ? 'Pre-order' : (st === 'fulfilled' ? 'Shipped' : 'Not shipped');
+      chip = `<span class="li-status ${cls}">${label}</span>`;
+    }
     const title = url ? `<a href="${url}" target="_blank" rel="noopener">${name}</a>` : name;
-    return `<div class="li">${brand ? `<div class="li-brand">${brand}</div>` : ''}<div class="li-name">${title}</div>${meta ? `<div class="li-meta">${meta}</div>` : ''}</div>`;
+    return `<div class="li">${brand ? `<div class="li-brand">${brand}</div>` : ''}<div class="li-name">${title}${chip}</div>${meta ? `<div class="li-meta">${meta}</div>` : ''}</div>`;
   }).join('');
 }
 

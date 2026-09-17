@@ -131,6 +131,7 @@ textarea { resize: vertical; min-height: 80px; }
 .tf-actions { display:flex; justify-content:flex-end; margin-top:6px; }
 .tf-save { background:#7c3aed; color:#fff; border:none; border-radius:6px; padding:5px 14px; font-size:11px; font-weight:600; cursor:pointer; }
 .tf-save:hover { background:#6d28d9; }
+.badge-adj { margin-left: 6px; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; background: #ede9fe; color: #5b21b6; }
 .score-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .score-btns { display: flex; gap: 6px; }
 .score-btn { width: 34px; height: 34px; border-radius: 7px; border: 2px solid #e5e7eb; background: #fff; font-size: 14px; font-weight: 700; cursor: pointer; color: #374151; transition: all 0.1s; display: flex; align-items: center; justify-content: center; }
@@ -274,6 +275,15 @@ let allTickets = [];
 let submissions = [];
 let submissionScores = {};
 let REVIEWED = JSON.parse(localStorage.getItem('healf_reviewed') || '{}');
+// A trainer's verdict is the real mark. Where Demetra has set trainer_score it
+// overrides the auto score everywhere — stats, filters, badges and the trainee's own
+// view — so the results data reflects the corrected mark rather than the model's.
+function effScore(s) {
+  if (!s) return null;
+  return (s.trainer_score != null && s.trainer_score !== '') ? Number(s.trainer_score)
+       : (s.score != null ? Number(s.score) : null);
+}
+function isOverridden(s) { return !!(s && s.trainer_score != null && s.trainer_score !== '' && Number(s.trainer_score) !== Number(s.score)); }
 function toggleSub(id) { const el = document.getElementById('sub-' + id); if (el) el.classList.toggle('open'); }
 function toggleReviewed(id, checked) {
   if (checked) REVIEWED[id] = true; else delete REVIEWED[id];
@@ -434,7 +444,7 @@ async function deleteTicket(id) {
 
 // ── MARKING ──
 function updateMarkingBadge() {
-  const unscored = submissions.filter(s => !s.score).length;
+  const unscored = submissions.filter(s => effScore(s) == null).length;
   const badge = document.getElementById('marking-badge');
   badge.textContent = unscored;
   badge.style.display = unscored > 0 ? 'inline' : 'none';
@@ -448,9 +458,9 @@ function backToAllResults() { selectedTrainee = null; catFilter = null; scoreFil
 function setCatFilter(v) { catFilter = v; scoreFilter = null; renderMarking(); }
 function setScoreFilter(v) { scoreFilter = v; renderMarking(); }
 function statsFor(subs) {
-  const sc = subs.filter(s => s.score != null);
-  const n3 = sc.filter(s=>s.score==3).length, n2 = sc.filter(s=>s.score==2).length, n1 = sc.filter(s=>s.score==1).length;
-  const avg = sc.length ? (sc.reduce((a,s)=>a+Number(s.score),0)/sc.length).toFixed(2) : '—';
+  const sc = subs.filter(s => effScore(s) != null);
+  const n3 = sc.filter(s=>effScore(s)==3).length, n2 = sc.filter(s=>effScore(s)==2).length, n1 = sc.filter(s=>effScore(s)==1).length;
+  const avg = sc.length ? (sc.reduce((a,s)=>a+effScore(s),0)/sc.length).toFixed(2) : '—';
   const q = sc.length ? (Math.round(n3/sc.length*1000)/10) + '%' : '—';
   return { sc, n3, n2, n1, avg, q };
 }
@@ -477,7 +487,7 @@ function renderMarking() {
         <div class="sub-bar" onclick="toggleSub(${s.id})">
           <span class="sb-name">${traineeInfo.name || 'Unknown'}</span>
           <span class="sb-date">${when}</span>
-          ${isScored ? `<span class="badge badge-${s.score}">${s.score}/3</span>` : '<span class="badge badge-pending">Needs attention</span>'}
+          ${isScored ? `<span class="badge badge-${effScore(s)}">${effScore(s)}/3</span>${isOverridden(s) ? '<span class="badge-adj" title="You changed this from ' + s.score + '/3">adjusted</span>' : ''}` : '<span class="badge badge-pending">Needs attention</span>'}
           <label class="sub-review" onclick="event.stopPropagation()"><input type="checkbox" ${reviewed ? 'checked' : ''} onchange="toggleReviewed(${s.id}, this.checked)"> Reviewed</label>
           <span class="sb-caret">▾</span>
         </div>
@@ -531,8 +541,8 @@ function renderMarking() {
   if (selectedTrainee != null && byT[selectedTrainee]) {
     const t = byT[selectedTrainee];
     const st = statsFor(t.subs);
-    const unscored = t.subs.filter(s => s.score == null);
-    const scored   = t.subs.filter(s => s.score != null);
+    const unscored = t.subs.filter(s => effScore(s) == null);
+    const scored   = t.subs.filter(s => effScore(s) != null);
     let html = `<button class="btn btn-outline" onclick="backToAllResults()" style="margin-bottom:16px">← All trainees</button>
       <div class="card" style="margin-bottom:18px">
         <div class="card-header"><span class="card-title">${t.name}</span><span class="marking-meta">${t.email}</span></div>
@@ -579,7 +589,7 @@ function renderMarking() {
         html += unscoredF.map(s => renderCard(s, false)).join('');
       }
       let scoredF = scored.filter(inCat);
-      if (scoreFilter !== null) scoredF = scoredF.filter(s => s.score == scoreFilter);
+      if (scoreFilter !== null) scoredF = scoredF.filter(s => effScore(s) == scoreFilter);
       html += `<h3 style="font-size:14px;font-weight:600;margin:24px 0 14px">Submissions (${scoredF.length}${scoreFilter!==null?` scored ${scoreFilter}/3`:''})</h3>`;
       html += scoredF.length ? scoredF.map(s => renderCard(s, true)).join('') : '<div class="loading">Nothing to show for this filter.</div>';
     }
@@ -588,9 +598,9 @@ function renderMarking() {
   }
 
   // ── OVERVIEW: overall tiles + clickable per-trainee table ──
-  const scoredAll = submissions.filter(s => s.score != null);
-  const allN3 = scoredAll.filter(s => s.score == 3).length;
-  const overallAvg = scoredAll.length ? (scoredAll.reduce((a,s)=>a+Number(s.score),0)/scoredAll.length).toFixed(2) : '—';
+  const scoredAll = submissions.filter(s => effScore(s) != null);
+  const allN3 = scoredAll.filter(s => effScore(s) == 3).length;
+  const overallAvg = scoredAll.length ? (scoredAll.reduce((a,s)=>a+effScore(s),0)/scoredAll.length).toFixed(2) : '—';
   const overallQ = scoredAll.length ? (Math.round(allN3/scoredAll.length*1000)/10) + '%' : '—';
   const tiles = `<div class="stat-tiles">
     <div class="stat-tile"><div class="v">${Object.keys(byT).length}</div><div class="l">Trainees</div></div>

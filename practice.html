@@ -286,6 +286,9 @@ html[data-theme="dark"] .tour-pane { background: rgba(0, 0, 0, 0.68); }
 html[data-theme="dark"] .li-status.pre { background: #422006; color: #fcd34d; }
 html[data-theme="dark"] .li-status.unf { background: #450a0a; color: #fca5a5; }
 html[data-theme="dark"] .li-status.ful { background: #052e16; color: #86efac; }
+.fb-trainer { border-left: 3px solid #7c3aed; padding-left: 10px; background: #faf8ff; border-radius: 0 6px 6px 0; }
+.fb-trainer .fb-head { color: #6d28d9; }
+html[data-theme="dark"] .fb-trainer { background: #1e1b2e; }
 .quoted-wrap { margin-top: 6px; }
 .quoted-dots { border: 1px solid #e5e7eb; background: #f3f4f6; border-radius: 8px; padding: 1px 9px; cursor: pointer; color: #9ca3af; font-size: 13px; letter-spacing: 1px; line-height: 1.6; }
 .quoted-dots:hover { background: #e5e7eb; color: #6b7280; }
@@ -1249,10 +1252,17 @@ function fulfilment(raw) {
 let ticketTab = 'toaction';   // 'toaction' | 'marked'
 function switchTicketTab(tab) { ticketTab = tab; renderTicketTable(); }
 
+// Where Demetra has reviewed a mark, HER score is the real one. The trainee sees the
+// corrected score (and her note if she left one), not the model's original.
+function effScore(sub) {
+  if (!sub) return null;
+  return (sub.trainer_score != null && sub.trainer_score !== '') ? Number(sub.trainer_score)
+       : (sub.score != null ? Number(sub.score) : null);
+}
 function renderTicketTable() {
   const tbody = document.getElementById('ticket-tbody');
   const view = (activeCatFilter == null) ? tickets : tickets.filter(t => t.category_id === activeCatFilter);
-  const isMarked = t => { const s = getSub(t.id); return s && s.score != null; };
+  const isMarked = t => effScore(getSub(t.id)) != null;
   const marked = view.filter(isMarked);
   const toAction = view.filter(t => !isMarked(t));
 
@@ -1277,7 +1287,7 @@ function renderTicketTable() {
     const sub = getSub(t.id);
     const isActive = t.id === activeTicketId;
     let dotClass = 'dot-open', statusLabel = 'Open';
-    if (sub && sub.score != null) { dotClass = scoreDotClass(sub.score); statusLabel = `${sub.score}/3`; }
+    if (effScore(sub) != null) { dotClass = scoreDotClass(effScore(sub)); statusLabel = `${effScore(sub)}/3`; }
     return `<tr class="${isActive ? 'active-row' : ''}" onclick="openTicket(${t.id})">
       <td><input type="checkbox" class="tt-checkbox" onclick="event.stopPropagation()" /></td>
       <td>
@@ -1332,7 +1342,7 @@ function openTicket(id) {
   document.getElementById('td-subject').textContent = ticket.subject;
 
   const badge = document.getElementById('td-status-badge');
-  if (sub && sub.score != null) { badge.textContent = `${sub.score}/3`; badge.className = `td-status-badge ${scoreBadgeClass(sub.score)}`; }
+  if (effScore(sub) != null) { badge.textContent = `${effScore(sub)}/3`; badge.className = `td-status-badge ${scoreBadgeClass(effScore(sub))}`; }
   else if (sub) { badge.textContent = 'Submitted'; badge.className = 'td-status-badge badge-submitted'; }
   else { badge.textContent = 'Open'; badge.className = 'td-status-badge badge-open'; }
 
@@ -1674,7 +1684,7 @@ function renderReplySection(ticket, sub) {
         </div>`;
       return;
     }
-    const scored = sub.score != null && sub.score !== undefined;
+    const scored = effScore(sub) != null;
     let rf = sub.response_feedback || '';
     let af = sub.actions_feedback || '';
     // On reload the split fields aren't in the DB — recover them from the stored
@@ -1686,10 +1696,15 @@ function renderReplySection(ticket, sub) {
     }
     // Feedback can be long, so the box is collapsible and drag-resizable (the caret
     // collapses it to just the bar; the handle at the bottom sets the height).
+    // A trainer's note outranks the auto feedback, so it goes first and is clearly hers.
+    const tNote = (sub.trainer_note || '').trim();
+    const tBlock = tNote
+      ? `<div class="fb-section fb-trainer"><div class="fb-head">From your trainer</div>${formatFeedback(tNote)}</div>`
+      : '';
     const fbBody = scored
-      ? `<div class="fb-section"><div class="fb-head">Response</div>${formatFeedback(rf)}</div>
+      ? tBlock + `<div class="fb-section"><div class="fb-head">Response</div>${formatFeedback(rf)}</div>
          <div class="fb-section"><div class="fb-head">Actions</div>${formatFeedback(af)}</div>`
-      : (sub.feedback ? `<strong>Trainer feedback:</strong>${formatFeedback(sub.feedback)}` : '');
+      : (sub.feedback ? `<strong>Trainer feedback:</strong>${formatFeedback(sub.feedback)}` : tBlock);
     const fbHtml = fbBody
       ? `<div class="feedback-wrap${feedbackCollapsed ? ' collapsed' : ''}" id="feedback-wrap">
            <div class="fb-bar" onclick="toggleFeedback()" title="Click to collapse or expand">
@@ -1705,9 +1720,9 @@ function renderReplySection(ticket, sub) {
       <div class="submitted-banner">
         <div>
           <div class="submitted-title">Reply submitted</div>
-          <div class="submitted-sub">${scored ? 'Scored automatically against the ideal handling.' : (sub.scoreError ? 'Saved, but auto-scoring couldn\'t run just now.' : 'Awaiting review.')}</div>
+          <div class="submitted-sub">${scored ? (sub.trainer_score != null && sub.trainer_score !== '' ? 'Reviewed by your trainer.' : 'Scored automatically against the ideal handling.') : (sub.scoreError ? 'Saved, but auto-scoring couldn\'t run just now.' : 'Awaiting review.')}</div>
         </div>
-        ${scored ? `<div class="score-display"><div class="score-val">${sub.score}/3</div><div class="score-label">Score</div></div>` : ''}
+        ${scored ? `<div class="score-display"><div class="score-val">${effScore(sub)}/3</div><div class="score-label">${sub.trainer_score != null && sub.trainer_score !== '' ? 'Trainer score' : 'Score'}</div></div>` : ''}
       </div>`;
   } else {
     const isNote = replyChannel === 'note';
@@ -2400,7 +2415,7 @@ async function submitReply(ticketId, andClose) {
   renderMessages(ticket, data);
   renderReplySection(ticket, data);
   const badge2 = document.getElementById('td-status-badge');
-  if (data.score != null) { badge2.textContent = `${data.score}/3`; badge2.className = `td-status-badge ${scoreBadgeClass(data.score)}`; }
+  if (effScore(data) != null) { badge2.textContent = `${effScore(data)}/3`; badge2.className = `td-status-badge ${scoreBadgeClass(effScore(data))}`; }
   else { badge2.textContent = 'Submitted'; badge2.className = 'td-status-badge badge-submitted'; }
 }
 

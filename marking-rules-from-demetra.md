@@ -186,3 +186,30 @@ now usually finds the item available again. That is the expected case: saying so
 the real macro **'Unfulfilled Back in Stock Sooner'** is CORRECT, even where the customer
 asked to cancel or swap — the macro is written for exactly that. The reply must still move
 the order forward (released for shipping, tracking to follow), not just report stock.
+
+## K. Photos already sent — skip the evidence macro (2026-09-17)
+
+Demetra on ticket 72 (Rory Frost, leaked cod liver oil): *"this one is correct marking but
+the agent should send the 'Delivery Product Sent Out' macro and amend at the start to
+acknowledge that the customer received something faulty. No need to send the 'Faulty
+Consumable: Damaged/Gone-off Product' macro because the customer already sent images."*
+
+**Rule for the GXO SOP:** where the ticket already carries the customer's photos,
+- do NOT expect or suggest **'Faulty Consumable: Damaged/Gone-off Product'** — its only job
+  is to request evidence, and the evidence is there. Asking again is a *necessary*
+  improvement, not a suggestion.
+- the correct macro is **'Delivery Product Sent Out'**, amended at the start to acknowledge
+  the customer received something faulty before confirming the replacement. A trainee who
+  does that has handled it correctly — say so plainly.
+- only expect an evidence request where there are no attachments, or where the photos
+  genuinely do not show what is needed (no batch number, no best-before date).
+
+**STATUS: written but NOT YET LIVE** — the n8n connector was invalidated mid-update. Re-apply
+to the Resolve SOP node's GXO constant and publish.
+
+## L. Real customer names leaking through anonymisation (2026-09-17)
+
+Found while checking the above: three hidden ideal responses still greeted the REAL
+customer, not the sim one — t61 "Hi Sami" (Freya Owen), t72 "Hi Saliha" (Rory Frost),
+t178 "Hi Kristy" (Ryan Alden). Fixed. **Anonymisation has to cover `ideal_response`, not
+just `message` and the customer fields** — worth re-checking after any ticket import.

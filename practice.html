@@ -809,6 +809,23 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
 .ob-act { display: inline-flex; align-items: center; gap: 4px; font-family: inherit; font-size: 11.5px;
   color: #1b1c1d; border: 1px solid #e8e5e2; border-radius: 6px; background: #fff; padding: 3px 8px; cursor: help; }
 .ob-act:hover { background: #f7f5f3; }
+
+/* ── Recharge widget ──────────────────────────────────────────────────────
+   Matched to the live integration: top-level Status / Updated at / Processor
+   type, then a collapsible block per subscription carrying Recharge's own
+   field names, then a block per charge.                                     */
+.rc-badge { font-size: 10px; font-weight: 700; letter-spacing: .4px; padding: 2px 7px; border-radius: 6px; }
+.rc-badge.on  { background: #e4f7ec; color: #00834f; }
+.rc-badge.off { background: #ffe9e9; color: #6c041f; }
+.rc-subhdr { display: flex; align-items: center; gap: 7px; width: 100%; border: none; background: none;
+  cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: #1b1c1d; padding: 7px 0; }
+.rc-subhdr svg { transition: transform .15s; flex: none; }
+.rc-subhdr.closed svg { transform: rotate(180deg); }
+.rc-act { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-family: inherit;
+  font-size: 11px; color: #1b1c1d; border: 1px solid #e8e5e2; border-radius: 6px;
+  background: #fff; padding: 2px 7px; cursor: help; font-weight: 400; }
+.rc-act:hover { background: #f7f5f3; }
+.rc-block { border-top: 1px solid #e8e5e2; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -2521,7 +2538,13 @@ function subscribedProduct(ticket) {
       if (parseFloat(m[4]) === 0) return;
       counts[title] = (counts[title] || 0) + 1;
       // Orders are listed newest first, so keep the first price/vendor we see.
-      if (!meta[title]) meta[title] = { price: '£' + m[4], vendor: ((ln.match(/@@(.+?)\s*$/) || [])[1] || '').trim() };
+      if (!meta[title]) {
+        // Titles are stored as "Product - Variant", which is how Recharge splits them.
+        const dash = title.lastIndexOf(' - ');
+        meta[title] = { price: '£' + m[4], qty: m[3],
+          variant: dash > -1 ? title.slice(dash + 3).trim() : '',
+          vendor: ((ln.match(/@@(.+?)\s*$/) || [])[1] || '').trim() };
+      }
     });
   });
   const titles = Object.keys(counts);
@@ -2634,7 +2657,8 @@ function rechargeStateText(ticket) {
   const cancelled = RECHARGE_CANCELLED[Number(ticket.id)] === true;
   const p = subscribedProduct(ticket);
   return 'Recharge panel shows subscription ' + (cancelled ? 'CANCELLED / INACTIVE' : 'ACTIVE')
-    + (p ? ('. Subscribed product: ' + p.title + (p.vendor ? ' (' + p.vendor + ')' : '') + ' at ' + p.price + '.')
+    + (p ? ('. Subscribed product: ' + p.title + (p.vendor ? ' (' + p.vendor + ')' : '') + ' at ' + p.price
+            + (p.qty ? ', quantity ' + p.qty : '') + (p.variant ? ', variant ' + p.variant : '') + '.')
          : '. No recurring product on file.');
 }
 
@@ -2645,22 +2669,50 @@ function rechargePanelHtml(ticket) {
   // No orders under this email = no Shopify/Recharge match, so Gorgias would show no
   // integration at all. Render nothing rather than implying a subscription exists.
   if (!orders.length) return '';
-  const upd = (orders[0] && orders[0].date) ? orders[0].date : 'Recently';
+  const upd = (orders[0] && orders[0].date) ? orders[0].date : '\u2014';
+  const created = (orders[orders.length - 1] && orders[orders.length - 1].date) || '\u2014';
+  const row = (l, v) => `<div class="cs-frow"><span class="cs-flabel">${l}</span><span class="cs-fval">${v}</span></div>`;
+  // Every order carrying the recurring product is a Recharge charge against it.
+  const charges = orders.filter(o => !p || String(o.items || '').indexOf(p.title) !== -1);
   return `
     <div class="cs-section">
-      <div class="cs-title recharge-head"><span class="recharge-mark">↻</span> Recharge <span class="recharge-cust">${ticket.customer_name}</span></div>
-      <div class="cs-row"><span class="cs-label">Status</span><span class="cs-value recharge-status">${cancelled ? 'INACTIVE' : 'ACTIVE'}</span></div>
-      <div class="cs-row"><span class="cs-label">Updated at</span><span class="cs-value">${upd}</span></div>
-      <div class="cs-row"><span class="cs-label">Processor type</span><span class="cs-value">shopify_payments</span></div>
-      <div class="recharge-sub">
-        <div class="cs-sublabel">Subscription</div>
-        <span class="recharge-badge${cancelled ? ' cancelled' : ''}">${cancelled ? 'CANCELLED' : 'ACTIVE'}</span>
-        ${p ? `<div class="recharge-prod">
-                 ${p.vendor ? `<div class="recharge-prod-brand">${p.vendor}</div>` : ''}
-                 <div class="recharge-prod-name">${p.title}</div>
-                 <div class="recharge-prod-meta">${p.price}${p.orders > 1 ? ` \u00b7 ${p.orders} orders` : ''}</div>
-               </div>`
-             : '<div class="recharge-prod"><div class="recharge-prod-meta">No recurring product on file.</div></div>'}
+      <div class="cs-sechdr"><span class="recharge-mark">\u21bb</span><h5>Recharge</h5>
+        <span class="recharge-cust">${ticket.customer_name}</span>
+        <button class="cs-collapse" title="Collapse" onclick="collapseSection(this)">${ICONS.chev}</button>
+      </div>
+      <div class="cs-sec-body">
+        ${row('Status', `<span class="rc-badge ${cancelled ? 'off' : 'on'}">${cancelled ? 'INACTIVE' : 'ACTIVE'}</span>`)}
+        ${row('Updated at', upd)}
+        ${row('Processor type', 'shopify_payments')}
+
+        <div class="rc-block">
+          <button class="rc-subhdr" onclick="toggleCustomerFields(this)">${ICONS.chev} Subscription
+            <span class="rc-badge ${cancelled ? 'off' : 'on'}">${cancelled ? 'CANCELLED' : 'ACTIVE'}</span>
+            <span class="rc-act" title="Amendments are made in Recharge. Here, write the step in your Actions.">${cancelled ? '\u25b6 Activate' : '\u2298 Cancel'}</span>
+          </button>
+          <div class="cs-cf-body">
+            ${row('Created', created)}
+            ${row('Product title', p ? p.title : '\u2014')}
+            ${row('Cancellation reason', cancelled ? 'Customer request' : '-')}
+            ${row('Cancelled at', cancelled ? upd : '-')}
+            ${row('Created at', created)}
+            ${row('Quantity', p && p.qty ? p.qty : '\u2014')}
+            ${row('Price', p && p.price ? p.price.replace('\u00a3', '') : '\u2014')}
+            ${row('Variant title', p && p.variant ? p.variant : '\u2014')}
+          </div>
+        </div>
+
+        ${charges.map((o, i) => `
+        <div class="rc-block">
+          <button class="rc-subhdr${i ? ' closed' : ''}" onclick="toggleCustomerFields(this)">${ICONS.chev} ${o.number}${o.value ? ' | ' + o.value : ''}
+            <span class="rc-badge on">SUCCESS</span>
+            <span class="rc-act" title="Refunding is a live action. Here, write it in your Actions with the refund reason.">\u21a9 Refund</span>
+          </button>
+          <div class="cs-cf-body"${i ? ' style="display:none"' : ''}>
+            ${row('Created', o.date || '\u2014')}
+            ${row('Total', o.value || '\u2014')}
+          </div>
+        </div>`).join('')}
       </div>
     </div>`;
 }

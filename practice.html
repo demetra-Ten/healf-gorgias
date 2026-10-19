@@ -781,6 +781,34 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
 
 .cs-collapse svg { transition: transform .15s; }
 .cs-collapse.closed svg { transform: rotate(180deg); }
+
+/* ── Shopify integration panel ────────────────────────────────────────────
+   Sub-headings are 14px/600 in a 32px row with their own chevron; label rows
+   are the same 24px / #5f5e5c as the customer block.                        */
+.sp-store { margin-left: auto; font-family: inherit; font-size: 11.5px; color: #5f5e5c;
+  border: 1px solid #e8e5e2; border-radius: 6px; background: #fff; padding: 2px 7px; cursor: pointer; }
+.sp-store:hover { background: #f7f5f3; }
+.sp-cust { display: flex; align-items: center; gap: 5px; min-height: 24px; }
+.sp-cust a { font-size: 13px; }
+.sp-cust svg { color: #644b9e; flex: none; }
+.sp-empty { font-size: 12px; color: #5f5e5c; padding: 2px 0 6px; }
+.sp-orders-hdr { display: flex; align-items: center; gap: 8px; height: 32px; margin-top: 2px; }
+.sp-orders-hdr h6 { margin: 0; font-size: 14px; font-weight: 600; color: #1b1c1d; display: flex; align-items: center; gap: 7px; }
+.sp-create { margin-left: auto; font-family: inherit; font-size: 11.5px; color: #1b1c1d;
+  border: 1px solid #e8e5e2; border-radius: 6px; background: #fff; padding: 3px 8px; cursor: pointer; }
+.sp-create:hover { background: #f7f5f3; }
+.ob-head-ico { display: flex; align-items: center; gap: 6px; }
+.ob-ext { color: #644b9e; display: flex; }
+.ob-pills { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0 2px; }
+.ob-pill { font-size: 11px; padding: 2px 8px; border-radius: 6px; }
+.ob-pill.paid { background: #e4f7ec; color: #00834f; }
+.ob-pill.ful  { background: #e4f7ec; color: #00834f; }
+.ob-pill.unf  { background: #fff5ee; color: #a94f13; }
+.ob-pill.can  { background: #ffe9e9; color: #6c041f; }
+.ob-acts { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 4px; }
+.ob-act { display: inline-flex; align-items: center; gap: 4px; font-family: inherit; font-size: 11.5px;
+  color: #1b1c1d; border: 1px solid #e8e5e2; border-radius: 6px; background: #fff; padding: 3px 8px; cursor: help; }
+.ob-act:hover { background: #f7f5f3; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1050,6 +1078,8 @@ const ICONS = {
   user: `<svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
   mail: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>`,
   zap: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  shopify: `<svg width="15" height="15" viewBox="0 0 24 24" fill="#5abf2a" stroke="none"><path d="M15.3 3.3c-.1-.1-.3-.1-.4-.1l-1 .2c-.3-.9-.9-1.8-1.9-1.8h-.1c-.3-.4-.7-.6-1.1-.6C8.4 1 7 4.3 6.6 6l-1.8.6c-.6.2-.6.2-.7.7L2.6 21.3 15 23.4l6.7-1.6c0-.1-6.3-18-6.4-18.5zM11 6.9l-2.9.9C8.5 6.2 9.4 4 11 3.4V6.9zm-.6-4.6c.2 0 .4.1.5.2-1.5.7-2.4 2.6-2.8 4.5l-1.3.4c.4-1.6 1.6-5.1 3.6-5.1zM12 7.2V3.5c.5.3.9 1 1.1 1.9L12 7.2z"/></svg>`,
+  ext: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
   search: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.7" y2="16.7"/></svg>`,
   dots: `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>`,
   tag: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5f5e5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`,
@@ -1095,6 +1125,40 @@ function renderTags(ticket) {
 
 
 
+
+
+// ── Shopify panel helpers ──────────────────────────────────────────────────
+// Everything here is derived from the order data the ticket already carries.
+// Where Gorgias shows something the simulator has no source for — a customer's
+// metafields — the row is kept and shown empty rather than filled with fiction.
+function spMoney(list) {
+  let total = 0, seen = false;
+  list.forEach(o => { const m = (o.value || '').match(/[\d.]+/); if (m) { total += parseFloat(m[0]); seen = true; } });
+  return seen ? '£' + total.toFixed(2) : '—';
+}
+function spCreatedAt(orders) {
+  const dates = orders.map(o => o.date).filter(Boolean);
+  return dates.length ? dates[dates.length - 1] : '—';   // oldest known order
+}
+function spCustomerTags(ticket, orders) {
+  const t = [];
+  if (ticket.loyalty_tier) t.push(ticket.loyalty_tier);
+  if (Number(ticket.category_id) === 5) t.push('Active Subscriber');
+  if (orders.length > 1) t.push('Repeat customer');
+  t.push('UK');
+  return t;
+}
+function spOrderTags(ticket, o) {
+  const t = ['UK'];
+  if (Number(ticket.category_id) === 5) t.push('Subscription');
+  if (/pre-?order/i.test(o.items || '')) t.push('Pre-order');
+  return t;
+}
+function spChips(names) {
+  return `<div class="cs-tags"><button class="cs-tag-add" title="Add a tag">+</button>` +
+    names.map(n => `<span class="cs-tag"><i style="background:${tagDot(n)}"></i><span>${n}</span><button title="Remove">\u00d7</button></span>`).join('') +
+    `</div>`;
+}
 
 // ── Customer profile note ──────────────────────────────────────────────────
 // Editable in place, as on Gorgias: click "+ Add", type, Enter to save, Escape
@@ -2409,7 +2473,7 @@ function parseOrders(ticket) {
   if (ticket.order_number) return [{ number: ticket.order_number, value: ticket.order_value || '', status: ticket.order_status || '', date: ticket.order_date || '', items: raw }];
   return [];
 }
-function orderBoxHtml(o, open, extra) {
+function orderBoxHtml(o, open, extra, ticket) {
   const items = o.items || '';
   const n = items ? items.split('\n').filter(l => l.trim()).length : 0;
   const fs = fulfilment(o.status);
@@ -2417,13 +2481,27 @@ function orderBoxHtml(o, open, extra) {
   return `
       <div class="order-box${open ? ' open' : ''}">
         <div class="order-box-head" onclick="this.closest('.order-box').classList.toggle('open')">
-          <div class="order-box-row"><span class="order-num">${o.number}</span><span class="order-box-chevron">▾</span></div>
+          <div class="order-box-row">
+            <span class="ob-head-ico">${ICONS.shopify}<span class="order-num">${o.number}</span><span class="ob-ext" title="Open in Shopify">${ICONS.ext}</span></span>
+            <span class="order-box-chevron">▾</span>
+          </div>
           ${meta ? `<div class="order-box-meta">${meta}</div>` : ''}
-          ${fs ? `<span class="order-status-badge ${fs.cls}">${fs.label}</span>` : ''}
+          <div class="ob-pills">
+            ${/cancel/i.test(o.status || '') ? '<span class="ob-pill can">Cancelled</span>' : '<span class="ob-pill paid">Paid</span>'}
+            ${fs ? `<span class="ob-pill ${fs.cls === 'ful' ? 'ful' : 'unf'}">${fs.label}</span>` : ''}
+          </div>
         </div>
         <div class="order-box-body">
+          <div class="ob-acts">
+            <span class="ob-act" title="On a live ticket this is where you would edit the order. Here, write it in your Actions.">\u270f Edit</span>
+            <span class="ob-act" title="On a live ticket this duplicates the order. Here, write it in your Actions.">\u29c9 Duplicate</span>
+            <span class="ob-act" title="On a live ticket this refunds the order. Here, write it in your Actions \u2014 including the refund reason.">\u21a9 Refund</span>
+          </div>
+          ${spChips(spOrderTags(ticket, o))}
           ${items ? `<div class="order-lines-lbl">Line items<span class="order-lines-n">${n}</span></div><div class="cs-items">${renderProducts(items)}</div>` : '<div class="order-empty">No itemised products on file for this order yet.</div>'}
           ${o.value ? `<div class="order-total"><span>Total</span><span>${o.value}</span></div>` : ''}
+          <div class="cs-frow"><span class="cs-flabel">Created at</span><span class="cs-fval">${o.date || '\u2014'}</span></div>
+          <div class="cs-frow"><span class="cs-flabel">Refunds</span><span class="cs-fval">\u2014</span></div>
           ${extra || ''}
         </div>
       </div>`;
@@ -2758,11 +2836,31 @@ function renderCustomerSidebar(ticket) {
       const isUK = Number(ticket.category_id) === 6;
       const ship = isUK ? shippingBlockHtml(ticket) : '';
       if (!orders.length) return ship ? `<div class="cs-section"><div class="cs-title">Shipping</div>${ship}</div>` : '';
-      const lbl = orders.length > 1 ? `Recent Orders <span class="order-lines-n">${orders.length}</span>` : 'Recent Orders';
       return `
     <div class="cs-section">
-      <div class="cs-title">${lbl}</div>
-      ${orders.map((o, i) => orderBoxHtml(o, i === 0, (isUK && i === 0) ? ship : '')).join('')}
+      <div class="cs-sechdr">${ICONS.shopify}<h5>Shopify</h5>
+        <button class="sp-store" title="Store">healf-uk \u25be</button>
+        <button class="cs-collapse" title="Collapse" onclick="collapseSection(this)">${ICONS.chev}</button>
+      </div>
+      <div class="cs-sec-body">
+        <div class="sp-cust"><a class="cs-link" href="#" onclick="return false" title="Open this customer in Shopify">${ticket.customer_name}</a>${ICONS.ext}</div>
+        <div class="cs-frow"><span class="cs-flabel">Created at</span><span class="cs-fval" title="Earliest order on file in the simulator">${spCreatedAt(orders)}</span></div>
+        ${spChips(spCustomerTags(ticket, orders))}
+
+        <button class="cs-cf" onclick="toggleCustomerFields(this)">${ICONS.chev} Metafields</button>
+        <div class="cs-cf-body"><div class="sp-empty">Customer has no metafields populated.</div></div>
+
+        <button class="cs-cf" onclick="toggleCustomerFields(this)">${ICONS.chev} Purchase summary</button>
+        <div class="cs-cf-body">
+          <div class="cs-frow"><span class="cs-flabel">Number Of Orders</span><span class="cs-fval">${orders.length} order${orders.length === 1 ? '' : 's'}</span></div>
+          <div class="cs-frow"><span class="cs-flabel">Amount</span><span class="cs-fval">${spMoney(orders)}</span></div>
+        </div>
+
+        <div class="sp-orders-hdr"><h6>Orders<span class="cs-tchip">${orders.length}</span></h6>
+          <button class="sp-create" title="Creating a Manual Order is a live-Shopify action \u2014 describe it in your Actions instead.">+ Create order</button>
+        </div>
+        ${orders.map((o, i) => orderBoxHtml(o, i === 0, (isUK && i === 0) ? ship : '', ticket)).join('')}
+      </div>
     </div>`; })()}
     ${Number(ticket.category_id) === 5 ? rechargePanelHtml(ticket) : ''}
     <div class="cs-section">

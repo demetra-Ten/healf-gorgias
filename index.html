@@ -136,6 +136,9 @@ html[data-theme="dark"] .msg-card { border-color: rgba(255,255,255,.10); box-sha
 </div>
 
 <script>
+// The shared account every trainee authenticates through.
+const TRAINEE_ACCOUNT = 'trainee-access@healf.com';
+
 async function login() {
   const email = document.getElementById('email').value.trim().toLowerCase();
   const pin   = document.getElementById('pin').value.trim();
@@ -150,7 +153,7 @@ async function login() {
 
   // Authenticate against the shared training account (gates all database access).
   const { error: authErr } = await db.auth.signInWithPassword({
-    email: 'trainee-access@healf.com',
+    email: TRAINEE_ACCOUNT,
     password: pin
   });
   if (authErr) {
@@ -195,10 +198,25 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 // still be asked who they are.
 (async () => {
   try {
+    // ?signin always wins: it is the way back to this form from a bad or
+    // borrowed session, so it must be checked before anything else.
+    if (new URLSearchParams(location.search).has('signin')) {
+      localStorage.removeItem('trainee');
+      try { await db.auth.signOut(); } catch (e) {}
+      return;
+    }
     const stored = localStorage.getItem('trainee');
     if (!stored) return;
     const { data: { session } } = await db.auth.getSession();
-    if (session) window.location.replace('practice.html');
+    // Admin and trainees sign in through the same client and therefore share
+    // ONE stored session. Resuming on "a session exists" meant an admin session
+    // sent you straight to a trainee inbox with no way back to this form.
+    // Only a trainee session may skip the sign-in step.
+    if (!session || session.user.email !== TRAINEE_ACCOUNT) return;
+    // and only for the trainee the session actually belongs to
+    const who = JSON.parse(stored);
+    if (!who || !who.id) { localStorage.removeItem('trainee'); return; }
+    window.location.replace('practice.html');
   } catch (e) { /* fall through to the form */ }
 })();
 </script>

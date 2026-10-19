@@ -677,6 +677,30 @@ body, input, textarea, select, button, .reply-input, .actions-input {
   box-shadow: 0 2px 8px 0 rgba(0,0,0,.04);
 }
 html[data-theme="dark"] .msg-card { border-color: rgba(255,255,255,.10); box-shadow: none; }
+
+/* ── Ticket details, matched to Gorgias ───────────────────────────────────
+   Measured live: header h5 14px/600; chip 24px tall, 6px radius, 6px left
+   inset, 8px dot, 12px label, 4px gaps; overflow chip borderless.         */
+.cs-sechdr { display: flex; align-items: center; gap: 8px; height: 32px; margin-bottom: 2px; }
+.cs-sechdr h5 { font-size: 14px; font-weight: 600; color: #1b1c1d; margin: 0; flex: 1; }
+.cs-sechdr .cs-collapse { border: none; background: none; cursor: pointer; padding: 4px; border-radius: 6px; display: flex; line-height: 0; }
+.cs-sechdr .cs-collapse:hover { background: #f7f5f3; }
+.cs-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0 8px; }
+.cs-tag { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 0 0 6px;
+          border: 1px solid #e8e5e2; border-radius: 6px; background: #fff;
+          font-size: 12px; color: #1b1c1d; max-width: 100%; }
+.cs-tag i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.cs-tag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-tag button { border: none; background: none; cursor: pointer; color: #a3a19e; font-size: 13px;
+                 line-height: 1; padding: 0 6px; height: 100%; border-radius: 0 5px 5px 0; }
+.cs-tag button:hover { color: #1b1c1d; background: #f7f5f3; }
+.cs-tag-add { height: 24px; min-width: 26px; padding: 0 7px; border: 1px solid #e8e5e2; border-radius: 6px;
+              background: #fff; cursor: pointer; color: #5f5e5c; font-size: 14px; line-height: 1; font-family: inherit; }
+.cs-tag-add:hover { background: #f7f5f3; color: #1b1c1d; }
+.cs-tag-more { height: 24px; padding: 0 6px; border: none; background: none; cursor: pointer;
+               color: #1b1c1d; font-size: 13px; font-family: inherit; border-radius: 6px; }
+.cs-tag-more:hover { background: #f7f5f3; }
+.cs-req { color: #d9003e; margin-left: 2px; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -942,9 +966,45 @@ const ICONS = {
   user: `<svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
   mail: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>`,
   zap: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  tag: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5f5e5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`,
+  chev: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5f5e5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
   note: `<svg width="15" height="15" viewBox="0 0 24 24" fill="#c2721a" stroke="none"><path d="M5 3h8l6 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M13 3v6h6" fill="#fff" opacity="0.4"/></svg>`,
 };
 
+
+
+// Gorgias shows a ticket's tags at the top of the sidebar. The sim has no tags
+// column, so these are derived from what each ticket already carries — channel,
+// category, and whether Lola already replied. Swap this for a real `tags` column
+// if per-ticket fidelity to the source Gorgias ticket is wanted.
+const TAG_DOTS = ['#94550b','#4a6670','#9411b5','#d9003e','#ff573a','#00796b','#004d79','#793a00','#000c79','#8a6800'];
+function tagDot(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return TAG_DOTS[h % TAG_DOTS.length];
+}
+const CAT_TAGS = {
+  1: ['preorder', 'out of stock'], 2: ['gxo-error', 'supplier'], 3: ['return'],
+  4: ['discount'], 5: ['subscription'], 6: ['delivery', 'WISMO']
+};
+function ticketTags(ticket) {
+  const t = ['customer-email', 'during-business-hours'];
+  let parts = [];
+  try { parts = parseThread(ticket) || []; } catch (e) { parts = []; }
+  if (parts.some(p => p.type === 'LOLA')) t.push('auto message', 'ai-normal', 'lola-outbound');
+  if (parts.some(p => p.type !== 'CUSTOMER')) t.push('first response sent');
+  (CAT_TAGS[ticket.category_id] || []).forEach(x => t.push(x));
+  return t;
+}
+function renderTags(ticket) {
+  const all = ticketTags(ticket);
+  const shown = all.slice(0, 5), hidden = all.length - shown.length;
+  return `<div class="cs-tags">
+      <button class="cs-tag-add" title="Add a tag">+</button>
+      ${shown.map(n => `<span class="cs-tag"><i style="background:${tagDot(n)}"></i><span>${n}</span><button title="Remove">\u00d7</button></span>`).join('')}
+      ${hidden > 0 ? `<button class="cs-tag-more">+${hidden} \u2304</button>` : ''}
+    </div>`;
+}
 
 // ── First-login walkthrough ────────────────────────────────────────────────
 // Spotlights the real interface instead of describing it on a separate page.
@@ -2299,9 +2359,9 @@ function renderCustomerSidebar(ticket) {
 
   document.getElementById('customer-sidebar').innerHTML = `
     <div class="cs-section">
-      <div class="cs-title">Ticket details</div>
-      <button class="cs-addtag">+ Add tags</button>
-      <div class="cs-cr"><span class="cs-label">Contact reason</span>
+      <div class="cs-sechdr">${ICONS.tag}<h5>Ticket details</h5><button class="cs-collapse" title="Collapse">${ICONS.chev}</button></div>
+      ${renderTags(ticket)}
+      <div class="cs-cr"><span class="cs-label">Contact reason<span class="cs-req">*</span></span>
         <select class="cs-cr-select" onchange="setContactReason(${ticket.id}, this.value)">${contactReasonOptions(contactReasons[ticket.id] || '')}</select>
       </div>
     </div>

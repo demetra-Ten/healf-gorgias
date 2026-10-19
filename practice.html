@@ -712,6 +712,38 @@ html[data-theme="dark"] .msg-card { border-color: rgba(255,255,255,.10); box-sha
               background: transparent; transition: background .12s; }
 .rsz:hover::after, .rsz.dragging::after { background: #a3a19e; }
 body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select: none !important; }
+
+/* ── Contact reason picker, as Gorgias does it ────────────────────────────
+   Closed it is a bordered "+ Add". Open it is a popover: search at the top,
+   then the eleven categories, each drilling in to its own reasons. Typing
+   searches across all 73 at once.                                          */
+.cr-wrap { position: relative; flex: 1; min-width: 0; }
+.cr-trigger { width: 100%; text-align: left; font-family: inherit; font-size: 13px;
+  padding: 6px 10px; border: 1px solid #e8e5e2; border-radius: 6px; background: #fff;
+  color: #a3a19e; cursor: pointer; line-height: 1.4; }
+.cr-trigger:hover { border-color: #c0bdba; }
+.cr-trigger.has { color: #1b1c1d; }
+.cr-panel { position: absolute; top: calc(100% + 4px); right: 0; width: 250px; max-width: 86vw;
+  background: #fff; border: 1px solid #e8e5e2; border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.10); z-index: 60; overflow: hidden; }
+.cr-search { display: flex; align-items: center; gap: 7px; padding: 8px 11px; border-bottom: 1px solid #e8e5e2; }
+.cr-search input { flex: 1; border: none; outline: none; font-family: inherit; font-size: 13px;
+  color: #1b1c1d; background: none; min-width: 0; }
+.cr-search input::placeholder { color: #a3a19e; }
+.cr-list { max-height: 264px; overflow-y: auto; padding: 4px 0; }
+.cr-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 7px 12px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; color: #1b1c1d; }
+.cr-row:hover { background: #f7f5f3; }
+.cr-row .cr-chev { margin-left: auto; color: #a3a19e; flex: none; }
+.cr-row .cr-cat { color: #a3a19e; font-size: 11px; display: block; }
+.cr-row.cr-back { color: #5f5e5c; border-bottom: 1px solid #e8e5e2; margin-bottom: 4px; padding-bottom: 8px; }
+.cr-row.cr-sel { background: #f7f5f3; font-weight: 600; }
+.cr-empty { padding: 14px 12px; font-size: 13px; color: #a3a19e; }
+.cr-clear { display: block; width: 100%; text-align: left; padding: 7px 12px; border: none;
+  border-top: 1px solid #e8e5e2; background: none; cursor: pointer; font-family: inherit;
+  font-size: 12px; color: #5f5e5c; }
+.cr-clear:hover { background: #f7f5f3; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1017,6 +1049,93 @@ function renderTags(ticket) {
     </div>`;
 }
 
+
+
+// ── Contact reason picker ──────────────────────────────────────────────────
+// Gorgias doesn't use a flat dropdown for this: you drill into a category, or
+// you search. With 73 reasons a native <select> made the right one hard to
+// find, which is half of why trainees were picking the wrong one.
+let crTicket = null, crCat = null;
+function crGroups() {
+  const g = {};
+  CONTACT_REASONS.forEach(r => {
+    const cat = r.split('::')[0].trim();
+    const leaf = r.split('::').slice(1).join('::').trim();
+    (g[cat] = g[cat] || []).push({ value: r, leaf });
+  });
+  return g;
+}
+function crLeaf(v) { return v ? v.split('::').slice(1).join('::').trim() : ''; }
+const CR_CHEV = '<svg class="cr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+const CR_BACK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>';
+const CR_MAG  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a3a19e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.7" y2="16.7"/></svg>';
+
+function crListHTML(query) {
+  const groups = crGroups();
+  const current = contactReasons[crTicket] || '';
+  const q = (query || '').trim().toLowerCase();
+  if (q) {
+    const hits = CONTACT_REASONS.filter(r => r.toLowerCase().includes(q)).slice(0, 60);
+    if (!hits.length) return '<div class="cr-empty">No contact reason matches that.</div>';
+    return hits.map(r => `<button class="cr-row${r === current ? ' cr-sel' : ''}" data-pick="${r}">
+        <span><span class="cr-cat">${r.split('::')[0]}</span>${crLeaf(r)}</span></button>`).join('');
+  }
+  if (crCat && groups[crCat]) {
+    return `<button class="cr-row cr-back" data-back="1">${CR_BACK}${crCat}</button>` +
+      groups[crCat].map(o => `<button class="cr-row${o.value === current ? ' cr-sel' : ''}" data-pick="${o.value}">${o.leaf}</button>`).join('');
+  }
+  return Object.keys(groups).map(c => `<button class="cr-row" data-cat="${c}">${c}${CR_CHEV}</button>`).join('');
+}
+function crRenderList(query) {
+  const list = document.querySelector('.cr-list');
+  if (list) list.innerHTML = crListHTML(query);
+}
+function crClose() {
+  crTicket = null; crCat = null;
+  const p = document.querySelector('.cr-panel');
+  if (p) p.remove();
+}
+function crToggle(ticketId, ev) {
+  if (ev) ev.stopPropagation();
+  if (crTicket === ticketId) { crClose(); return; }
+  crClose();
+  crTicket = ticketId; crCat = null;
+  const wrap = ev && ev.currentTarget ? ev.currentTarget.parentElement : document.querySelector('.cr-wrap');
+  if (!wrap) return;
+  const panel = document.createElement('div');
+  panel.className = 'cr-panel';
+  panel.innerHTML = `<div class="cr-search">${CR_MAG}<input type="text" placeholder="Search" autocomplete="off"></div>
+    <div class="cr-list">${crListHTML('')}</div>
+    ${contactReasons[ticketId] ? '<button class="cr-clear" data-clear="1">Clear contact reason</button>' : ''}`;
+  wrap.appendChild(panel);
+  panel.addEventListener('click', e => {
+    e.stopPropagation();
+    const row = e.target.closest('[data-pick],[data-cat],[data-back],[data-clear]');
+    if (!row) return;
+    if (row.dataset.cat) { crCat = row.dataset.cat; crRenderList(''); panel.querySelector('input').value = ''; panel.querySelector('input').focus(); return; }
+    if (row.dataset.back) { crCat = null; crRenderList(''); panel.querySelector('input').focus(); return; }
+    const id = crTicket;
+    crClose();
+    setContactReason(id, row.dataset.clear ? '' : row.dataset.pick);
+    crSyncTrigger(id);
+  });
+  const input = panel.querySelector('input');
+  input.addEventListener('input', () => crRenderList(input.value));
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); crClose(); } });
+  input.focus();
+}
+// The old <select> repainted itself; a button has to be told. Called after every
+// pick so the field shows the chosen reason rather than still inviting one.
+function crSyncTrigger(ticketId) {
+  const trig = document.querySelector('.cr-trigger');
+  if (!trig) return;
+  const v = contactReasons[ticketId] || '';
+  trig.textContent = v ? crLeaf(v) : '+ Add';
+  trig.classList.toggle('has', !!v);
+  trig.title = v || '';
+}
+document.addEventListener('click', () => { if (crTicket !== null) crClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && crTicket !== null) crClose(); });
 
 // ── Draggable panel edges ──────────────────────────────────────────────────
 // Gorgias lets you drag the edge of the nav and the customer panel. The handle
@@ -2476,7 +2595,9 @@ function renderCustomerSidebar(ticket) {
       <div class="cs-sechdr">${ICONS.tag}<h5>Ticket details</h5><button class="cs-collapse" title="Collapse">${ICONS.chev}</button></div>
       ${renderTags(ticket)}
       <div class="cs-cr"><span class="cs-label">Contact reason<span class="cs-req">*</span></span>
-        <select class="cs-cr-select" onchange="setContactReason(${ticket.id}, this.value)">${contactReasonOptions(contactReasons[ticket.id] || '')}</select>
+        <div class="cr-wrap">
+          <button class="cr-trigger${contactReasons[ticket.id] ? ' has' : ''}" onclick="crToggle(${ticket.id}, event)">${contactReasons[ticket.id] ? crLeaf(contactReasons[ticket.id]) : '+ Add'}</button>
+        </div>
       </div>
     </div>
     <div class="cs-section">

@@ -701,6 +701,17 @@ html[data-theme="dark"] .msg-card { border-color: rgba(255,255,255,.10); box-sha
                color: #1b1c1d; font-size: 13px; font-family: inherit; border-radius: 6px; }
 .cs-tag-more:hover { background: #f7f5f3; }
 .cs-req { color: #d9003e; margin-left: 2px; }
+
+/* ── Draggable panel edges ────────────────────────────────────────────────
+   Gorgias puts a 9px transparent col-resize handle on each panel edge; same
+   here. Negative margins let it straddle the existing 1px border instead of
+   adding width, so the layout is unchanged until someone drags.            */
+.rsz { flex: 0 0 9px; width: 9px; margin: 0 -4px; cursor: col-resize; position: relative;
+       z-index: 5; background: transparent; touch-action: none; align-self: stretch; }
+.rsz::after { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 1px;
+              background: transparent; transition: background .12s; }
+.rsz:hover::after, .rsz.dragging::after { background: #a3a19e; }
+body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select: none !important; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1005,6 +1016,109 @@ function renderTags(ticket) {
       ${hidden > 0 ? `<button class="cs-tag-more">+${hidden} \u2304</button>` : ''}
     </div>`;
 }
+
+
+// ── Draggable panel edges ──────────────────────────────────────────────────
+// Gorgias lets you drag the edge of the nav and the customer panel. The handle
+// is inserted next to each panel rather than written into the markup, so it
+// survives the sidebar being re-rendered, and the chosen width is remembered
+// per browser. Double-click an edge to put it back to the default.
+// `centre` is the column that must not be squeezed out of existence: widening a
+// panel past the point where the reply box disappears is worse than not being
+// able to widen it at all.
+const RSZ_CENTRE_MIN = 360;
+const RSZ_PANES = [
+  { key: 'nav',     sel: '.leftnav',          side: 'after',  min: 180, max: 420, def: 220,
+    centre: () => document.querySelector('.main-area') },
+  { key: 'sidebar', sel: '.customer-sidebar', side: 'before', min: 240, max: 560, def: 256,
+    centre: () => { const sb = document.querySelector('.customer-sidebar');
+                    const h = sb && sb.previousElementSibling;            // the handle
+                    return h && h.previousElementSibling; } }             // the message column
+];
+function rszSet(el, w) {
+  el.style.flex = '0 0 ' + w + 'px';
+  el.style.width = w + 'px';
+  el.style.minWidth = w + 'px';
+  el.style.maxWidth = w + 'px';
+}
+// Only ever persist a width inside the pane's own range. A hidden pane measures
+// zero, and saving that would quietly stash a nonsense width for next time.
+function rszSave(p, w) {
+  if (!(w >= p.min && w <= p.max)) return;
+  try { localStorage.setItem('healf_w_' + p.key, String(w)); } catch (e) {}
+}
+function initResizers() {
+  RSZ_PANES.forEach(p => {
+    const pane = document.querySelector(p.sel);
+    if (!pane || pane.dataset.rszReady) return;
+    pane.dataset.rszReady = '1';
+
+    let saved = 0;
+    try { saved = Number(localStorage.getItem('healf_w_' + p.key)) || 0; } catch (e) {}
+    if (saved >= p.min && saved <= p.max) {
+      rszSet(pane, saved);
+      // A width saved on a wide screen can be too greedy on a narrow one.
+      requestAnimationFrame(() => {
+        const c = p.centre();
+        if (c && c.getBoundingClientRect().width < RSZ_CENTRE_MIN) rszSet(pane, p.def);
+      });
+    }
+
+    const h = document.createElement('div');
+    h.className = 'rsz';
+    h.title = 'Drag to resize \u2014 double-click to reset';
+    pane.parentNode.insertBefore(h, p.side === 'after' ? pane.nextSibling : pane);
+
+    h.addEventListener('dblclick', () => { rszSet(pane, p.def); rszSave(p, p.def); });
+
+    // Mouse events are emitted by every browser and embedded webview; pointer
+    // events are not always. So drive the drag from mousedown and keep
+    // pointerdown only for touch and pen, guarding against handling both.
+    const begin = e => {
+      if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
+      const startX = e.clientX !== undefined ? e.clientX
+        : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const startW = pane.getBoundingClientRect().width;
+      // dragging right grows a left-hand panel and shrinks a right-hand one
+      const dir = p.side === 'after' ? 1 : -1;
+      // Capture is only an optimisation and throws on some synthetic pointers,
+      // so it must not sit between here and the listeners being attached.
+      try { h.setPointerCapture(e.pointerId); } catch (err) {}
+      h.classList.add('dragging');
+      document.body.classList.add('rsz-active');
+      // Listen on the window, not the handle: the pointer routinely leaves a
+      // 9px strip mid-drag, and the drag has to keep tracking when it does.
+      // Apply the new width, then check the centre column still has room. If it
+      // doesn't, fall back to the last width that worked — so a drag simply
+      // stops at the edge of what the window can take rather than collapsing it.
+      let lastGood = startW;
+      const move = ev => {
+        const x = ev.clientX !== undefined ? ev.clientX : (ev.touches && ev.touches[0] ? ev.touches[0].clientX : startX);
+        const want = Math.min(p.max, Math.max(p.min, Math.round(startW + dir * (x - startX))));
+        rszSet(pane, want);
+        const c = p.centre();
+        if (want > lastGood && c && c.getBoundingClientRect().width < RSZ_CENTRE_MIN) rszSet(pane, lastGood);
+        else lastGood = want;
+      };
+      const up = () => {
+        ['mousemove', 'pointermove', 'touchmove'].forEach(t => window.removeEventListener(t, move));
+        ['mouseup', 'pointerup', 'pointercancel', 'touchend', 'touchcancel'].forEach(t => window.removeEventListener(t, up));
+        try { if (e.pointerId !== undefined) h.releasePointerCapture(e.pointerId); } catch (err) {}
+        h.classList.remove('dragging');
+        document.body.classList.remove('rsz-active');
+        rszSave(p, Math.round(pane.getBoundingClientRect().width));
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('pointermove', move);
+      window.addEventListener('touchmove', move, { passive: false });
+      ['mouseup', 'pointerup', 'pointercancel', 'touchend', 'touchcancel'].forEach(t => window.addEventListener(t, up));
+    };
+    h.addEventListener('mousedown', begin);
+    h.addEventListener('pointerdown', e => { if (e.pointerType && e.pointerType !== 'mouse') begin(e); });
+  });
+}
+initResizers();
 
 // ── First-login walkthrough ────────────────────────────────────────────────
 // Spotlights the real interface instead of describing it on a separate page.

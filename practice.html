@@ -778,6 +778,9 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
 .cs-note:hover { text-decoration: underline; }
 .cs-note-input { flex: 1; min-width: 0; font-family: inherit; font-size: 13px; color: #1b1c1d;
   background: #fff; border: 1px solid #644b9e; border-radius: 6px; padding: 2px 7px; outline: none; }
+
+.cs-collapse svg { transition: transform .15s; }
+.cs-collapse.closed svg { transform: rotate(180deg); }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1154,10 +1157,22 @@ function custAvatar(name) {
   for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return CUST_AVATARS[h % CUST_AVATARS.length];
 }
-function toggleCustomerFields(btn) {
-  const wrap = btn.previousElementSibling;
+// The chevron in a section header collapses that whole section. "Customer
+// fields" is a separate expander for its own content, which is why it cannot
+// share this handler.
+function collapseSection(btn) {
+  const sec = btn.closest('.cs-section');
+  const body = sec && sec.querySelector('.cs-sec-body');
+  if (!body) return;
   const closed = btn.classList.toggle('closed');
-  if (wrap) wrap.style.display = closed ? 'none' : '';
+  body.style.display = closed ? 'none' : '';
+  btn.title = closed ? 'Expand' : 'Collapse';
+}
+function toggleCustomerFields(btn) {
+  const body = btn.nextElementSibling;
+  if (!body) return;
+  const closed = btn.classList.toggle('closed');
+  body.style.display = closed ? 'none' : '';
 }
 
 // ── Contact reason picker ──────────────────────────────────────────────────
@@ -2701,11 +2716,13 @@ function renderCustomerSidebar(ticket) {
 
   document.getElementById('customer-sidebar').innerHTML = `
     <div class="cs-section">
-      <div class="cs-sechdr">${ICONS.tag}<h5>Ticket details</h5><button class="cs-collapse" title="Collapse">${ICONS.chev}</button></div>
-      ${renderTags(ticket)}
-      <div class="cs-cr"><span class="cs-label">Contact reason<span class="cs-req">*</span></span>
-        <div class="cr-wrap">
-          <button class="cr-trigger${contactReasons[ticket.id] ? ' has' : ''}" onclick="crToggle(${ticket.id}, event)">${contactReasons[ticket.id] ? crLeaf(contactReasons[ticket.id]) : '+ Add'}</button>
+      <div class="cs-sechdr">${ICONS.tag}<h5>Ticket details</h5><button class="cs-collapse" title="Collapse" onclick="collapseSection(this)">${ICONS.chev}</button></div>
+      <div class="cs-sec-body">
+        ${renderTags(ticket)}
+        <div class="cs-cr"><span class="cs-label">Contact reason<span class="cs-req">*</span></span>
+          <div class="cr-wrap">
+            <button class="cr-trigger${contactReasons[ticket.id] ? ' has' : ''}" onclick="crToggle(${ticket.id}, event)">${contactReasons[ticket.id] ? crLeaf(contactReasons[ticket.id]) : '+ Add'}</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2718,8 +2735,9 @@ function renderCustomerSidebar(ticket) {
         <h5 title="${ticket.customer_name}">${ticket.customer_name}</h5>
         <button class="cs-ico" title="Search this customer's tickets">${ICONS.search}</button>
         <button class="cs-ico" title="More">${ICONS.dots}</button>
-        <button class="cs-collapse" title="Collapse">${ICONS.chev}</button>
+        <button class="cs-collapse" title="Collapse" onclick="collapseSection(this)">${ICONS.chev}</button>
       </div>
+      <div class="cs-sec-body">
       <div class="cs-fields">
         <div class="cs-frow"><span class="cs-flabel">Email</span><a class="cs-fval cs-link" href="mailto:${ticket.customer_email}" title="${ticket.customer_email}">${ticket.customer_email}</a></div>
         <div class="cs-frow"><span class="cs-flabel">Phone</span><span class="cs-fadd">+ Add</span></div>
@@ -2729,7 +2747,10 @@ function renderCustomerSidebar(ticket) {
           : '<span class="cs-fadd">+ Add</span>'}</div>
       </div>
       <button class="cs-cf" onclick="toggleCustomerFields(this)">${ICONS.chev} Customer fields</button>
-      <div class="cs-first"><span class="cs-tchip">1 ticket</span>This is ${ticket.customer_name}'s first ticket</div>
+      <div class="cs-cf-body">
+        <div class="cs-first"><span class="cs-tchip">1 ticket</span>This is ${ticket.customer_name}'s first ticket</div>
+      </div>
+      </div>
     </div>`;
     })()}
     ${(function(){

@@ -773,6 +773,11 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
 .cs-cf.closed svg { transform: rotate(180deg); }
 .cs-first { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: #5f5e5c; }
 .cs-tchip { border: 1px solid #e8e5e2; border-radius: 6px; padding: 2px 7px; font-size: 11px; color: #1b1c1d; flex: none; }
+
+.cs-note { cursor: pointer; }
+.cs-note:hover { text-decoration: underline; }
+.cs-note-input { flex: 1; min-width: 0; font-family: inherit; font-size: 13px; color: #1b1c1d;
+  background: #fff; border: 1px solid #644b9e; border-radius: 6px; padding: 2px 7px; outline: none; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -971,6 +976,10 @@ const CONTACT_REASONS = [
   "Other::Healf Zone","Other::Duplicate","Other::Chargebacks","Other::Fraud","Other::Spam","Other::Placeholder","Other::HX26"
 ];
 let contactReasons = JSON.parse(localStorage.getItem('healf_contact_reasons') || '{}');
+// Notes left on the CUSTOMER profile (not the ticket). The SOP for a customer
+// with a second account is to record their other email here, so trainees need
+// somewhere to actually do it.
+let customerNotes = JSON.parse(localStorage.getItem('healf_customer_notes') || '{}');
 // Composer channel: 'email' (customer-facing reply) | 'note' (internal note, CW-only). Reset per ticket.
 let replyChannel = 'email';
 // Internal notes are private to the CW team — customers never see them. Keyed by ticket id.
@@ -1082,6 +1091,50 @@ function renderTags(ticket) {
 
 
 
+
+
+// ── Customer profile note ──────────────────────────────────────────────────
+// Editable in place, as on Gorgias: click "+ Add", type, Enter to save, Escape
+// to abandon. Kept per ticket beside the other practice state.
+function setCustomerNote(ticketId, value) {
+  if (value) customerNotes[ticketId] = value; else delete customerNotes[ticketId];
+  try { localStorage.setItem('healf_customer_notes', JSON.stringify(customerNotes)); } catch (e) {}
+}
+function custNoteHTML(ticketId) {
+  const v = customerNotes[ticketId] || '';
+  return v
+    ? `<span class="cs-fval cs-note" id="cs-note-val" title="${v.replace(/"/g, '&quot;')} — click to edit" onclick="editCustomerNote(${ticketId})">${v.replace(/</g, '&lt;')}</span>`
+    : `<span class="cs-fadd" id="cs-note-val" onclick="editCustomerNote(${ticketId})">+ Add</span>`;
+}
+function restoreCustNote(ticketId, input) {
+  const holder = document.createElement('span');
+  holder.innerHTML = custNoteHTML(ticketId);
+  input.replaceWith(holder.firstElementChild);
+}
+function editCustomerNote(ticketId) {
+  const el = document.getElementById('cs-note-val');
+  if (!el) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'cs-note-input';
+  input.value = customerNotes[ticketId] || '';
+  input.placeholder = 'e.g. also orders as jo.smith@gmail.com';
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+  let settled = false;
+  const finish = save => {
+    if (settled) return;
+    settled = true;
+    if (save) setCustomerNote(ticketId, input.value.trim());
+    restoreCustNote(ticketId, input);
+  };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+}
 
 // ── Customer avatar ────────────────────────────────────────────────────────
 // Gorgias gives each customer a round monogram in a soft colour. The colour is
@@ -2670,7 +2723,7 @@ function renderCustomerSidebar(ticket) {
       <div class="cs-fields">
         <div class="cs-frow"><span class="cs-flabel">Email</span><a class="cs-fval cs-link" href="mailto:${ticket.customer_email}" title="${ticket.customer_email}">${ticket.customer_email}</a></div>
         <div class="cs-frow"><span class="cs-flabel">Phone</span><span class="cs-fadd">+ Add</span></div>
-        <div class="cs-frow"><span class="cs-flabel">Note</span><span class="cs-fadd">+ Add</span></div>
+        <div class="cs-frow"><span class="cs-flabel">Note</span>${custNoteHTML(ticket.id)}</div>
         <div class="cs-frow"><span class="cs-flabel">Customer Type</span>${ticket.loyalty_tier
           ? `<span class="cs-fval"><span class="loyalty-badge ${loyaltyClass}">${ticket.loyalty_tier}</span></span>`
           : '<span class="cs-fadd">+ Add</span>'}</div>
@@ -2781,6 +2834,7 @@ async function submitReply(ticketId, andClose) {
         macro_body: usedMacro ? usedMacro.body : null,
         customer_name: ticket.customer_name, message: threadText(ticket),
         contact_reason: contactReasons[ticketId] || null,
+        customer_note: customerNotes[ticketId] || null,
         internal_note: (internalNotes[ticketId] || []).map(n => n.body).join('\n\n') || null,
         attachments: attachmentsFor(ticket).map(f => f.n + ' \u2014 ' + f.d).join('; ') || null,
         recharge_state: rechargeStateText(ticket),

@@ -9,12 +9,15 @@
 <title>Healf Support Training</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
-  background: #f4f4f8;
+  background: #f7f5f3;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -37,7 +40,7 @@ body {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: #111;
+  background: #1b1c1d;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -46,28 +49,28 @@ body {
   font-weight: 800;
   letter-spacing: -0.5px;
 }
-.logo-text { font-size: 18px; font-weight: 700; color: #111; }
-.logo-sub { font-size: 12px; color: #9ca3af; margin-top: 1px; }
-h1 { font-size: 20px; font-weight: 700; color: #111; margin-bottom: 6px; }
-p.sub { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
-label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+.logo-text { font-size: 18px; font-weight: 700; color: #1b1c1d; }
+.logo-sub { font-size: 12px; color: #a3a19e; margin-top: 1px; }
+h1 { font-size: 20px; font-weight: 700; color: #1b1c1d; margin-bottom: 6px; }
+p.sub { font-size: 13px; color: #706f6e; margin-bottom: 24px; }
+label { display: block; font-size: 12px; font-weight: 600; color: #474646; margin-bottom: 5px; }
 input {
   width: 100%;
   padding: 9px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e8e5e2;
   border-radius: 7px;
   font-size: 13px;
   font-family: inherit;
-  color: #111;
+  color: #1b1c1d;
   outline: none;
   margin-bottom: 14px;
   transition: border-color 0.15s;
 }
-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+input:focus { border-color: #1b1c1d; box-shadow: 0 0 0 3px rgba(27,28,29,0.1); }
 button {
   width: 100%;
   padding: 10px;
-  background: #7c3aed;
+  background: #1b1c1d;
   color: #fff;
   border: none;
   border-radius: 7px;
@@ -78,11 +81,11 @@ button {
   transition: background 0.15s;
 }
 button:hover { background: #6d28d9; }
-button:disabled { background: #c4b5fd; cursor: not-allowed; }
+button:disabled { background: #e8e5e2; cursor: not-allowed; }
 .error {
   background: #fef2f2;
   border: 1px solid #fecaca;
-  color: #dc2626;
+  color: #d9003e;
   border-radius: 7px;
   padding: 9px 12px;
   font-size: 12px;
@@ -92,10 +95,24 @@ button:disabled { background: #c4b5fd; cursor: not-allowed; }
 .footer-note {
   text-align: center;
   font-size: 11px;
-  color: #9ca3af;
+  color: #a3a19e;
   margin-top: 20px;
 }
-.footer-note a { color: #7c3aed; text-decoration: none; }
+.footer-note a { color: #644b9e; text-decoration: none; }
+
+/* ── Gorgias parity: type, surfaces, elevation ─────────────────────────────
+   Values sampled from healf-uk.gorgias.com (Telegraph design system):
+   Inter 14px / #1b1c1d on #f7f5f3, card radius 12px,
+   border rgba(31,23,12,.12), container shadow 0 2px 8px rgba(0,0,0,.04).   */
+body, input, textarea, select, button, .reply-input, .actions-input {
+  font-family: Inter, "Helvetica Neue", Arial, Helvetica, sans-serif;
+}
+.msg-card {
+  border-radius: 12px;
+  border: 1px solid rgba(31,23,12,.12);
+  box-shadow: 0 2px 8px 0 rgba(0,0,0,.04);
+}
+html[data-theme="dark"] .msg-card { border-color: rgba(255,255,255,.10); box-shadow: none; }
 </style>
 </head>
 <body>
@@ -158,7 +175,7 @@ async function login() {
     return;
   }
 
-  sessionStorage.setItem('trainee', JSON.stringify(data));
+  localStorage.setItem('trainee', JSON.stringify(data));
   window.location.href = 'practice.html';
 }
 
@@ -170,6 +187,20 @@ function showError(msg) {
 
 // Allow Enter key
 document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+// Already signed in? Don't make them do it again. This runs on every visit to the
+// sign-in page, so a refresh, a new tab or reopening the browser lands straight in
+// the inbox. It needs BOTH a live session and a remembered trainee: a session with
+// no trainee (e.g. someone who signed into the admin panel on this browser) must
+// still be asked who they are.
+(async () => {
+  try {
+    const stored = localStorage.getItem('trainee');
+    if (!stored) return;
+    const { data: { session } } = await db.auth.getSession();
+    if (session) window.location.replace('practice.html');
+  } catch (e) { /* fall through to the form */ }
+})();
 </script>
 </body>
 </html>

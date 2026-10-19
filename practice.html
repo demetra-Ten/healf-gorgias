@@ -744,6 +744,35 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
   border-top: 1px solid #e8e5e2; background: none; cursor: pointer; font-family: inherit;
   font-size: 12px; color: #5f5e5c; }
 .cr-clear:hover { background: #f7f5f3; }
+
+/* ── Customer block, matched to Gorgias ───────────────────────────────────
+   Measured live: 24px rows, labels 14px/400 #5f5e5c, values the muted purple
+   for anything linkable and "+ Add" where a field is empty. Labels and values
+   sit in 13px here rather than 14px — the real panel is ~430px wide and this
+   one defaults to 256px, so 14px truncates every email. Drag it wider and it
+   reads exactly like the helpdesk.                                          */
+.cs-cust .cs-avatar { width: 24px; height: 24px; border-radius: 50%; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .2px; }
+.cs-cust h5 { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-ico { border: none; background: none; cursor: pointer; padding: 4px; border-radius: 6px;
+  display: flex; line-height: 0; color: #5f5e5c; flex: none; }
+.cs-ico:hover { background: #f7f5f3; color: #1b1c1d; }
+.cs-fields { padding: 2px 0 2px; }
+.cs-frow { display: flex; align-items: center; gap: 10px; min-height: 24px; }
+.cs-flabel { color: #5f5e5c; font-size: 13px; flex: none; min-width: 86px; white-space: nowrap; }
+.cs-fval { font-size: 13px; color: #1b1c1d; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-link { color: #644b9e; text-decoration: none; }
+.cs-link:hover { text-decoration: underline; }
+.cs-fadd { font-size: 13px; color: #1b1c1d; cursor: pointer; }
+.cs-fadd:hover { text-decoration: underline; }
+.cs-cf { display: flex; align-items: center; gap: 6px; border: none; background: none;
+  cursor: pointer; font-family: inherit; font-size: 13px; color: #1b1c1d; padding: 6px 0; }
+.cs-cf svg { transition: transform .15s; }
+.cs-cf.closed svg { transform: rotate(180deg); }
+.cs-first { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: #5f5e5c; }
+.cs-tchip { border: 1px solid #e8e5e2; border-radius: 6px; padding: 2px 7px; font-size: 11px; color: #1b1c1d; flex: none; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1009,6 +1038,8 @@ const ICONS = {
   user: `<svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
   mail: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>`,
   zap: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  search: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.7" y2="16.7"/></svg>`,
+  dots: `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>`,
   tag: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5f5e5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`,
   chev: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5f5e5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
   note: `<svg width="15" height="15" viewBox="0 0 24 24" fill="#c2721a" stroke="none"><path d="M5 3h8l6 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M13 3v6h6" fill="#fff" opacity="0.4"/></svg>`,
@@ -1050,6 +1081,31 @@ function renderTags(ticket) {
 }
 
 
+
+
+// ── Customer avatar ────────────────────────────────────────────────────────
+// Gorgias gives each customer a round monogram in a soft colour. The colour is
+// hashed off the name so a given customer always looks the same.
+const CUST_AVATARS = [
+  ['#eaf1ff','#004d79'], ['#eaffef','#00796b'], ['#faeaff','#9411b5'],
+  ['#fff3ea','#793a00'], ['#edeaff','#000c79'], ['#fffdea','#8a6800'],
+  ['#ffeaea','#d9003e'], ['#eafffe','#00796b']
+];
+function custInitials(name) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+function custAvatar(name) {
+  let h = 0;
+  for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return CUST_AVATARS[h % CUST_AVATARS.length];
+}
+function toggleCustomerFields(btn) {
+  const wrap = btn.previousElementSibling;
+  const closed = btn.classList.toggle('closed');
+  if (wrap) wrap.style.display = closed ? 'none' : '';
+}
 
 // ── Contact reason picker ──────────────────────────────────────────────────
 // Gorgias doesn't use a flat dropdown for this: you drill into a category, or
@@ -2600,12 +2656,29 @@ function renderCustomerSidebar(ticket) {
         </div>
       </div>
     </div>
+    ${(function(){
+      const av = custAvatar(ticket.customer_name);
+      return `
     <div class="cs-section">
-      <div class="cs-title cs-title-user">${ICONS.user} ${ticket.customer_name}</div>
-      <div class="cs-row"><span class="cs-label">Email</span><span class="cs-value" style="color:#644b9e;font-size:11px">${ticket.customer_email}</span></div>
-      ${ticket.loyalty_tier ? `<div class="cs-row"><span class="cs-label">Loyalty</span><span class="cs-value"><span class="loyalty-badge ${loyaltyClass}">${ticket.loyalty_tier}</span></span></div>` : ''}
-      <div style="font-size:11px;color:#644b9e;cursor:pointer;margin-top:6px">▾ Show more</div>
-    </div>
+      <div class="cs-sechdr cs-cust">
+        <span class="cs-avatar" style="background:${av[0]};color:${av[1]}">${custInitials(ticket.customer_name)}</span>
+        <h5 title="${ticket.customer_name}">${ticket.customer_name}</h5>
+        <button class="cs-ico" title="Search this customer's tickets">${ICONS.search}</button>
+        <button class="cs-ico" title="More">${ICONS.dots}</button>
+        <button class="cs-collapse" title="Collapse">${ICONS.chev}</button>
+      </div>
+      <div class="cs-fields">
+        <div class="cs-frow"><span class="cs-flabel">Email</span><a class="cs-fval cs-link" href="mailto:${ticket.customer_email}" title="${ticket.customer_email}">${ticket.customer_email}</a></div>
+        <div class="cs-frow"><span class="cs-flabel">Phone</span><span class="cs-fadd">+ Add</span></div>
+        <div class="cs-frow"><span class="cs-flabel">Note</span><span class="cs-fadd">+ Add</span></div>
+        <div class="cs-frow"><span class="cs-flabel">Customer Type</span>${ticket.loyalty_tier
+          ? `<span class="cs-fval"><span class="loyalty-badge ${loyaltyClass}">${ticket.loyalty_tier}</span></span>`
+          : '<span class="cs-fadd">+ Add</span>'}</div>
+      </div>
+      <button class="cs-cf" onclick="toggleCustomerFields(this)">${ICONS.chev} Customer fields</button>
+      <div class="cs-first"><span class="cs-tchip">1 ticket</span>This is ${ticket.customer_name}'s first ticket</div>
+    </div>`;
+    })()}
     ${(function(){
       const orders = parseOrders(ticket);
       const isUK = Number(ticket.category_id) === 6;

@@ -829,6 +829,10 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
 
 .td-team-wrap { position: relative; display: inline-flex; }
 .td-btn.assigned { border-color: #c0bdba; font-weight: 600; }
+
+.tm-emoji { font-size: 13px; line-height: 1; flex: none; }
+#td-team { display: inline-flex; align-items: center; gap: 6px; }
+.td-team-wrap .cr-row svg, .td-team-wrap .cr-row .tm-emoji { flex: none; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1267,16 +1271,42 @@ function toggleCustomerFields(btn) {
 // The real team list, pulled from the Gorgias account. Several SOPs hand a
 // ticket on — @cw-escalations for a high-value DNR, wholesale to Resellers —
 // and the control was decorative, so there was no way to practise that step.
-const TEAMS = ['Healf Zone','French Team','German Team','Team Leads','Calls Team',
-  'All - No New','Chargebacks',"Max's Emails",'Whatsapp','VIPs','Escalations Team',
-  'Resellers','UK Email Team'];
+// Names, emojis and order read off the real dropdown. "No team" and "All - No New"
+// carry a person icon there rather than an emoji.
+const TEAM_PERSON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5f5e5c" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+const TEAMS = [
+  { name: 'All - No New',     emoji: '' },
+  { name: 'Calls Team',       emoji: '\u{1F919}' },
+  { name: 'Chargebacks',      emoji: '\u{1F4B3}' },
+  { name: 'Escalations Team', emoji: '\u2B50\uFE0F' },
+  { name: 'French Team',      emoji: '\u{1F1EB}\u{1F1F7}' },
+  { name: 'German Team',      emoji: '\u{1F1E9}\u{1F1EA}' },
+  { name: 'Healf Zone',       emoji: '\u269B\uFE0F' },
+  { name: "Max's Emails",     emoji: '\u{1F534}' },
+  { name: 'Resellers',        emoji: '\u{1F4B0}' },
+  { name: 'Team Leads',       emoji: '\u{1F5E3}' },
+  { name: 'UK Email Team',    emoji: '\u{1F1EC}\u{1F1E7}' },
+  { name: 'VIPs',             emoji: '\u{1F48E}' },
+  { name: 'Whatsapp',         emoji: '\u260E\uFE0F' }
+];
+// Tickets land with the UK team, the same as they do in the helpdesk — a trainee
+// moves one on only when the SOP calls for it.
+const DEFAULT_TEAM = 'UK Email Team';
+function teamFor(ticketId) {
+  const v = teamAssignments[ticketId];
+  return v === undefined ? DEFAULT_TEAM : v;
+}
+function teamIcon(name) {
+  const t = TEAMS.find(x => x.name === name);
+  return (t && t.emoji) ? `<span class="tm-emoji">${t.emoji}</span>` : TEAM_PERSON;
+}
 let teamTicket = null;
 function syncTeamBtn(ticketId) {
   const btn = document.getElementById('td-team');
   if (!btn) return;
-  const v = teamAssignments[ticketId] || '';
-  btn.textContent = (v || 'No team') + ' \u25be';
-  btn.classList.toggle('assigned', !!v);
+  const v = teamFor(ticketId);
+  btn.innerHTML = `${teamIcon(v)}<span>${v || 'No team'}</span> \u25be`;
+  btn.classList.toggle('assigned', v !== DEFAULT_TEAM && v !== '');
   btn.onclick = e => teamToggle(ticketId, e);
 }
 function teamClose() {
@@ -1285,17 +1315,21 @@ function teamClose() {
   if (p) p.remove();
 }
 function setTeam(ticketId, name) {
-  if (name) teamAssignments[ticketId] = name; else delete teamAssignments[ticketId];
+  teamAssignments[ticketId] = name;   // '' is a deliberate "No team", not "unset"
   try { localStorage.setItem('healf_teams', JSON.stringify(teamAssignments)); } catch (e) {}
   syncTeamBtn(ticketId);
 }
 function teamRows(ticketId, q) {
-  const cur = teamAssignments[ticketId] || '';
+  const cur = teamFor(ticketId);
   const needle = (q || '').trim().toLowerCase();
-  const list = TEAMS.filter(t => !needle || t.toLowerCase().includes(needle));
-  if (!list.length) return '<div class="cr-empty">No team matches that.</div>';
-  return `<button class="cr-row${cur ? '' : ' cr-sel'}" data-team="">No team</button>` +
-    list.map(t => `<button class="cr-row${t === cur ? ' cr-sel' : ''}" data-team="${t}">${t}</button>`).join('');
+  const list = TEAMS.filter(t => !needle || t.name.toLowerCase().includes(needle));
+  const none = 'no team'.includes(needle) || !needle
+    ? `<button class="cr-row${cur === '' ? ' cr-sel' : ''}" data-team="">${TEAM_PERSON}<span>No team</span></button>`
+    : '';
+  if (!list.length && !none) return '<div class="cr-empty">No team matches that.</div>';
+  return none + list.map(t =>
+    `<button class="cr-row${t.name === cur ? ' cr-sel' : ''}" data-team="${t.name}">${teamIcon(t.name)}<span>${t.name}</span></button>`
+  ).join('');
 }
 function teamToggle(ticketId, ev) {
   if (ev) ev.stopPropagation();
@@ -3076,7 +3110,7 @@ async function submitReply(ticketId, andClose) {
         customer_name: ticket.customer_name, message: threadText(ticket),
         contact_reason: contactReasons[ticketId] || null,
         customer_note: customerNotes[ticketId] || null,
-        assigned_team: teamAssignments[ticketId] || null,
+        assigned_team: teamFor(ticketId) || 'No team',
         internal_note: (internalNotes[ticketId] || []).map(n => n.body).join('\n\n') || null,
         attachments: attachmentsFor(ticket).map(f => f.n + ' \u2014 ' + f.d).join('; ') || null,
         recharge_state: rechargeStateText(ticket),

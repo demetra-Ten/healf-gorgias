@@ -332,7 +332,7 @@ html[data-theme="dark"] .recharge-badge { background: #14311f; color: #4fba8a; b
 .fmt-btn:hover { background: #eeebe6; color: #474646; }
 .fmt-btn svg { display: block; }
 .fmt-sep { width: 1px; height: 15px; background: #e8e5e2; margin: 0 5px; }
-.macro-picker { display: none; position: absolute; bottom: calc(100% + 6px); left: 16px; width: 440px; max-width: calc(100% - 32px); background: #fff; border: 1px solid #e8e5e2; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.16); z-index: 60; overflow: hidden; }
+.macro-picker { display: none; position: static; width: auto; max-width: none; border-top: 1px solid #e8e5e2; background: #fff; box-shadow: none; border-radius: 0; }
 .macro-picker.open { display: block; }
 .macro-search { width: 100%; border: none; border-bottom: 1px solid #eeebe6; padding: 10px 14px; font-size: 13px; font-family: inherit; outline: none; color: #1b1c1d; }
 .macro-list { max-height: 300px; overflow-y: auto; }
@@ -903,6 +903,43 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
 
 .macro-item mark { background: #fff7c2; color: inherit; padding: 0 1px; border-radius: 2px; }
 #macro-count { font-size: 11px; color: #a3a19e; margin-left: auto; }
+
+/* ── Macro picker, laid out as Gorgias does ───────────────────────────────
+   The bar becomes the search box, and the panel opens downward in two panes:
+   names on the left, a live preview of the chosen macro on the right, with
+   template variables shown as chips the way the helpdesk shows them.        */
+.macro-bar.open .macro-ph { display: none; }
+.macro-bar.open .macro-search { display: block; }
+.macro-bar.open .mp-filter { display: inline-flex; }
+.macro-bar.open .macro-caret { transform: rotate(180deg); }
+.macro-search { display: none; flex: 1; min-width: 0; border: none; outline: none;
+  font-family: inherit; font-size: 13px; color: #1b1c1d; background: none; padding: 0; }
+.macro-search::placeholder { color: #a3a19e; }
+.mp-filter { display: none; align-items: center; flex: none; border: 1px solid #e8e5e2;
+  border-radius: 6px; background: #fff; font-family: inherit; font-size: 11.5px;
+  color: #1b1c1d; padding: 3px 8px; cursor: pointer; }
+.mp-filter:hover { background: #f7f5f3; }
+.macro-caret { color: #a3a19e; font-size: 12px; transition: transform .15s; }
+
+.macro-picker.open { display: flex; align-items: stretch; }
+.mp-list { width: 244px; flex: none; max-height: 290px; overflow-y: auto;
+  border-right: 1px solid #e8e5e2; padding: 4px 0; }
+.mp-row { display: flex; align-items: flex-start; gap: 8px; width: 100%; text-align: left;
+  border: none; background: none; cursor: pointer; font-family: inherit; font-size: 13px;
+  color: #1b1c1d; padding: 8px 12px; line-height: 1.35; }
+.mp-row:hover { background: #f7f5f3; }
+.mp-row.sel { background: #f7f5f3; color: #644b9e; font-weight: 600; }
+.mp-row .mp-name { flex: 1; min-width: 0; }
+.mp-row .mp-badge { flex: none; color: #a3a19e; margin-top: 1px; }
+.mp-row.sel .mp-badge { color: #644b9e; }
+.mp-preview { flex: 1; min-width: 0; max-height: 290px; overflow-y: auto; padding: 12px 16px; }
+.mp-pv-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.mp-pv-head .mp-pv-name { font-size: 13px; font-weight: 600; color: #1b1c1d; }
+.mp-pv-cat { font-size: 11px; color: #5f5e5c; border: 1px solid #e8e5e2; border-radius: 6px; padding: 1px 7px; }
+.mp-pv-body { font-size: 13px; color: #1b1c1d; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.mp-var { background: #deebff; color: #193065; border-radius: 4px; padding: 0 5px; font-size: 12.5px; white-space: nowrap; }
+.mp-pv-hint { margin-top: 12px; font-size: 11.5px; color: #a3a19e; }
+.mp-empty { padding: 18px; color: #a3a19e; font-size: 12.5px; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1179,6 +1216,7 @@ const ICONS = {
   user: `<svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
   mail: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>`,
   zap: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  macroBadge: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 1.5l2.6 2.1 3.3-.3.9 3.2 2.8 1.8-1.4 3 1.4 3-2.8 1.8-.9 3.2-3.3-.3L12 22.5l-2.6-2.1-3.3.3-.9-3.2L2.4 15.7l1.4-3-1.4-3 2.8-1.8.9-3.2 3.3.3z" opacity=".9"/><polyline points="8.5 12.2 11 14.6 15.6 9.8" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   clock: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>`,
   calPrev: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
   calNext: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`,
@@ -2676,11 +2714,17 @@ function renderReplySection(ticket, sub) {
             ? ``
             : `<span class="reply-to-label">To:</span><span class="reply-to-val">${ticket.customer_email}</span>`}
         </div>
-        <div class="macro-bar">
-          <button class="macro-trigger" onclick="toggleMacroPicker(event)">${ICONS.zap}<span class="macro-ph">Search macros by name, tags or body…</span><span class="macro-caret">⌄</span></button>
+        <div class="macro-bar" id="macro-bar">
+          <div class="macro-trigger" onclick="toggleMacroPicker(event)">${ICONS.zap}
+            <span class="macro-ph">Search macros by name, tags or body…</span>
+            <input class="macro-search" id="macro-search" placeholder="Search macros by name, tags or body…" oninput="filterMacros()" onclick="event.stopPropagation()" autocomplete="off" />
+            <button class="mp-filter" title="Macros are English only in the simulator" onclick="event.stopPropagation()">English ⌄</button>
+            <button class="mp-filter" id="mp-tagbtn" onclick="event.stopPropagation(); cycleMacroTag()">All tags ⌄</button>
+            <span class="macro-caret">⌄</span>
+          </div>
           <div class="macro-picker" id="macro-picker">
-            <input class="macro-search" id="macro-search" placeholder="Search macros…" oninput="filterMacros()" autocomplete="off" />
-            <div class="macro-list" id="macro-list"></div>
+            <div class="mp-list" id="macro-list"></div>
+            <div class="mp-preview" id="macro-preview"></div>
           </div>
         </div>
         <div class="drag-handle" data-target="reply-input" title="Drag to resize"></div>
@@ -2710,9 +2754,13 @@ function mEsc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 function toggleMacroPicker(e) {
   if (e) e.stopPropagation();
   const p = document.getElementById('macro-picker');
+  const bar = document.getElementById('macro-bar');
   if (!p) return;
   const open = p.classList.toggle('open');
+  // the bar itself turns into the search row while the panel is open
+  if (bar) bar.classList.toggle('open', open);
   if (open) {
+    macroSel = 0;
     renderMacroList('');
     const s = document.getElementById('macro-search');
     if (s) { s.value = ''; s.focus(); }
@@ -2720,7 +2768,6 @@ function toggleMacroPicker(e) {
 }
 
 function macroHit(text, terms) {
-  // position of the earliest matching term, so the preview can be shown around it
   let best = -1;
   const low = (text || '').toLowerCase();
   for (const t of terms) { const i = low.indexOf(t); if (i > -1 && (best === -1 || i < best)) best = i; }
@@ -2736,67 +2783,130 @@ function macroMark(text, terms) {
   return out;
 }
 // Ranked like the helpdesk's own picker: a name match beats a tag match, which
-// beats a body match, and every word typed has to land somewhere. Searching the
-// body is the point — the box has always said "name, tags or body" but only ever
-// looked at the name and the category.
+// beats a body match, and every word typed has to land somewhere.
 function macroScore(m, terms) {
   const name = (m.name || '').toLowerCase();
   const cat  = (m.category || '').toLowerCase();
   const body = (m.body || '').toLowerCase();
   let score = 0;
-  // a word-boundary hit beats one buried mid-word, so "dor" finds the DOR macro
-  // before it finds "Ambassador"
   const atWord = (hay, t) => new RegExp('\\b' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(hay);
   for (const t of terms) {
     if (name.startsWith(t))      score += 100;
     else if (name.includes(t))   score += 60 + (atWord(name, t) ? 25 : 0);
     else if (cat.includes(t))    score += 25;
     else if (body.includes(t))   score += 10 + (atWord(body, t) ? 5 : 0);
-    else return -1;                       // a word that matches nothing rules it out
+    else return -1;
   }
   return score;
+}
+
+// Gorgias renders a macro's template variables as readable chips rather than raw
+// handlebars, so a trainee can see what will be filled in for them.
+const MACRO_VARS = {
+  'ticket.customer.firstname': 'Customer first name',
+  'ticket.customer.lastname': 'Customer last name',
+  'ticket.customer.name': 'Customer name',
+  'ticket.customer.email': 'Customer email',
+  'ticket.assignee_user.firstname': 'Agent first name',
+  'agent.firstname': 'Agent first name',
+  'user.firstname': 'Agent first name'
+};
+function macroVarLabel(raw) {
+  const key = (raw || '').trim();
+  if (MACRO_VARS[key]) return MACRO_VARS[key];
+  if (key.indexOf('shipping_address') > -1) return 'Shipping address';
+  if (key.indexOf('order_number') > -1) return 'Order number';
+  const seg = key.split('.').pop().replace(/\[\d+\]/g, '').replace(/_/g, ' ').trim();
+  return seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : 'Variable';
+}
+function macroPreviewHTML(m) {
+  if (!m) return '<div class="mp-empty">Pick a macro on the left to see it here.</div>';
+  const body = mEsc(m.body || '').replace(/\{\{\s*([^}]+?)\s*\}\}/g,
+    (_, v) => '<span class="mp-var">' + mEsc(macroVarLabel(v)) + '</span>');
+  return `<div class="mp-pv-head"><span class="mp-pv-name">${mEsc(m.name)}</span>
+      <span class="mp-pv-cat">${mEsc(m.category || '')}</span></div>
+    <div class="mp-pv-body">${body}</div>
+    <div class="mp-pv-hint">Click it on the left, or press Enter, to drop it into your reply.</div>`;
+}
+
+let macroMatches = [], macroSel = 0, macroTag = '';
+function cycleMacroTag() {
+  const cats = [''].concat([...new Set(macros.map(m => m.category))].sort());
+  macroTag = cats[(cats.indexOf(macroTag) + 1) % cats.length];
+  const b = document.getElementById('mp-tagbtn');
+  if (b) b.textContent = (macroTag || 'All tags') + ' ⌄';
+  filterMacros();
+}
+function renderMacroPreview() {
+  const p = document.getElementById('macro-preview');
+  if (p) p.innerHTML = macroPreviewHTML(macroMatches[macroSel]);
 }
 function renderMacroList(q) {
   const list = document.getElementById('macro-list');
   if (!list) return;
   if (!macros.length) {
-    list.innerHTML = '<div class="macro-empty">No macros loaded yet. Run macros.sql in Supabase to add them.</div>';
+    list.innerHTML = '<div class="mp-empty">No macros loaded yet. Run macros.sql in Supabase to add them.</div>';
     return;
   }
   const terms = (q || '').toLowerCase().split(/\s+/).filter(Boolean);
-  let matches;
+  const pool = macroTag ? macros.filter(m => m.category === macroTag) : macros;
   if (!terms.length) {
-    matches = macros.slice();
+    macroMatches = pool.slice();
   } else {
-    matches = macros.map(m => ({ m, s: macroScore(m, terms) }))
-                    .filter(x => x.s >= 0)
-                    .sort((a, b) => b.s - a.s || a.m.name.localeCompare(b.m.name))
-                    .map(x => x.m);
+    macroMatches = pool.map(m => ({ m, s: macroScore(m, terms) }))
+                       .filter(x => x.s >= 0)
+                       .sort((a, b) => b.s - a.s || a.m.name.localeCompare(b.m.name))
+                       .map(x => x.m);
   }
-  const count = document.getElementById('macro-count');
-  if (count) count.textContent = matches.length + ' of ' + macros.length;
-  if (!matches.length) { list.innerHTML = '<div class="macro-empty">No macros match that search.</div>'; return; }
-  list.innerHTML = matches.map(m => {
-    const body = (m.body || '').replace(/\n/g, ' ');
-    // if the words only appear in the body, show the preview from there rather
-    // than from the opening line, which is usually just the greeting
-    const hit = terms.length ? macroHit(body, terms) : -1;
-    const nameHas = terms.some(t => (m.name || '').toLowerCase().includes(t) || (m.category || '').toLowerCase().includes(t));
-    const from = (hit > -1 && !nameHas) ? Math.max(0, hit - 40) : 0;
-    const snippet = (from > 0 ? '…' : '') + body.slice(from, from + 110) + (body.length > from + 110 ? '…' : '');
-    return `
-    <div class="macro-item" onclick="insertMacro(${m.id})">
-      <div class="macro-item-cat">${macroMark(m.category, terms)}</div>
-      <div class="macro-item-name">${macroMark(m.name, terms)}</div>
-      <div class="macro-item-preview">${macroMark(snippet, terms)}</div>
-    </div>`;
-  }).join('');
+  if (macroSel >= macroMatches.length) macroSel = 0;
+  if (!macroMatches.length) {
+    list.innerHTML = '<div class="mp-empty">No macros match that search.</div>';
+    renderMacroPreview();
+    return;
+  }
+  list.innerHTML = macroMatches.map((m, i) => `
+    <button class="mp-row${i === macroSel ? ' sel' : ''}" data-i="${i}"
+            onmouseenter="macroHover(${i})"
+            onclick="event.stopPropagation(); insertMacro(${m.id})">
+      <span class="mp-name">${macroMark(m.name, terms)}</span>
+      <span class="mp-badge">${ICONS.macroBadge}</span>
+    </button>`).join('');
+  renderMacroPreview();
+}
+// Hovering only moves the highlight and the preview; it must not re-render the
+// list, or the row under the cursor is replaced mid-hover and flickers.
+function macroHover(i) {
+  if (i === macroSel) return;
+  macroSel = i;
+  const list = document.getElementById('macro-list');
+  if (!list) return;
+  list.querySelectorAll('.mp-row').forEach((r, j) => r.classList.toggle('sel', j === i));
+  renderMacroPreview();
 }
 
 function filterMacros() {
   const s = document.getElementById('macro-search');
+  macroSel = 0;
   renderMacroList(s ? s.value : '');
 }
+document.addEventListener('keydown', e => {
+  const bar = document.getElementById('macro-bar');
+  if (!bar || !bar.classList.contains('open')) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!macroMatches.length) return;
+    macroHover((macroSel + (e.key === 'ArrowDown' ? 1 : -1) + macroMatches.length) % macroMatches.length);
+    const sel = document.querySelector('#macro-list .mp-row.sel');
+    if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    if (!macroMatches.length) return;
+    e.preventDefault();
+    insertMacro(macroMatches[macroSel].id);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    toggleMacroPicker();
+  }
+});
 
 function insertMacro(id) {
   const m = macros.find(x => x.id === id);
@@ -2812,11 +2922,17 @@ function insertMacro(id) {
   if (input) { replySet(body); input.style.border = 'none'; input.focus(); }
   const p = document.getElementById('macro-picker');
   if (p) p.classList.remove('open');
+  const mb0 = document.getElementById('macro-bar');
+  if (mb0) mb0.classList.remove('open');
 }
 
 document.addEventListener('click', e => {
   const p = document.getElementById('macro-picker');
-  if (p && p.classList.contains('open') && !e.target.closest('.macro-bar')) p.classList.remove('open');
+  if (p && p.classList.contains('open') && !e.target.closest('.macro-bar')) {
+    p.classList.remove('open');
+    const mb1 = document.getElementById('macro-bar');
+    if (mb1) mb1.classList.remove('open');
+  }
   const cm = document.getElementById('channel-menu');
   if (cm && cm.classList.contains('open') && !e.target.closest('.reply-channel')) cm.classList.remove('open');
 });

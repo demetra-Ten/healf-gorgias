@@ -826,6 +826,9 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
   background: #fff; padding: 2px 7px; cursor: help; font-weight: 400; }
 .rc-act:hover { background: #f7f5f3; }
 .rc-block { border-top: 1px solid #e8e5e2; }
+
+.td-team-wrap { position: relative; display: inline-flex; }
+.td-btn.assigned { border-color: #c0bdba; font-weight: 600; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -940,7 +943,7 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
         <span class="td-subject" id="td-subject">—</span>
         <span class="td-status-badge badge-open" id="td-status-badge">Open</span>
         <button class="td-btn">Demetra Ten... ▾</button>
-        <button class="td-btn">No team ▾</button>
+        <span class="td-team-wrap"><button class="td-btn" id="td-team" title="Assign this ticket to a team">No team ▾</button></span>
         <span style="color:#9ca3af;font-size:18px;cursor:pointer;padding:0 4px">···</span>
       </div>
       <div class="td-body">
@@ -1028,6 +1031,9 @@ let contactReasons = JSON.parse(localStorage.getItem('healf_contact_reasons') ||
 // with a second account is to record their other email here, so trainees need
 // somewhere to actually do it.
 let customerNotes = JSON.parse(localStorage.getItem('healf_customer_notes') || '{}');
+// Which team the ticket has been assigned to. Several SOPs end in a handover —
+// escalations, chargebacks, wholesale — so trainees need to be able to do it.
+let teamAssignments = JSON.parse(localStorage.getItem('healf_teams') || '{}');
 // Composer channel: 'email' (customer-facing reply) | 'note' (internal note, CW-only). Reset per ticket.
 let replyChannel = 'email';
 // Internal notes are private to the CW team — customers never see them. Keyed by ticket id.
@@ -1255,6 +1261,69 @@ function toggleCustomerFields(btn) {
   const closed = btn.classList.toggle('closed');
   body.style.display = closed ? 'none' : '';
 }
+
+
+// ── Team assignment ────────────────────────────────────────────────────────
+// The real team list, pulled from the Gorgias account. Several SOPs hand a
+// ticket on — @cw-escalations for a high-value DNR, wholesale to Resellers —
+// and the control was decorative, so there was no way to practise that step.
+const TEAMS = ['Healf Zone','French Team','German Team','Team Leads','Calls Team',
+  'All - No New','Chargebacks',"Max's Emails",'Whatsapp','VIPs','Escalations Team',
+  'Resellers','UK Email Team'];
+let teamTicket = null;
+function syncTeamBtn(ticketId) {
+  const btn = document.getElementById('td-team');
+  if (!btn) return;
+  const v = teamAssignments[ticketId] || '';
+  btn.textContent = (v || 'No team') + ' \u25be';
+  btn.classList.toggle('assigned', !!v);
+  btn.onclick = e => teamToggle(ticketId, e);
+}
+function teamClose() {
+  teamTicket = null;
+  const p = document.querySelector('.td-team-wrap .cr-panel');
+  if (p) p.remove();
+}
+function setTeam(ticketId, name) {
+  if (name) teamAssignments[ticketId] = name; else delete teamAssignments[ticketId];
+  try { localStorage.setItem('healf_teams', JSON.stringify(teamAssignments)); } catch (e) {}
+  syncTeamBtn(ticketId);
+}
+function teamRows(ticketId, q) {
+  const cur = teamAssignments[ticketId] || '';
+  const needle = (q || '').trim().toLowerCase();
+  const list = TEAMS.filter(t => !needle || t.toLowerCase().includes(needle));
+  if (!list.length) return '<div class="cr-empty">No team matches that.</div>';
+  return `<button class="cr-row${cur ? '' : ' cr-sel'}" data-team="">No team</button>` +
+    list.map(t => `<button class="cr-row${t === cur ? ' cr-sel' : ''}" data-team="${t}">${t}</button>`).join('');
+}
+function teamToggle(ticketId, ev) {
+  if (ev) ev.stopPropagation();
+  if (teamTicket === ticketId) { teamClose(); return; }
+  teamClose();
+  teamTicket = ticketId;
+  const wrap = document.querySelector('.td-team-wrap');
+  if (!wrap) return;
+  const panel = document.createElement('div');
+  panel.className = 'cr-panel';
+  panel.innerHTML = `<div class="cr-search">${CR_MAG}<input type="text" placeholder="Search teams" autocomplete="off"></div>
+    <div class="cr-list">${teamRows(ticketId, '')}</div>`;
+  wrap.appendChild(panel);
+  panel.addEventListener('click', e => {
+    e.stopPropagation();
+    const row = e.target.closest('[data-team]');
+    if (!row) return;
+    const id = teamTicket;
+    teamClose();
+    setTeam(id, row.dataset.team);
+  });
+  const input = panel.querySelector('input');
+  input.addEventListener('input', () => { panel.querySelector('.cr-list').innerHTML = teamRows(ticketId, input.value); });
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); teamClose(); } });
+  input.focus();
+}
+document.addEventListener('click', () => { if (teamTicket !== null) teamClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && teamTicket !== null) teamClose(); });
 
 // ── Contact reason picker ──────────────────────────────────────────────────
 // Gorgias doesn't use a flat dropdown for this: you drill into a category, or
@@ -1858,6 +1927,7 @@ function openTicket(id) {
   detail.style.flexDirection = 'column';
 
   document.getElementById('td-subject').textContent = ticket.subject;
+  syncTeamBtn(ticket.id);
 
   const badge = document.getElementById('td-status-badge');
   if (effScore(sub) != null) { badge.textContent = `${effScore(sub)}/3`; badge.className = `td-status-badge ${scoreBadgeClass(effScore(sub))}`; }
@@ -3006,6 +3076,7 @@ async function submitReply(ticketId, andClose) {
         customer_name: ticket.customer_name, message: threadText(ticket),
         contact_reason: contactReasons[ticketId] || null,
         customer_note: customerNotes[ticketId] || null,
+        assigned_team: teamAssignments[ticketId] || null,
         internal_note: (internalNotes[ticketId] || []).map(n => n.body).join('\n\n') || null,
         attachments: attachmentsFor(ticket).map(f => f.n + ' \u2014 ' + f.d).join('; ') || null,
         recharge_state: rechargeStateText(ticket),

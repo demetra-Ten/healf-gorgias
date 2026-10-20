@@ -833,6 +833,53 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
 .tm-emoji { font-size: 13px; line-height: 1; flex: none; }
 #td-team { display: inline-flex; align-items: center; gap: 6px; }
 .td-team-wrap .cr-row svg, .td-team-wrap .cr-row .tm-emoji { flex: none; }
+
+/* ── Snooze ───────────────────────────────────────────────────────────────
+   Gorgias's picker: quick durations down the left, a clock time and a month
+   calendar on the right, Apply disabled until something is chosen.          */
+.sn-wrap { position: relative; display: inline-flex; }
+.sn-btn { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #e8e5e2;
+  border-radius: 6px; background: #fff; color: #5f5e5c; cursor: pointer; padding: 4px 7px;
+  font-family: inherit; font-size: 12px; line-height: 1; }
+.sn-btn:hover { background: #f7f5f3; color: #1b1c1d; }
+.sn-btn.on { border-color: #c0bdba; color: #1b1c1d; background: #f7f5f3; }
+.sn-panel { position: absolute; top: calc(100% + 6px); right: 0; display: flex; gap: 0;
+  background: #fff; border: 1px solid #e8e5e2; border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.12); z-index: 70; padding: 10px; }
+.sn-quick { display: flex; flex-direction: column; min-width: 104px; padding-right: 6px; }
+.sn-quick button { text-align: left; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; color: #1b1c1d; padding: 8px 10px; border-radius: 6px; white-space: nowrap; }
+.sn-quick button:hover { background: #f7f5f3; }
+.sn-cal { padding-left: 10px; border-left: 1px solid #e8e5e2; }
+.sn-time { display: flex; align-items: center; border: 1px solid #e8e5e2; border-radius: 8px;
+  padding: 5px 6px 5px 12px; margin-bottom: 10px; gap: 6px; }
+.sn-time input { border: none; outline: none; font-family: inherit; font-size: 13px; width: 62px;
+  color: #1b1c1d; background: none; }
+.sn-time input::placeholder { color: #a3a19e; }
+.sn-ampm { border: 1px solid #e8e5e2; border-radius: 6px; background: #fff; cursor: pointer;
+  font-family: inherit; font-size: 12px; padding: 3px 9px; color: #1b1c1d; }
+.sn-ampm:hover { background: #f7f5f3; }
+.sn-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sn-nav .sn-month { font-size: 14px; font-weight: 600; color: #1b1c1d; min-width: 92px; text-align: center; }
+.sn-nav .sn-year { margin-left: auto; font-size: 14px; font-weight: 600; color: #1b1c1d; }
+.sn-nav button { border: none; background: none; cursor: pointer; color: #5f5e5c; padding: 3px 5px; border-radius: 6px; line-height: 0; }
+.sn-nav button:hover { background: #f7f5f3; }
+.sn-grid { display: grid; grid-template-columns: repeat(7, 30px); gap: 2px; }
+.sn-grid .sn-dow { font-size: 11px; font-weight: 700; color: #1b1c1d; text-align: center; padding: 4px 0; }
+.sn-grid button { height: 28px; border: none; background: none; cursor: pointer; border-radius: 6px;
+  font-family: inherit; font-size: 12.5px; color: #1b1c1d; }
+.sn-grid button:hover:not(:disabled) { background: #f7f5f3; }
+.sn-grid button:disabled { color: #c0bdba; cursor: default; }
+.sn-grid button.sn-today { font-weight: 700; background: #eeebe6; }
+.sn-grid button.sn-pick { background: #1b1c1d; color: #fff; }
+.sn-foot { display: flex; justify-content: flex-end; margin-top: 10px; }
+.sn-apply { border: none; border-radius: 6px; padding: 6px 16px; font-family: inherit; font-size: 13px;
+  background: #c0bdba; color: #fff; cursor: not-allowed; }
+.sn-apply.ready { background: #1b1c1d; cursor: pointer; }
+.sn-unsnooze { border: none; background: none; cursor: pointer; font-family: inherit; font-size: 12px;
+  color: #644b9e; padding: 6px 10px; margin-right: auto; }
+.sn-unsnooze:hover { text-decoration: underline; }
+.badge-snoozed { background: #fff5ee; color: #a94f13; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -948,6 +995,7 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
         <span class="td-status-badge badge-open" id="td-status-badge">Open</span>
         <button class="td-btn">Demetra Ten... ▾</button>
         <span class="td-team-wrap"><button class="td-btn" id="td-team" title="Assign this ticket to a team">No team ▾</button></span>
+        <span class="sn-wrap"><button class="sn-btn" id="td-snooze" title="Snooze this ticket"></button></span>
         <span style="color:#9ca3af;font-size:18px;cursor:pointer;padding:0 4px">···</span>
       </div>
       <div class="td-body">
@@ -1038,6 +1086,9 @@ let customerNotes = JSON.parse(localStorage.getItem('healf_customer_notes') || '
 // Which team the ticket has been assigned to. Several SOPs end in a handover —
 // escalations, chargebacks, wholesale — so trainees need to be able to do it.
 let teamAssignments = JSON.parse(localStorage.getItem('healf_teams') || '{}');
+// When the ticket is snoozed until. Several SOPs end in one — 24h after contacting
+// a supplier, a recheck on a stuck WISMO, a check-in near a pre-order ETA.
+let snoozes = JSON.parse(localStorage.getItem('healf_snoozes') || '{}');
 // Composer channel: 'email' (customer-facing reply) | 'note' (internal note, CW-only). Reset per ticket.
 let replyChannel = 'email';
 // Internal notes are private to the CW team — customers never see them. Keyed by ticket id.
@@ -1105,6 +1156,9 @@ const ICONS = {
   user: `<svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
   mail: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>`,
   zap: `<svg width="14" height="14" viewBox="0 0 24 24" ${_S}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  clock: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>`,
+  calPrev: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
+  calNext: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`,
   shopify: `<svg width="15" height="15" viewBox="0 0 24 24" fill="#5abf2a" stroke="none"><path d="M15.3 3.3c-.1-.1-.3-.1-.4-.1l-1 .2c-.3-.9-.9-1.8-1.9-1.8h-.1c-.3-.4-.7-.6-1.1-.6C8.4 1 7 4.3 6.6 6l-1.8.6c-.6.2-.6.2-.7.7L2.6 21.3 15 23.4l6.7-1.6c0-.1-6.3-18-6.4-18.5zM11 6.9l-2.9.9C8.5 6.2 9.4 4 11 3.4V6.9zm-.6-4.6c.2 0 .4.1.5.2-1.5.7-2.4 2.6-2.8 4.5l-1.3.4c.4-1.6 1.6-5.1 3.6-5.1zM12 7.2V3.5c.5.3.9 1 1.1 1.9L12 7.2z"/></svg>`,
   ext: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
   search: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.7" y2="16.7"/></svg>`,
@@ -1266,6 +1320,144 @@ function toggleCustomerFields(btn) {
   body.style.display = closed ? 'none' : '';
 }
 
+
+
+// ── Snooze ─────────────────────────────────────────────────────────────────
+// Gorgias's picker, same behaviour: the quick durations apply straight away; a
+// calendar date needs a time and Apply. Several SOPs end in a snooze, so this is
+// a step trainees are expected to take and are marked on.
+const SN_QUICK = [['1 Hour',60],['3 Hours',180],['6 Hours',360],
+                  ['1 Day',1440],['3 Days',4320],['1 Week',10080]];
+const SN_MONTHS = ['January','February','March','April','May','June','July',
+                   'August','September','October','November','December'];
+let snTicket = null, snView = null, snPick = null;
+
+function snoozeUntil(ticketId) { return snoozes[ticketId] || null; }
+function snSave() { try { localStorage.setItem('healf_snoozes', JSON.stringify(snoozes)); } catch (e) {} }
+function snFormat(iso) {
+  const d = new Date(iso);
+  const day = String(d.getDate()).padStart(2, '0');
+  let h = d.getHours(); const ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12;
+  return `${day} ${SN_MONTHS[d.getMonth()].slice(0,3)}, ${h}:${String(d.getMinutes()).padStart(2,'0')}${ap}`;
+}
+function setSnooze(ticketId, iso) {
+  if (iso) snoozes[ticketId] = iso; else delete snoozes[ticketId];
+  snSave();
+  syncSnoozeBtn(ticketId);
+  const badge = document.getElementById('td-status-badge');
+  if (badge) {
+    const on = !!iso;
+    badge.textContent = on ? 'Snoozed' : 'Open';
+    badge.className = 'td-status-badge ' + (on ? 'badge-snoozed' : 'badge-open');
+  }
+}
+function syncSnoozeBtn(ticketId) {
+  const btn = document.getElementById('td-snooze');
+  if (!btn) return;
+  const iso = snoozeUntil(ticketId);
+  btn.classList.toggle('on', !!iso);
+  btn.innerHTML = ICONS.clock + (iso ? `<span>${snFormat(iso)}</span>` : '');
+  btn.title = iso ? 'Snoozed until ' + snFormat(iso) + ' — click to change' : 'Snooze this ticket';
+  btn.onclick = e => snToggle(ticketId, e);
+}
+function snClose() { snTicket = null; snPick = null; const p = document.querySelector('.sn-panel'); if (p) p.remove(); }
+
+function snCalendarHTML() {
+  const y = snView.getFullYear(), m = snView.getMonth();
+  const first = new Date(y, m, 1);
+  const lead = (first.getDay() + 6) % 7;            // weeks start Monday, as Gorgias does
+  const days = new Date(y, m + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  let cells = '';
+  for (let i = 0; i < lead; i++) {
+    const d = new Date(y, m, -(lead - 1 - i));
+    cells += `<button disabled>${d.getDate()}</button>`;
+  }
+  for (let d = 1; d <= days; d++) {
+    const date = new Date(y, m, d);
+    const past = date < today;
+    const isToday = date.getTime() === today.getTime();
+    const picked = snPick && snPick.getFullYear() === y && snPick.getMonth() === m && snPick.getDate() === d;
+    cells += `<button data-day="${d}"${past ? ' disabled' : ''} class="${picked ? 'sn-pick' : (isToday ? 'sn-today' : '')}">${d}</button>`;
+  }
+  const tail = (7 - ((lead + days) % 7)) % 7;
+  for (let i = 1; i <= tail; i++) cells += `<button disabled>${i}</button>`;
+  return `<div class="sn-nav">
+      <button data-mon="-1" title="Previous month">${ICONS.calPrev}</button>
+      <span class="sn-month">${SN_MONTHS[m]}</span>
+      <button data-mon="1" title="Next month">${ICONS.calNext}</button>
+      <span class="sn-year">${y}</span>
+    </div>
+    <div class="sn-grid">
+      ${['M','T','W','T','F','S','S'].map(d => `<span class="sn-dow">${d}</span>`).join('')}
+      ${cells}
+    </div>`;
+}
+function snRefresh(panel) {
+  panel.querySelector('.sn-caldays').innerHTML = snCalendarHTML();
+  const apply = panel.querySelector('.sn-apply');
+  apply.classList.toggle('ready', !!snPick);
+}
+function snToggle(ticketId, ev) {
+  if (ev) ev.stopPropagation();
+  if (snTicket === ticketId) { snClose(); return; }
+  snClose();
+  snTicket = ticketId;
+  snView = new Date(); snView.setDate(1);
+  snPick = null;
+  const wrap = document.querySelector('.sn-wrap');
+  if (!wrap) return;
+  const panel = document.createElement('div');
+  panel.className = 'sn-panel';
+  panel.innerHTML = `
+    <div class="sn-quick">${SN_QUICK.map(([l, m]) => `<button data-mins="${m}">${l}</button>`).join('')}</div>
+    <div class="sn-cal">
+      <div class="sn-time">
+        <input type="text" class="sn-hhmm" placeholder="hh : mm" maxlength="7" autocomplete="off">
+        <button class="sn-ampm" data-ampm>am</button>
+      </div>
+      <div class="sn-caldays">${snCalendarHTML()}</div>
+      <div class="sn-foot">
+        ${snoozeUntil(ticketId) ? '<button class="sn-unsnooze" data-unsnooze>Un-snooze</button>' : ''}
+        <button class="sn-apply">Apply</button>
+      </div>
+    </div>`;
+  wrap.appendChild(panel);
+
+  panel.addEventListener('click', e => {
+    e.stopPropagation();
+    const q = e.target.closest('[data-mins]');
+    if (q) {                                  // quick durations apply immediately
+      const until = new Date(Date.now() + Number(q.dataset.mins) * 60000);
+      const id = snTicket; snClose(); setSnooze(id, until.toISOString()); return;
+    }
+    const mon = e.target.closest('[data-mon]');
+    if (mon) { snView.setMonth(snView.getMonth() + Number(mon.dataset.mon)); snRefresh(panel); return; }
+    const day = e.target.closest('[data-day]');
+    if (day && !day.disabled) {
+      snPick = new Date(snView.getFullYear(), snView.getMonth(), Number(day.dataset.day));
+      snRefresh(panel); return;
+    }
+    const ap = e.target.closest('[data-ampm]');
+    if (ap) { ap.textContent = ap.textContent === 'am' ? 'pm' : 'am'; return; }
+    if (e.target.closest('[data-unsnooze]')) { const id = snTicket; snClose(); setSnooze(id, null); return; }
+    if (e.target.closest('.sn-apply')) {
+      if (!snPick) return;                    // Apply stays inert until a date is chosen
+      const raw = (panel.querySelector('.sn-hhmm').value || '').replace(/\s/g, '');
+      const m = raw.match(/^(\d{1,2})[:.]?(\d{2})?$/);
+      let hh = m ? Number(m[1]) : 9, mm = m && m[2] ? Number(m[2]) : 0;
+      if (panel.querySelector('[data-ampm]').textContent === 'pm' && hh < 12) hh += 12;
+      if (panel.querySelector('[data-ampm]').textContent === 'am' && hh === 12) hh = 0;
+      const until = new Date(snPick); until.setHours(Math.min(hh,23), Math.min(mm,59), 0, 0);
+      const id = snTicket; snClose(); setSnooze(id, until.toISOString());
+    }
+  });
+  panel.querySelector('.sn-hhmm').addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.stopPropagation(); snClose(); }
+  });
+}
+document.addEventListener('click', () => { if (snTicket !== null) snClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && snTicket !== null) snClose(); });
 
 // ── Team assignment ────────────────────────────────────────────────────────
 // The real team list, pulled from the Gorgias account. Several SOPs hand a
@@ -1962,6 +2154,11 @@ function openTicket(id) {
 
   document.getElementById('td-subject').textContent = ticket.subject;
   syncTeamBtn(ticket.id);
+  syncSnoozeBtn(ticket.id);
+  {
+    const b = document.getElementById('td-status-badge'), on = !!snoozeUntil(ticket.id);
+    if (b) { b.textContent = on ? 'Snoozed' : 'Open'; b.className = 'td-status-badge ' + (on ? 'badge-snoozed' : 'badge-open'); }
+  }
 
   const badge = document.getElementById('td-status-badge');
   if (effScore(sub) != null) { badge.textContent = `${effScore(sub)}/3`; badge.className = `td-status-badge ${scoreBadgeClass(effScore(sub))}`; }
@@ -3111,6 +3308,7 @@ async function submitReply(ticketId, andClose) {
         contact_reason: contactReasons[ticketId] || null,
         customer_note: customerNotes[ticketId] || null,
         assigned_team: teamFor(ticketId) || 'No team',
+        snoozed_until: snoozeUntil(ticketId) ? snFormat(snoozeUntil(ticketId)) : null,
         internal_note: (internalNotes[ticketId] || []).map(n => n.body).join('\n\n') || null,
         attachments: attachmentsFor(ticket).map(f => f.n + ' \u2014 ' + f.d).join('; ') || null,
         recharge_state: rechargeStateText(ticket),

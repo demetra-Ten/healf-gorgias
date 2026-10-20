@@ -255,3 +255,44 @@ escalation), once left on the default team and once moved to Escalations:
 
 The score is identical either way — assigning or not assigning no longer moves the
 mark — and the genuine fraud-recognition fault survives in both.
+
+## N. Snoozing IS marked (2026-10-20)
+
+Demetra: *"can this action also be marked/tracked when an agent does it to ensure it
+matches the SOP/actions they should take"*. The opposite stance to section M — the
+snooze is a real step several SOPs end in, so it counts.
+
+**LIVE** in the Score Reply user message, published 2026-10-20:
+
+- Judge the **intent, never the minute**. Roughly right is correct; no quibbling
+  between "24 hours" and "1 day", no faulting a date a day either side of an ETA.
+- SOP calls for a snooze and none was set → **necessary improvement, ACTIONS axis**.
+- Snoozed sensibly → one short line under "What you did well".
+- SOP does not call for one → say nothing; never fault a harmless snooze.
+
+**Verified** on a GXO supplier ticket (that SOP ends in a 24h snooze):
+
+| | Score | Feedback |
+|---|---|---|
+| No snooze | 2 | *"No snooze was set. The SOP calls for a 24-hour snooze after contacting the brand so the ticket does not go quiet; this must be set."* |
+| Snoozed 24h | 2 | *"24-hour snooze set correctly to match the supplier outreach wait."* |
+
+## KNOWN ISSUE — scoring intermittently returns nothing (2026-10-20)
+
+Found while testing the above. Identical payloads sometimes come back with
+`score: null` and empty feedback; the trainee sees *"Saved, but auto-scoring
+couldn't run just now."* Roughly 1 in 2 to 3 in 4 calls during testing.
+
+- **Not** output truncation: successful feedback is ~1,400 chars against a 3,000
+  **token** cap.
+- **Not** burst rate limiting: still failed after a 90-second pause.
+- Retry on the Score Reply node (3 tries, 2s apart) did **not** fix it.
+- `Parse Score` turns any unexpected payload into `{}`, so whatever the real error
+  is, it is swallowed into a silent null rather than surfaced.
+- Pre-existing, not introduced by the prompt edits: submission 113 never scored
+  either, and the app already has a "couldn't run" path.
+
+**Next step:** open the workflow's execution list in the n8n UI and read the actual
+error off the Score Reply node. No executions are retained via the API, so this
+cannot be diagnosed remotely. Suspect the Anthropic credential (quota) or the
+`claude-sonnet-4-6` model id.

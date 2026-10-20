@@ -880,6 +880,26 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
   color: #644b9e; padding: 6px 10px; margin-right: auto; }
 .sn-unsnooze:hover { text-decoration: underline; }
 .badge-snoozed { background: #fff5ee; color: #a94f13; }
+
+/* ── Rich reply box ───────────────────────────────────────────────────────
+   A contenteditable rather than a textarea, so a link can be attached to a
+   word the way it is on Gorgias. Stored and scored as text, with links written
+   as [word](url) so the marker can see what was linked.                      */
+.reply-textarea[contenteditable] { overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+.reply-textarea[contenteditable]:empty:before {
+  content: attr(data-ph); color: #a3a19e; pointer-events: none; }
+.reply-textarea[contenteditable]:focus { outline: none; }
+.reply-textarea a { color: #644b9e; text-decoration: underline; }
+.msg-card a { color: #644b9e; text-decoration: underline; }
+.lk-pop { position: absolute; z-index: 80; display: flex; gap: 6px; align-items: center;
+  background: #fff; border: 1px solid #e8e5e2; border-radius: 8px; padding: 7px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+.lk-pop input { border: 1px solid #e8e5e2; border-radius: 6px; padding: 5px 8px;
+  font-family: inherit; font-size: 12.5px; width: 230px; outline: none; color: #1b1c1d; }
+.lk-pop input:focus { border-color: #644b9e; }
+.lk-pop button { border: none; border-radius: 6px; background: #1b1c1d; color: #fff;
+  font-family: inherit; font-size: 12.5px; padding: 6px 12px; cursor: pointer; }
+.lk-pop .lk-cancel { background: none; color: #5f5e5c; padding: 6px 8px; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -1321,6 +1341,96 @@ function toggleCustomerFields(btn) {
 }
 
 
+
+
+// ── Reply box contents ─────────────────────────────────────────────────────
+// The composer is a contenteditable so links can sit on a word, but everything
+// downstream — drafts, the thread, the scorer — still works in text. Links are
+// written as [word](url), which is also how the marker can tell a link was
+// embedded rather than a bare URL pasted in.
+function replyEl() { return document.getElementById('reply-input'); }
+function htmlToText(html) {
+  const d = document.createElement('div');
+  d.innerHTML = (html || '')
+    .replace(/<a [^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (m, href, txt) =>
+      '[' + txt.replace(/<[^>]+>/g, '') + '](' + href + ')')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(div|p)>/gi, '\n')
+    .replace(/<[^>]+>/g, '');
+  return (d.textContent || '').replace(/ /g, ' ');
+}
+// The app's own esc() helpers are function-scoped locals declared further down,
+// so this block carries its own rather than depending on where it is loaded.
+function rxEsc(t) { return (t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function textToHtml(text) {
+  return rxEsc(text || '')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\n/g, '<br>');
+}
+function replyGet() { const el = replyEl(); return el ? htmlToText(el.innerHTML).trim() : ''; }
+function replySet(v) {
+  const el = replyEl();
+  if (!el) return;
+  el.innerHTML = textToHtml(v || '');
+  if (!(v || '').trim()) el.innerHTML = '';
+}
+// Browsers leave a stray <br> behind after the last character is deleted, which
+// would keep the placeholder hidden on an empty box.
+function replyTidy(el) { if (!el.textContent.trim() && !el.querySelector('a')) el.innerHTML = ''; }
+
+// ── Link control ───────────────────────────────────────────────────────────
+let lkRange = null;
+function openLinkPopover(btn) {
+  document.querySelectorAll('.lk-pop').forEach(p => p.remove());
+  const el = replyEl();
+  if (!el) return;
+  const sel = window.getSelection();
+  const inBox = sel && sel.rangeCount && el.contains(sel.anchorNode);
+  lkRange = inBox ? sel.getRangeAt(0).cloneRange() : null;
+  const selectedText = lkRange ? lkRange.toString() : '';
+
+  const pop = document.createElement('div');
+  pop.className = 'lk-pop';
+  pop.innerHTML = `<input type="text" placeholder="${selectedText ? 'Link “' + rxEsc(selectedText.slice(0,22)) + '” to…' : 'Paste a link…'}" autocomplete="off">
+    <button class="lk-ok">Add link</button><button class="lk-cancel">Cancel</button>`;
+  const host = btn.closest('.fmt-toolbar') || btn.parentElement;
+  host.style.position = host.style.position || 'relative';
+  pop.style.left = '6px';
+  pop.style.top = '-46px';
+  host.appendChild(pop);
+  const input = pop.querySelector('input');
+  input.focus();
+
+  const apply = () => {
+    let url = input.value.trim();
+    if (!url) { pop.remove(); return; }
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    el.focus();
+    if (lkRange && !lkRange.collapsed) {
+      const s2 = window.getSelection(); s2.removeAllRanges(); s2.addRange(lkRange);
+      document.execCommand('createLink', false, url);
+      // execCommand does not set target, and a trainee clicking through should
+      // not lose the ticket they are part-way through answering.
+      el.querySelectorAll('a[href="' + url + '"]').forEach(a => {
+        a.target = '_blank'; a.rel = 'noopener';
+      });
+    } else {
+      const a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = url;
+      if (lkRange) { lkRange.insertNode(a); } else { el.appendChild(a); }
+    }
+    pop.remove();
+  };
+  pop.querySelector('.lk-ok').addEventListener('click', e => { e.stopPropagation(); apply(); });
+  pop.querySelector('.lk-cancel').addEventListener('click', e => { e.stopPropagation(); pop.remove(); });
+  input.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); apply(); }
+    if (e.key === 'Escape') { e.preventDefault(); pop.remove(); }
+  });
+  pop.addEventListener('click', e => e.stopPropagation());
+}
+document.addEventListener('click', () => document.querySelectorAll('.lk-pop').forEach(p => p.remove()));
 
 // ── Snooze ─────────────────────────────────────────────────────────────────
 // Gorgias's picker, same behaviour: the quick durations apply straight away; a
@@ -2249,7 +2359,7 @@ function renderMessages(ticket, sub) {
       <div class="msg-ava ${o.avaClass}">${o.ava}</div>
       <div class="msg-content">
         <div class="msg-meta"><span class="msg-sender">${o.sender}</span>${o.automated ? '<span class="auto-chip">automated</span>' : ''}<span>${o.sub}</span></div>
-        <div class="msg-card ${o.cardClass || ''}">${esc(o.body)}</div>
+        <div class="msg-card ${o.cardClass || ''}">${o.linkify ? textToHtml(o.body) : esc(o.body)}</div>
       </div>
     </div>`;
   let html = parseThread(ticket).map(p => {
@@ -2294,7 +2404,7 @@ function renderMessages(ticket, sub) {
     html += bubble({ dir:'out', avaClass:'agent', ava:trainee.name.charAt(0).toUpperCase(),
       sender:`${trainee.name} (you)`,
       sub:new Date(m.at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}),
-      body:m.body, cardClass:'agent-card' });
+      body:m.body, cardClass:'agent-card', linkify:true });
   });
   if (sub && !(sentReplies[ticket.id] || []).length) html += bubble({ dir:'out', avaClass:'agent', ava:trainee.name.charAt(0).toUpperCase(), sender:`${trainee.name} (you)`, sub:new Date(sub.submitted_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}), body:sub.reply_text, cardClass:'agent-card' });
   area.innerHTML = html;
@@ -2327,8 +2437,9 @@ function formatFeedback(md) {
   closeList();
   return html;
 }
-// Visual replica of the Gorgias rich-text toolbar. These controls are cosmetic — the sim
-// scores the plain-text reply — but they make the composer feel like the real thing.
+// Replica of the Gorgias rich-text toolbar. The link control is real: a trainee can
+// attach a link to a word, which is the SOP ("embed links in the writing, or say
+// 'here' and embed the link in the word 'here'"). The rest stay cosmetic.
 function fmtToolbar() {
   return `
     <div class="fmt-toolbar">
@@ -2336,7 +2447,7 @@ function fmtToolbar() {
       <button type="button" class="fmt-btn" title="Italic"><i>I</i></button>
       <button type="button" class="fmt-btn" title="Underline"><u>U</u></button>
       <span class="fmt-sep"></span>
-      <button type="button" class="fmt-btn" title="Insert link"><svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+      <button type="button" class="fmt-btn" title="Insert link" onmousedown="event.preventDefault()" onclick="event.stopPropagation(); openLinkPopover(this)"><svg width="15" height="15" viewBox="0 0 24 24" ${_S}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
       <button type="button" class="fmt-btn" title="Insert image"><svg width="15" height="15" viewBox="0 0 24 24" ${_S}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></button>
       <button type="button" class="fmt-btn" title="Insert video"><svg width="15" height="15" viewBox="0 0 24 24" ${_S}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m10 9 5 3-5 3z" fill="currentColor" stroke="none"/></svg></button>
       <button type="button" class="fmt-btn" title="Emoji"><svg width="15" height="15" viewBox="0 0 24 24" ${_S}><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
@@ -2570,7 +2681,7 @@ function renderReplySection(ticket, sub) {
           </div>
         </div>
         <div class="drag-handle" data-target="reply-input" title="Drag to resize"></div>
-        <textarea class="reply-textarea" id="reply-input" placeholder="${isNote ? 'Write an internal note for the CW team…' : 'Click here to reply…'}"></textarea>
+        <div class="reply-textarea" id="reply-input" contenteditable="true" role="textbox" aria-multiline="true" data-ph="${isNote ? 'Write an internal note for the CW team…' : 'Click here to reply…'}" oninput="replyTidy(this)"></div>
         <div class="actions-note-wrap">
           <div class="drag-handle" data-target="actions-input" title="Drag to resize"></div>
           <div class="actions-note-label"><span class="an-title">ACTIONS</span> <span class="an-hint">(fill in each line: what the order status is, what the ticket is about, then the steps you'd take on Shopify / Swap / Recharge etc.)</span></div>
@@ -2639,7 +2750,7 @@ function insertMacro(id) {
     .replace(/\[ADD CUSTOMER ADDRESS\]/gi, addr || '[ADD CUSTOMER ADDRESS]');
   usedMacro = { name: m.name, body: body };
   const input = document.getElementById('reply-input');
-  if (input) { input.value = body; input.style.border = 'none'; input.focus(); }
+  if (input) { replySet(body); input.style.border = 'none'; input.focus(); }
   const p = document.getElementById('macro-picker');
   if (p) p.classList.remove('open');
 }
@@ -3226,8 +3337,8 @@ function renderCustomerSidebar(ticket) {
 // trainee can send again, or switch to an internal note, then Send & Close when done.
 function sendReply(ticketId) {
   const input = document.getElementById('reply-input');
-  const reply = input ? input.value.trim() : '';
-  if (!reply) { if (input) { input.style.border = '1px solid #ef4444'; input.placeholder = 'Please write a reply first.'; } return; }
+  const reply = replyGet();
+  if (!reply) { if (input) { input.style.border = '1px solid #ef4444'; input.dataset.ph = 'Please write a reply first.'; } return; }
   if (!sentReplies[ticketId]) sentReplies[ticketId] = [];
   sentReplies[ticketId].push({ body: reply, at: new Date().toISOString() });
   saveSentReplies();
@@ -3242,7 +3353,7 @@ function sendReply(ticketId) {
 // "Send & Close": nothing more can be added, and this is what triggers marking.
 async function submitReply(ticketId, andClose) {
   const input = document.getElementById('reply-input');
-  const typed = input ? input.value.trim() : '';
+  const typed = replyGet();
   // Anything still in the composer counts as a final message.
   if (typed) {
     if (!sentReplies[ticketId]) sentReplies[ticketId] = [];
@@ -3250,7 +3361,7 @@ async function submitReply(ticketId, andClose) {
     saveSentReplies();
   }
   const sentList = sentReplies[ticketId] || [];
-  if (!sentList.length) { if (input) { input.style.border = '1px solid #ef4444'; input.placeholder = 'Please write a reply first.'; } return; }
+  if (!sentList.length) { if (input) { input.style.border = '1px solid #ef4444'; input.dataset.ph = 'Please write a reply first.'; } return; }
   const reply = sentList.map(m => m.body).join('\n\n');
   // Contact reason is required before a ticket can be closed (like Gorgias)
   if (!contactReasons[ticketId]) {
@@ -3345,19 +3456,19 @@ function setChannel(ch, ticketId) {
   // Preserve whatever's typed when switching channel (Gorgias keeps the draft).
   stashActions();
   const cur = document.getElementById('reply-input');
-  const draft = cur ? cur.value : '';
+  const draft = cur ? replyGet() : '';
   replyChannel = ch;
   const ticket = tickets.find(t => t.id === ticketId);
   renderReplySection(ticket, getSub(ticketId));
   const next = document.getElementById('reply-input');
-  if (next && draft) next.value = draft;
+  if (next && draft) replySet(draft);
 }
 // Post an internal note: append it to the thread (CW-only) and persist. Not scored on its own —
 // it's folded into the scoring payload when the customer reply is sent.
 function addInternalNote(ticketId, andClose) {
   const input = document.getElementById('reply-input');
-  const body = input ? input.value.trim() : '';
-  if (!body) { if (input) { input.style.border = '1px solid #ef4444'; input.placeholder = 'Write your internal note first.'; } return; }
+  const body = replyGet();
+  if (!body) { if (input) { input.style.border = '1px solid #ef4444'; input.dataset.ph = 'Write your internal note first.'; } return; }
   if (!internalNotes[ticketId]) internalNotes[ticketId] = [];
   internalNotes[ticketId].push({ body, at: new Date().toISOString(), author: trainee.name });
   saveInternalNotes();

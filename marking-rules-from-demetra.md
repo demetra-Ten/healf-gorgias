@@ -213,3 +213,45 @@ Found while checking the above: three hidden ideal responses still greeted the R
 customer, not the sim one — t61 "Hi Sami" (Freya Owen), t72 "Hi Saliha" (Rory Frost),
 t178 "Hi Kristy" (Ryan Alden). Fixed. **Anonymisation has to cover `ideal_response`, not
 just `message` and the customer fields** — worth re-checking after any ticket import.
+
+---
+
+## M. Handovers to another team are NOT marked (2026-10-20)
+
+Demetra: *"any SOP on trainual that involves assigning a ticket to another team is
+not marked against whether they assign it to the team/the correct team e.g. when a
+ticket needs escalating"* and *"only mention the team assignment in the marking if
+and when necessary, do not mention unnecessarily"*.
+
+Context: the ticket header now has a working team picker (13 real teams, default
+UK Email Team), so trainees *can* hand a ticket on. That must not become a new way
+to lose marks.
+
+**LIVE** in the Score Reply node's user message, published 2026-10-20. The rule:
+
+- Never mark the handover — whether they escalated, routed, tagged
+  `@cw-escalations`, or moved the ticket, and which team they chose. Never a
+  necessary improvement, never a score change, **even where the SOP says to
+  escalate**.
+- Say nothing by default, under none of the three headings. No "escalate to
+  @cw-escalations", no "assign this to X", and no faulting a missing internal note
+  on the grounds another team would need it.
+- The underlying judgement is still marked, but only as what was missed about the
+  **customer or the order** — "the fraud indicators were not recognised and a
+  replacement should not be sent yet", never "you should have escalated".
+
+**Why it is in the user message, not the system prompt:** n8n replaces a parameter
+wholesale, so editing the ~12KB system prompt means retyping it in full and risking
+corruption of the whole rubric. The message template is ~1.6KB and verifiable. Move
+it into the system prompt only alongside a proper diff.
+
+**Verified** by replaying a £310 first-order DNR (the case whose SOP ends in
+escalation), once left on the default team and once moved to Escalations:
+
+| | Score | Handover language |
+|---|---|---|
+| Left on UK Email Team | 1 | **none** |
+| Moved to Escalations Team | 1 | one incidental mention inside a *macro* bullet |
+
+The score is identical either way — assigning or not assigning no longer moves the
+mark — and the genuine fraud-recognition fault survives in both.

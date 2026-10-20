@@ -900,6 +900,9 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
 .lk-pop button { border: none; border-radius: 6px; background: #1b1c1d; color: #fff;
   font-family: inherit; font-size: 12.5px; padding: 6px 12px; cursor: pointer; }
 .lk-pop .lk-cancel { background: none; color: #5f5e5c; padding: 6px 8px; }
+
+.macro-item mark { background: #fff7c2; color: inherit; padding: 0 1px; border-radius: 2px; }
+#macro-count { font-size: 11px; color: #a3a19e; margin-left: auto; }
 </style>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('healf_theme') || 'light');</script>
 </head>
@@ -2716,6 +2719,43 @@ function toggleMacroPicker(e) {
   }
 }
 
+function macroHit(text, terms) {
+  // position of the earliest matching term, so the preview can be shown around it
+  let best = -1;
+  const low = (text || '').toLowerCase();
+  for (const t of terms) { const i = low.indexOf(t); if (i > -1 && (best === -1 || i < best)) best = i; }
+  return best;
+}
+function macroMark(text, terms) {
+  let out = mEsc(text || '');
+  for (const t of terms) {
+    if (!t) continue;
+    const rx = new RegExp('(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+    out = out.replace(rx, '<mark>$1</mark>');
+  }
+  return out;
+}
+// Ranked like the helpdesk's own picker: a name match beats a tag match, which
+// beats a body match, and every word typed has to land somewhere. Searching the
+// body is the point — the box has always said "name, tags or body" but only ever
+// looked at the name and the category.
+function macroScore(m, terms) {
+  const name = (m.name || '').toLowerCase();
+  const cat  = (m.category || '').toLowerCase();
+  const body = (m.body || '').toLowerCase();
+  let score = 0;
+  // a word-boundary hit beats one buried mid-word, so "dor" finds the DOR macro
+  // before it finds "Ambassador"
+  const atWord = (hay, t) => new RegExp('\\b' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(hay);
+  for (const t of terms) {
+    if (name.startsWith(t))      score += 100;
+    else if (name.includes(t))   score += 60 + (atWord(name, t) ? 25 : 0);
+    else if (cat.includes(t))    score += 25;
+    else if (body.includes(t))   score += 10 + (atWord(body, t) ? 5 : 0);
+    else return -1;                       // a word that matches nothing rules it out
+  }
+  return score;
+}
 function renderMacroList(q) {
   const list = document.getElementById('macro-list');
   if (!list) return;
@@ -2723,15 +2763,34 @@ function renderMacroList(q) {
     list.innerHTML = '<div class="macro-empty">No macros loaded yet. Run macros.sql in Supabase to add them.</div>';
     return;
   }
-  const ql = (q || '').toLowerCase();
-  const matches = macros.filter(m => m.name.toLowerCase().includes(ql) || (m.category || '').toLowerCase().includes(ql));
+  const terms = (q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  let matches;
+  if (!terms.length) {
+    matches = macros.slice();
+  } else {
+    matches = macros.map(m => ({ m, s: macroScore(m, terms) }))
+                    .filter(x => x.s >= 0)
+                    .sort((a, b) => b.s - a.s || a.m.name.localeCompare(b.m.name))
+                    .map(x => x.m);
+  }
+  const count = document.getElementById('macro-count');
+  if (count) count.textContent = matches.length + ' of ' + macros.length;
   if (!matches.length) { list.innerHTML = '<div class="macro-empty">No macros match that search.</div>'; return; }
-  list.innerHTML = matches.map(m => `
+  list.innerHTML = matches.map(m => {
+    const body = (m.body || '').replace(/\n/g, ' ');
+    // if the words only appear in the body, show the preview from there rather
+    // than from the opening line, which is usually just the greeting
+    const hit = terms.length ? macroHit(body, terms) : -1;
+    const nameHas = terms.some(t => (m.name || '').toLowerCase().includes(t) || (m.category || '').toLowerCase().includes(t));
+    const from = (hit > -1 && !nameHas) ? Math.max(0, hit - 40) : 0;
+    const snippet = (from > 0 ? '…' : '') + body.slice(from, from + 110) + (body.length > from + 110 ? '…' : '');
+    return `
     <div class="macro-item" onclick="insertMacro(${m.id})">
-      <div class="macro-item-cat">${mEsc(m.category)}</div>
-      <div class="macro-item-name">${mEsc(m.name)}</div>
-      <div class="macro-item-preview">${mEsc(m.body.replace(/\n/g,' ').slice(0,100))}</div>
-    </div>`).join('');
+      <div class="macro-item-cat">${macroMark(m.category, terms)}</div>
+      <div class="macro-item-name">${macroMark(m.name, terms)}</div>
+      <div class="macro-item-preview">${macroMark(snippet, terms)}</div>
+    </div>`;
+  }).join('');
 }
 
 function filterMacros() {

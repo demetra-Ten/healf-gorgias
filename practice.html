@@ -1924,13 +1924,22 @@ let tourName = null, tourIdx = 0, tourForced = false;
 // so the walkthrough must not run and the viewer's own internal notes must not appear.
 let isPreview = false;
 
-// Whether someone has done the walkthrough is stored against the TRAINEE ROW, not in
-// the browser: localStorage meant it reappeared on a new browser, in a private window,
-// and every time the version was bumped. tour_done_at is set once they finish it and
-// it never auto-runs again after that.
-function tourDone() { return !!(trainee && trainee.tour_done_at); }
+// The walkthrough runs ONCE per trainee: the first time they ever open the simulator.
+// It is marked as seen the moment it starts — on the trainee row (so a new browser or
+// device knows) and in this browser (so it holds even if that write is slow or fails).
+// Skipping, closing or stopping halfway all count; only "Replay the walkthrough" in the
+// profile menu brings it back. tourFirstRun lets the ticket half follow on in that same
+// first visit, the first time they open a ticket.
+let tourFirstRun = false, tourTicketShown = false;
+const tourKey = () => 'tour_seen_' + (trainee && trainee.id);
+function tourDone() {
+  if (trainee && trainee.tour_done_at) return true;
+  try { return !!localStorage.getItem(tourKey()); } catch (e) { return false; }
+}
 async function markTourDone() {
-  if (!trainee || trainee.id == null || trainee.id < 0 || trainee.tour_done_at) return;
+  if (!trainee || trainee.id == null || trainee.id < 0) return;
+  try { localStorage.setItem(tourKey(), '1'); } catch (e) {}
+  if (trainee.tour_done_at) return;
   const at = new Date().toISOString();
   trainee.tour_done_at = at;
   try {
@@ -1946,7 +1955,7 @@ function startTour(name, force) {
   const menu = document.getElementById('profile-menu');
   if (menu) menu.classList.remove('open');
   tourClear();
-  tourName = name; tourIdx = 0; tourForced = !!force;
+  tourName = name; tourIdx = 0; tourForced = force === true;   // 'first' = the one-off first run, which has no Close
   for (let i = 0; i < 4; i++) {
     const pane = document.createElement('div'); pane.className = 'tour-pane'; document.body.appendChild(pane);
   }
@@ -1962,9 +1971,7 @@ function tourEnd() {
   const finished = tourName;
   tourClear();
   tourName = null;
-  // Completing the ticket half is the end of the walkthrough. Stopping after the
-  // inbox half leaves it unfinished, so they get it again next login.
-  if (finished === 'ticket' && !tourForced) markTourDone();
+  // Already marked as seen when it first started (see markTourDone), so nothing to do here.
 }
 
 function tourNext() { tourGo(1); }
@@ -2126,8 +2133,12 @@ async function init() {
   document.getElementById('ttv-count').textContent = `Showing ${tickets.length} item${tickets.length !== 1 ? 's' : ''}`;
   renderTicketTable();
   document.getElementById('loading').style.display = 'none';
-  // Only someone who has never completed the walkthrough gets it.
-  if (!tourDone()) window.setTimeout(function () { startTour('list'); }, 400);
+  // Only someone who has never seen the walkthrough gets it, and only this once.
+  if (!tourDone()) {
+    tourFirstRun = true;
+    markTourDone();
+    window.setTimeout(function () { startTour('list', 'first'); }, 400);
+  }
 }
 
 // Read-only ticket preview, opened from the admin site as practice.html?preview=<id>.
@@ -2274,7 +2285,7 @@ function openTicket(id) {
   activeTicketId = id;
   // The composer and sidebar only exist once a ticket is open, so the second half
   // of the walkthrough waits until now.
-  window.setTimeout(function () { startTour('ticket'); }, 500);
+  if (tourFirstRun && !tourTicketShown) { tourTicketShown = true; window.setTimeout(function () { startTour('ticket', 'first'); }, 500); }
   usedMacro = null;
   replyChannel = 'email';
   renderTicketTable();

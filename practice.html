@@ -3289,18 +3289,19 @@ function rechargePanelHtml(ticket) {
 }
 
 // Shipping + Shipping address block rendered INSIDE the Shopify order box (UK Delivery tickets).
-function shippingBlockHtml(t) {
-  const tr = buildTracking(t); TRACK_CACHE[t.id] = tr;
+function shippingBlockHtml(t, o) {
+  // Same tracking as the Shopify sim and the tracking page; the link opens that page.
+  const tr = buildTracking(t, o);
   const a = custAddress(t);
-  const late = /^late_/.test(UK_TRACKING[t.id] || '');
+  const late = /^late_/.test(tr.code);
   const cost = late ? '£5.99' : 'Free';
   const code = late ? 'Next Working Day Shipping (for orders placed before 12pm)' : 'Standard Tracked 24 Shipping';
-  const url = 'https://www.royalmail.com/track-your-item#/tracking-results/' + tr.num;
+  const short = tr.carrier === 'Amazon Shipping' ? 'track.amazon.co.uk/…' : tr.carrier === 'FedEx' ? 'fedex.com/fedextrack…' : 'royalmail.com/track…';
   return `
     <div class="order-ship">
       <div class="order-ship-title">Shipping</div>
       <div class="cs-row"><span class="cs-label">Shipment status</span><span class="track-status ${tr.tone}">${tr.headline.s}</span></div>
-      <div class="cs-row"><span class="cs-label">Tracking url</span><a class="ship-link" href="#" onclick="openTracking(${t.id});return false;" title="Open Royal Mail tracking">royalmail.com/track…</a></div>
+      <div class="cs-row"><span class="cs-label">Tracking url</span><a class="ship-link" href="${trackingHref(t, o)}" target="_blank" rel="noopener" title="Open ${tr.carrier} tracking">${short}</a></div>
       <div class="cs-row"><span class="cs-label">Tracking number</span><span class="cs-value" style="font-size:11px">${tr.num}</span></div>
       <div class="cs-row"><span class="cs-label">Shipping cost</span><span class="cs-value">${cost}</span></div>
       <div class="cs-row"><span class="cs-label">Code</span><span class="cs-value ship-code">${code}</span></div>
@@ -3310,35 +3311,6 @@ function shippingBlockHtml(t) {
       <div class="ship-addr">${a.lines.join('<br>')}</div>
     </div>`;
 }
-function openTracking(id) {
-  const tr = TRACK_CACHE[id]; if (!tr) return;
-  const evs = tr.events.map((e, i) => `
-    <div class="rm-event${i === 0 ? ' now' : ''}">
-      <div class="rm-ev-title">${e.title}</div>
-      ${e.loc ? `<div class="rm-ev-loc">${e.loc}</div>` : ''}
-      <div class="rm-ev-date">${rmDate(e.daysAgo)}</div>
-    </div>`).join('');
-  document.getElementById('rm-modal-root').innerHTML = `
-    <div class="rm-overlay" onclick="if(event.target===this)closeTracking()">
-      <div class="rm-modal">
-        <div class="rm-header">
-          <div class="rm-wordmark"><span class="rm-crown">♔</span> Royal Mail</div>
-          <button class="rm-close" onclick="closeTracking()">×</button>
-        </div>
-        <div class="rm-body">
-          <div class="rm-track-no">Tracking number <b>${tr.num}</b></div>
-          <div class="rm-service">${tr.service}</div>
-          <div class="rm-status-box ${tr.tone}">
-            <div class="rm-status-lbl">${tr.headline.s}</div>
-            <div class="rm-status-sub">${tr.headline.sub}</div>
-          </div>
-          <div class="rm-journey-title">Your item's journey</div>
-          <div class="rm-timeline">${evs}</div>
-        </div>
-      </div>
-    </div>`;
-}
-function closeTracking() { document.getElementById('rm-modal-root').innerHTML = ''; }
 
 function renderCustomerSidebar(ticket) {
   const loyaltyClass = { 'Bronze':'loyalty-bronze','Silver':'loyalty-silver','Gold':'loyalty-gold','VIP':'loyalty-vip' }[ticket.loyalty_tier] || '';

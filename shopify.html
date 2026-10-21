@@ -750,8 +750,9 @@ async function viewOrder(tid, number) {
   const out = l => l.removed || (!l.fulfilled && l.refundedQty >= l.qty);
   const unf = rows.filter(([l]) => !l.fulfilled && !out(l)), ful = rows.filter(([l]) => l.fulfilled && !l.removed), gone = rows.filter(([l]) => out(l));
   const shipName = o.shipName || (o.shipping ? 'Next Working Day Shipping' : 'Free Shipping (2-3 Working Days)');
-  const tr = rmNumber(t);
-  const delivered = o.created ? new Date(o.created.getTime() + 3 * 86400000) : null;
+  // The same tracking the Gorgias sidebar and the tracking page show (buildTracking).
+  const trk = buildTracking(t, o);
+  const delivered = trk.delivered;
   const unfCard = unf.length ? `
     <div class="sec-h"><span class="tile${o.cancelled ? '' : ' yellow'}">${I.unful}</span><h2>${o.cancelled ? 'Removed' : 'Unfulfilled'}</h2>
       ${o.cancelled ? '' : `<div class="acts"><button class="btn icon grey" style="background:none;border:none">${I.dots.replace('<svg', '<svg width="16" height="16"')}</button><button class="btn grey" onclick="toast('Holds are not part of the training store')">Mark as on hold</button><button class="btn dark" onclick="toast('Fulfilment is done by the warehouse (PFS / GXO), not by CW')">Request fulfillment</button></div>`}</div>
@@ -764,9 +765,9 @@ async function viewOrder(tid, number) {
   const fulCard = ful.length ? `
     <div class="sec-h"><span class="tile">${I.ful}</span><h2>Fulfilled <span class="sub">${esc(o.number)}-F1</span></h2><div class="acts"><button class="btn icon" style="border:none;box-shadow:none">${I.dots.replace('<svg', '<svg width="16" height="16"')}</button></div></div>
     <div class="card cpad">
-      <div class="crow"><span class="chip" style="font-weight:550">${Number(t.category_id) === 6 ? esc(buildTracking(t).headline.s) : 'Delivered'}</span><span class="loc">${I.pin}PFS Fulfillment Service</span></div>
-      <div class="crow">${I.truck}<span>${delivered ? delivered.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}</span></div>
-      <div class="crow">${I.box}<span>Royal Mail tracking: <a href="#" style="color:var(--ink);text-decoration:underline" onclick="toast('Tracking opens Royal Mail. In the training sim, use the tracking shown in Gorgias.');return false">${esc(tr)}</a></span></div>
+      <div class="crow"><span class="chip" style="font-weight:550">${esc(trk.shop)}</span><span class="loc">${I.pin}PFS Fulfillment Service</span></div>
+      ${delivered ? `<div class="crow">${I.truck}<span>${delivered.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span></div>` : ''}
+      <div class="crow">${I.box}<span>${esc(trk.carrier)} tracking: <a href="${trackingHref(t, o)}" target="_blank" style="color:var(--ink);text-decoration:underline">${esc(trk.num)}</a></span></div>
       <div class="hr" style="margin-bottom:0"></div>
       ${ful.map(([l, i]) => lineHtml(t, l, i)).join('')}
     </div>` : '';
@@ -796,9 +797,12 @@ async function viewOrder(tid, number) {
     ev.push({ at: at(0), text: `${t.customer_name} placed this order on ${channelOf(o, t)}.` });
     ev.push({ at: at(1), text: `A ${shopMoney(o.total)} GBP payment was processed on Shopify Payments.` });
     ev.push({ at: at(2), text: `Order confirmation email was sent to ${t.customer_name} (${t.customer_email}).` });
-    if (ful.length && delivered) {
-      ev.push({ at: new Date(o.created.getTime() + 86400000), text: `PFS Fulfillment Service fulfilled ${ful.reduce((s, [l]) => s + l.qty, 0)} items from GXO Fulfilment (UK).` });
-      ev.push({ at: delivered, text: 'Royal Mail marked this order as delivered.' });
+    if (ful.length) {
+      const sent = trk.events[trk.events.length - 1].at;
+      ev.push({ at: sent, text: `PFS Fulfillment Service fulfilled ${ful.reduce((s, [l]) => s + l.qty, 0)} items from GXO Fulfilment (UK).` });
+      ev.push({ at: new Date(sent.getTime() + 60000), text: `${trk.carrier} tracking number ${trk.num} was added.` });
+      if (delivered) ev.push({ at: delivered, text: `${trk.carrier} marked this order as delivered.` });
+      else if (trk.code === 'rts') ev.push({ at: trk.events[0].at, text: `${trk.carrier} returned this order to the sender.` });
     }
   }
   o.events.forEach(e => ev.push({ at: e.at, text: e.text, mine: true }));

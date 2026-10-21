@@ -129,39 +129,125 @@ function rmDate(daysAgo) {
   return ds + ' at ' + hh + ':' + mm;
 }
 
-function buildTracking(t) {
-  const code = UK_TRACKING[t.id] || 'delivered_notreceived';
-  const E = (daysAgo, title, loc) => ({ daysAgo, title, loc });
-  let headline, tone, events;
+// Per-ticket corrections and details from the ticket's own text (carrier, the tracking
+// number an agent quoted, the courier's delivery photo). Filled from an audit of every UK
+// Delivery ticket against its message and ideal handling; anything not listed falls back
+// to UK_TRACKING and Royal Mail.
+const TRACKING_DETAIL = {
+  68: {"code": "delivered_notreceived", "carrier": "FedEx", "eventDay": "2026-05-13"},
+  166: {"carrier": "Amazon Shipping", "number": "UK4279551257", "eventDay": "2026-07-24", "pod": true, "podCaption": "Parcel photographed at the point of delivery."},
+  167: {"code": "delivered_wrongplace", "carrier": "Amazon Shipping"},
+  168: {"carrier": "Royal Mail"},
+  171: {"code": "delivered_notreceived", "pod": true, "podCaption": "Parcel photographed at the point of delivery."},
+  172: {"pod": true, "podCaption": "Parcel left outside a property."},
+  173: {"code": "delivered_notreceived"},
+  174: {"carrier": "Royal Mail", "eventDay": "2026-05-26"},
+  175: {"carrier": "Royal Mail", "eventDay": "2026-05-23", "pod": true, "podCaption": "Parcel left on a doorstep."},
+  176: {"code": "delivered_ok"},
+  177: {"eventDay": "2026-06-29", "pod": true, "podCaption": "Parcel left inside a building at the point of delivery."},
+  178: {"pod": true, "podCaption": "Parcel photographed at the point of delivery."},
+  180: {"carrier": "Amazon Shipping", "service": "Amazon Shipping Next Day"},
+  181: {"code": "delivered_ok", "service": "Royal Mail Tracked 24™ — Next Working Day"},
+  182: {"carrier": "Amazon Shipping", "service": "Amazon Shipping Next Day"},
+  183: {"carrier": "Royal Mail", "number": "OX076394529GB", "service": "Royal Mail Tracked 24™ — Next Working Day"},
+  184: {"code": "rts", "carrier": "Royal Mail", "number": "OX076286590GB", "eventDay": "2026-05-14"},
+  185: {"carrier": "Royal Mail", "number": "FE357224785GB"},
+  187: {"carrier": "Royal Mail"},
+  188: {"carrier": "Royal Mail", "eventDay": "2026-05-29"},
+  189: {"carrier": "Royal Mail"},
+  190: {"code": "delivered_wrongplace"},
+  191: {"code": "late_intransit"}
+};
+
+// An order with no date at all (and a ticket with no message date) still needs one, so the
+// order page and its tracking agree: a stable day in summer 2026, never today.
+function placeholderOrderDate(t, o) {
+  const det = TRACKING_DETAIL[Number(t.id)] || {};
+  if (det.eventDay) { const d = new Date(det.eventDay + 'T10:00:00'); d.setDate(d.getDate() - (det.code === 'rts' ? 5 : 3)); return d; }
+  const k = (Number(t.id) || 0) * 31 + String((o && o.number) || '').length * 7;
+  return new Date(2026, 6, 1 + k % 28, 9 + k % 8, (k * 13) % 60);
+}
+// The day the order was placed: the parcel's journey runs forward from here.
+function orderPlaced(t, o) {
+  if (o && o.created) return new Date(o.created);
+  const f = shopBaseOrders(t)[0];
+  return f && f.created ? new Date(f.created) : placeholderOrderDate(t, o);
+}
+function fmtTrackDate(d) {
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' at ' +
+         d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+function amazonNumber(t) { return 'UK' + String(4200000000 + (Number(t.id) * 7919) % 99999999).padStart(10, '0'); }
+
+// The tracking for one order. The ticket's own order (the first one) carries the UK
+// Delivery scenario; any other shipped order in the history simply shows as delivered.
+function buildTracking(t, o) {
+  const first = !o || (parseOrders(t)[0] || {}).number === o.number;
+  const det = first ? (TRACKING_DETAIL[t.id] || {}) : {};
+  const code = first ? (det.code || UK_TRACKING[t.id] || 'delivered_ok') : 'delivered_ok';
+  // Day 0 = the order was placed. A ticket that names the day of delivery / return moves the
+  // last scan onto that day (never before the order), and the journey fits in between.
+  const placed = orderPlaced(t, o);
+  const dayOf = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  let span = { delivered_ok: 2, delivered_notreceived: 2, delivered_wrongplace: 2, rts: 5, lost_nomovement: 1, late_intransit: 1, late_labelcreated: 0 }[code];
+  if (det.eventDay) { const e = Math.round((dayOf(det.eventDay + 'T12:00:00') - dayOf(placed)) / 86400000); if (e >= 1) span = e; }
+  const at = (day, hour, min) => { const d = dayOf(placed); d.setDate(d.getDate() + day); d.setHours(hour, min, 0, 0); return d; };
+  // E(daysBefore …) lists scans newest first, counted back from the last one; they are laid
+  // onto real days below, clamped so nothing precedes the order.
+  const E = (db, hour, min, title, loc) => ({ db, hour, min, title, loc });
+  const carrier = det.carrier && det.carrier !== 'unknown' ? det.carrier : 'Royal Mail';
+  const amazon = carrier === 'Amazon Shipping', fedex = carrier === 'FedEx';
+  const hub = amazon ? 'Amazon Delivery Station' : fedex ? 'FedEx hub, Coventry' : 'Southampton Mail Centre';
+  const office = amazon ? 'Out with Amazon Shipping driver' : fedex ? 'On FedEx vehicle for delivery' : 'Local Delivery Office';
+  let headline, tone, events, shop;
   switch (code) {
     case 'delivered_wrongplace':
-      headline = { s:'Delivered', sub:'Item delivered — left in a safe place / with a neighbour' }; tone = 'green';
-      events = [E(1,'Delivered','Left in safe place / handed to neighbour'), E(1,'Out for delivery','Local Delivery Office'), E(2,'Item Received','Southampton MC'), E(4,'Delivery request received','')];
+      headline = { s: 'Delivered', sub: 'Item delivered — left in a safe place / with a neighbour' }; tone = 'green'; shop = 'Delivered';
+      events = [E(1, 13, 42, 'Delivered', 'Left in a safe place'), E(1, 7, 18, 'Out for delivery', office), E(2, 21, 5, 'Item received', hub), E(4, 16, 30, 'Delivery request received', '')];
       break;
     case 'rts':
-      headline = { s:'Returned to sender', sub:'We were unable to deliver this item' }; tone = 'amber';
-      events = [E(1,'Returned to sender','Southampton MC'), E(2,'Delivery unsuccessful — item being returned','Local Delivery Office'), E(3,'Out for delivery','Local Delivery Office'), E(4,'Item Received','Southampton MC'), E(6,'Delivery request received','')];
+      headline = { s: 'Returned to sender', sub: 'We were unable to deliver this item' }; tone = 'amber'; shop = 'Failure';
+      events = [E(1, 11, 20, 'Returned to sender', hub), E(2, 15, 4, 'Delivery unsuccessful — item being returned', office), E(3, 7, 12, 'Out for delivery', office), E(4, 22, 40, 'Item received', hub), E(6, 16, 30, 'Delivery request received', '')];
       break;
     case 'lost_nomovement':
-      headline = { s:'In transit', sub:'We have your item — no tracking updates recently' }; tone = 'grey';
-      events = [E(9,'Item Received','Southampton MC — no further tracking updates'), E(11,'Delivery request received','')];
+      headline = { s: 'In transit', sub: 'We have your item — no tracking updates recently' }; tone = 'grey'; shop = 'In transit';
+      events = [E(9, 21, 50, 'Item received', hub + ' — no further tracking updates'), E(11, 16, 30, 'Delivery request received', '')];
       break;
     case 'late_labelcreated':
-      headline = { s:'Awaiting item', sub:'Sender is despatching your item' }; tone = 'grey';
-      events = [E(1,'Delivery request received','')];
+      headline = { s: 'Awaiting item', sub: 'The sender is despatching your item' }; tone = 'grey'; shop = 'Label printed';
+      events = [E(1, 16, 30, 'Delivery request received', '')];
       break;
     case 'late_intransit':
-      headline = { s:'In transit', sub:'On its way — running slightly behind schedule' }; tone = 'amber';
-      events = [E(0,'Item Received','Southampton MC'), E(1,'Delivery request received','')];
+      headline = { s: 'In transit', sub: 'On its way — running slightly behind schedule' }; tone = 'amber'; shop = 'In transit';
+      events = [E(0, 6, 55, 'Item received', hub), E(1, 16, 30, 'Delivery request received', '')];
       break;
-    case 'delivered_ok':
     case 'delivered_notreceived':
+    case 'delivered_ok':
     default:
-      headline = { s:'Delivered', sub:'We\'ve delivered your item' }; tone = 'green';
-      events = [E(1,'Delivered','Delivered'), E(1,'Out for delivery','Local Delivery Office'), E(2,'Item Received','Southampton MC'), E(4,'Delivery request received','')];
+      headline = { s: 'Delivered', sub: 'We\'ve delivered your item' }; tone = 'green'; shop = 'Delivered';
+      events = [E(1, 12, 26, 'Delivered', det.pod ? 'Delivered — photo taken' : 'Delivered'), E(1, 7, 9, 'Out for delivery', office), E(2, 21, 15, 'Item received', hub), E(4, 16, 30, 'Delivery request received', '')];
   }
-  return { num: rmNumber(t), service:'Royal Mail Tracked 24™', headline, tone, events };
+  const db0 = Math.min.apply(null, events.map(e => e.db));
+  events = events.map(e => ({ at: at(Math.max(0, span - (e.db - db0)), e.hour, e.min), title: e.title, loc: e.loc }));
+  // Everything is shown as it stood the day the customer wrote, so a parcel that had not
+  // arrived by then is still in transit on its tracking.
+  const sent = sentAt(t);
+  if (sent && events[0].at > sent) {
+    events = events.filter(e => e.at <= sent);
+    if (events.length) { headline = { s: 'In transit', sub: 'Your item is on its way' }; tone = 'grey'; shop = 'In transit'; }
+    else {   // ordered the same day they wrote: only the label exists so far
+      events = [{ at: new Date(Math.min(sent.getTime(), placed.getTime())), title: 'Delivery request received', loc: '' }];
+      headline = { s: 'Awaiting item', sub: 'The sender is despatching your item' }; tone = 'grey'; shop = 'Label printed';
+    }
+  }
+  const num = det.number || (amazon ? amazonNumber(t) : fedex ? String(770000000000 + (Number(t.id) * 104729) % 99999999999) : rmNumber(t));
+  const service = det.service || (amazon ? 'Amazon Shipping' : fedex ? 'FedEx International Priority' : 'Royal Mail Tracked 24™');
+  const url = amazon ? 'track.amazon.co.uk/tracking/' + num : fedex ? 'fedex.com/fedextrack/?trknbr=' + num : 'royalmail.com/track-your-item#/tracking-results/' + num;
+  return { code, carrier, num, service, url, headline, tone, shop, events,
+           delivered: /^Delivered/.test(headline.s) ? events[0].at : null,
+           pod: det.pod ? { caption: det.podCaption || 'Photo taken by the driver at delivery.' } : null };
 }
+function trackingHref(t, o) { return 'tracking.html?t=' + encodeURIComponent(t.id) + (o && o.number ? '&o=' + encodeURIComponent(o.number) : ''); }
 
 // Synthetic (fake) UK shipping address per ticket — stable, deterministic, no real PII.
 function custAddress(t) {
@@ -223,7 +309,7 @@ function shopBaseOrders(ticket) {
     const total = o.value ? shopNum(o.value) : subtotal;
     // Older single-order tickets carry no order date: place it a few days before the customer wrote.
     const sent = sentAt(ticket);
-    const created = shopDate(o.date) || (sent ? new Date(sent.getTime() - 3 * 86400000) : null);
+    const created = shopDate(o.date) || (sent ? new Date(sent.getTime() - 3 * 86400000) : placeholderOrderDate(ticket, o));
     return {
       ticketId: ticket.id, number: o.number, date: o.date || (created ? created.toLocaleDateString('en-GB') : ''), created,
       lines, subtotal, total,

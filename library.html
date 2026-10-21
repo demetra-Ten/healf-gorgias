@@ -116,7 +116,7 @@ const TRAINEE_ACCOUNT = 'trainee-access@healf.com';
 const $id = x => document.getElementById(x);
 function nextUrl() {
   const n = new URLSearchParams(location.search).get('next') || '';
-  return /^(practice|shopify)\.html([?#].*)?$/.test(n) ? n : '';
+  return /^(practice|shopify|tracking)\.html([?#].*)?$/.test(n) ? n : '';
 }
 function showTiles(who) {
   $id('signin').classList.add('hidden'); $id('grid').classList.remove('hidden');

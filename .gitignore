@@ -8,3 +8,6 @@ seed-*.json
 co-*.json
 # customer-obsession.html IS published (customer PII anonymised + noindex), per explicit decision 2026-07-15.
 # It names brands + describes internal incidents — keep the URL closely held; don't link it publicly.
+# Per-ticket stock state for the Shopify sim — its notes quote the hidden ideal answers.
+source-mapping/ticket-stock*.json
+source-mapping/catalogue*.json

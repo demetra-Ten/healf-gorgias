@@ -544,6 +544,7 @@ function renderMarking() {
           </div>
           ${s.internal_note ? `<div class="sub-note"><strong>Their internal note:</strong> ${escHtml(s.internal_note)}</div>` : ''}
           ${s.actions_text ? `<div style="background:#f6f9ff;border:1px solid #e8e5e2;border-radius:8px;padding:10px 14px;font-size:12px;color:#474646;margin-bottom:12px"><strong>Trainee's actions note:</strong> ${escHtml(s.actions_text)}</div>` : ''}
+          ${s.shopify_actions ? `<div style="background:#f3f9ec;border:1px solid #dbe9c8;border-radius:8px;padding:10px 14px;font-size:12px;color:#474646;margin-bottom:12px;white-space:pre-wrap"><strong>Done in the Shopify sim:</strong>\n${escHtml(s.shopify_actions)}</div>` : ''}
           ${isScored && s.feedback ? `<div style="background:#f0fdf4;border:1px solid #d3f1e0;border-radius:8px;padding:10px 14px;font-size:12px;color:#474646;margin-bottom:4px;white-space:pre-wrap"><strong>Auto feedback:</strong>\n${escHtml(s.feedback)}</div>` : ''}
           ${isScored && s.feedback ? trainerFeedbackHtml(s) : ''}
           ${!isScored ? `

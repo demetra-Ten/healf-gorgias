@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
+<script src="sim-shared.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; background: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: #222; -webkit-font-smoothing: antialiased; }
@@ -379,7 +380,8 @@ html[data-theme="dark"] .recharge-badge { background: #14311f; color: #4fba8a; b
 .cs-label { font-size: 12px; color: #a3a19e; }
 .cs-value { font-size: 12px; color: #474646; font-weight: 500; text-align: right; }
 .order-card { background: #f7f5f3; border: 1px solid #e8e5e2; border-radius: 8px; padding: 10px 12px; }
-.order-num { font-size: 11px; font-weight: 700; color: #644b9e; }
+.order-num { font-size: 11px; font-weight: 700; color: #644b9e; text-decoration: none; }
+.order-num:hover { text-decoration: underline; }
 .order-status-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 8px; margin-top: 5px; }
 .os-fulfilled { background: #e4f7ec; color: #00834f; }
 .os-partial { background: #dbeafe; color: #1d4ed8; }
@@ -1080,50 +1082,32 @@ let activeTicketId = null;
 let activeCatFilter = null;   // category the ticket table is showing (null = all accessible categories)
 let usedMacro = null;
 const SCORING_WEBHOOK = 'https://aiwellbeing.app.n8n.cloud/webhook/score-submission';
+
+// ── Link to the Shopify sim ──────────────────────────────────────────────────
+// The Shopify sim (shopify.html) is its own tab, like real Shopify. It follows whichever
+// ticket is open here via localStorage, and everything done in it is a shop_actions row
+// that this page replays onto the sidebar and sends to the scorer on Send & Close.
+let shopActions = [];
+function openShopify(hash) {
+  if (activeTicketId) localStorage.setItem('shop_ctx', String(activeTicketId));
+  window.open('shopify.html?t=' + (activeTicketId || '') + (hash || '#/orders'), 'healf-shopify');
+  return false;
+}
+function shopifyHref(hash) { return 'shopify.html?t=' + (activeTicketId || '') + hash; }
+async function loadShopActions(ticketId) {
+  if (!trainee) { shopActions = []; return; }
+  const { data } = await db.from('shop_actions').select('*').eq('trainee_id', trainee.id).eq('ticket_id', ticketId).order('created_at');
+  shopActions = data || [];
+}
+window.addEventListener('storage', async e => {
+  if (e.key !== 'shop_bump' || !activeTicketId) return;
+  await loadShopActions(activeTicketId);
+  const t = tickets.find(x => x.id === activeTicketId);
+  if (t) renderCustomerSidebar(t);
+});
 // Marks the boundary in a CUSTOMER message between the customer's reply and the
 // original (usually marketing) email they're replying to — revealed via the "•••" expander.
 const QUOTE_SENTINEL = '⟦MARKETING⟧';
-// Real customer-message sent time, taken from the source Gorgias ticket's created_datetime.
-// Stored as a leading sentinel on `message` (no DB column needed) e.g. ⟦SENT|2026-07-10T08:48:27Z⟧
-const SENT_SENTINEL = /^\s*⟦SENT\|([^⟧]+)⟧\s*/;
-function sentAt(ticket) {
-  const m = SENT_SENTINEL.exec(String((ticket && ticket.message) || ''));
-  if (!m) return null;
-  const d = new Date(m[1]);
-  return isNaN(d) ? null : d;
-}
-function stripSent(text) { return String(text || '').replace(SENT_SENTINEL, ''); }
-const PRODUCTS_BY_ID = {
-  1: "Grass Fed Whey Protein Isolate – Unflavoured (x1) — £39.99 [pre-order]\nMagnesium Glycinate (x1) — shipped",
-  2: "NMN 500mg (x1) — £15.98 [pre-order]\nFree sample: Collagen sachet (x1) — £0.00",
-  3: "Buffered Ascorbic Acid (Vitamin C) Powder (x1) — £15.99 [pre-order]\nBuffered Ascorbic Acid – 90 caps (x1) — £15.99 [in stock]",
-  4: "Theragun Pro Massage Device (x1) — £449.10 [pre-order]",
-  5: "Optimal PC Softgels (x1) — £46.00 [pre-order, ETA 11 May]",
-  6: "Sun Balm SPF 50+ PA++++ (x1) — £21.57 [pre-order, ETA 17 May]\n(rest of order already shipped)",
-  7: "Active Collagen (x1) — £55.98 [pre-order, ordered February]",
-  8: "Raspberry Leaf Tea (x1) — £24.98 [pre-order]\nLemongrass, Raspberry & Hibiscus Infusion (x1) — free",
-  17: "Magnesium Glycinate (x1) — £29.99 [out of stock / delayed]",
-  18: "Vitamin D3 + K2 (x1) — £19.99 [pre-order]",
-  19: "Marine Collagen Powder (x1) — £42.00 [discontinued]",
-  21: "Lion's Mane Extract (x2) — £64.00 [pre-order, delayed twice]",
-  22: "Ashwagandha KSM-66 (x1) — £38.00 [unfulfilled]",
-  23: "Thorne Basic Nutrients Multivitamin (x1) — £48.00\nBare Biology Omega-3 (x1) — £40.00\nFree gift (not received): Healf tote bag",
-  24: "Ashwagandha (x1) — £18.00 [missing / pending]\nMagnesium (x1) — £18.00 [delivered]\nVitamin C (x1) — £18.00 [delivered]",
-  25: "Ceremonial Grade Matcha (x1) — £27.00 [pre-order]",
-  26: "Reishi Mushroom Blend (x1) — £45.00 [cancelled]",
-  27: "Berberine (x1) — £29.99 [pre-order]\nCreatine Monohydrate (x1) — £20.00 [shipping]\nElectrolytes (x1) — £21.01 [shipping]",
-  28: "Bare Biology Omega-3 (x1) — £33.00 [pre-order, ETA after next week]",
-  29: "Bone Broth – Fish (x1) — £36.00 [pre-order]\n(other items in order in stock)",
-  30: "Balance Breathing Device (x1) — £89.00 [pre-order]\nMagnesium Glycinate (x1) — £31.00 [ships in 2-3 days]",
-  31: "Nootropic Focus Blend (x1) — £28.00 [listed for pre-order on site]",
-  32: "Creatine Monohydrate (x1) — £40.00 [OOS but showing Fulfilment in Progress]",
-  33: "Hears One – Jet Black (x1) — £29.99 [pre-order, ETA 4 July]\n(rest of order shipped)",
-  34: "Clevr Blends SuperLatte – Matcha (x1) — £32.00 [pre-order, keeps slipping]",
-  35: "Momentous Grass Fed Whey Isolate – Unflavoured (x1) — £45.00 [pre-order]",
-  36: "Probiotic Complex (x1) — £39.00 [discontinued, ordered December]",
-  37: "Oura Ring 4 – Silver (x1) — £349.00 [pre-order]\nFree gifts (x2) — £0.00",
-  38: "NAC (N-AcetylCysteine) 600mg (x1) — £29.00 [unfulfilled]\nMega EPA Forte (x1) — £29.00 [Fulfilment in Progress]"
-};
 // Gorgias contact reasons (Category::Subreason) — trainees apply one per ticket, like agents do.
 const CONTACT_REASONS = [
   "Unfulfilled::Pre-Order","Unfulfilled::OOS","Unfulfilled::ETA Delay (OOS)","Unfulfilled::Discontinued","Unfulfilled::Dropship",
@@ -1178,7 +1162,6 @@ function setContactReason(ticketId, value) {
   }
 }
 
-function ticketProducts(t) { return (t && (t.order_items || PRODUCTS_BY_ID[t.id])) || ''; }
 function renderProducts(str) {
   if (!str) return '';
   return str.split('\n').filter(l => l.trim()).map(line => {
@@ -1202,7 +1185,11 @@ function renderProducts(str) {
       const label = /pre-?order/.test(st) ? 'Pre-order' : (st === 'fulfilled' ? 'Shipped' : 'Not shipped');
       chip = `<span class="li-status ${cls}">${label}</span>`;
     }
-    const title = url ? `<a href="${url}" target="_blank" rel="noopener">${name}</a>` : name;
+    // Every product opens in the Shopify sim, never live Shopify or healf.com. Lines without a
+    // Shopify product id are matched by their title there (#/line/<ticket>/<title>).
+    const pid = (url.match(/admin\.shopify\.com\/store\/[^/]+\/products\/(\d+)/) || [])[1];
+    const sh = pid ? '#/products/' + pid : '#/line/' + (activeTicketId || '') + '/' + encodeURIComponent(name.replace(/&amp;/g, '&'));
+    const title = `<a href="${shopifyHref(sh)}" target="healf-shopify" onclick="return openShopify('${sh.replace(/'/g, '%27')}')">${name}</a>`;
     return `<div class="li">${brand ? `<div class="li-brand">${brand}</div>` : ''}<div class="li-name">${title}${chip}</div>${meta ? `<div class="li-meta">${meta}</div>` : ''}</div>`;
   }).join('');
 }
@@ -1281,20 +1268,6 @@ function spMoney(list) {
 function spCreatedAt(orders) {
   const dates = orders.map(o => o.date).filter(Boolean);
   return dates.length ? dates[dates.length - 1] : '—';   // oldest known order
-}
-function spCustomerTags(ticket, orders) {
-  const t = [];
-  if (ticket.loyalty_tier) t.push(ticket.loyalty_tier);
-  if (Number(ticket.category_id) === 5) t.push('Active Subscriber');
-  if (orders.length > 1) t.push('Repeat customer');
-  t.push('UK');
-  return t;
-}
-function spOrderTags(ticket, o) {
-  const t = ['UK'];
-  if (Number(ticket.category_id) === 5) t.push('Subscription');
-  if (/pre-?order/i.test(o.items || '')) t.push('Pre-order');
-  return t;
 }
 function spChips(names) {
   return `<div class="cs-tags"><button class="cs-tag-add" title="Add a tag">+</button>` +
@@ -1915,13 +1888,13 @@ const TOUR_STEPS = {
     { sel: '.att-row', title: 'Attachments',
       body: 'When a customer says they attached a photo, it is here. Click one to see what it shows — it often decides the outcome, and asking for evidence they already sent is a mark down.' },
     { sel: '#customer-sidebar', title: 'Shopify, Recharge and order history',
-      body: 'Their orders, order status and subscription sit here, exactly as in Gorgias. <b>Always check this before replying</b> — a reply that contradicts the order history is the most common mistake.' },
+      body: 'Their orders, order status and subscription sit here, exactly as in Gorgias. <b>Always check this before replying</b> — a reply that contradicts the order history is the most common mistake. Click an order number, product or the customer\'s name to open them in the <b>Shopify sim</b> — a training copy of Shopify where you check stock and ETAs and actually cancel, refund, edit or create orders.' },
     { sel: '.macro-btn, #macro-picker', title: 'Macros',
       body: 'Pick the macro the situation calls for, then edit it to fit. Choosing the right macro is part of what is marked, so do not force one that nearly fits.' },
     { sel: '#reply-input', title: 'Your reply',
       body: 'This is what the customer reads. You are marked on whether it answers their actual question, whether it is accurate, and the tone.' },
     { sel: '#actions-input', title: 'Actions',
-      body: 'Write what you would <b>do</b> behind the scenes — cancel the order, raise a Manual Order, update Recharge. The headings are fixed; type after each colon, and press Enter in Actions to add a numbered step. This is marked separately from your reply.' },
+      body: 'Write what you would <b>do</b> behind the scenes — the order status, the issue, then your steps. Anything you do in the Shopify sim is recorded for you; write the Swap, Recharge and Slack steps here. The headings are fixed; type after each colon, and press Enter in Actions to add a numbered step. This is marked separately from your reply.' },
     { sel: '.cs-cr-select', title: 'Contact reason',
       body: 'Set the contact reason before closing, the same as on a live ticket. It is part of your Actions mark.' },
     { sel: '#submit-btn', title: 'Send vs Send & Close',
@@ -2203,15 +2176,6 @@ function relativeTime() { return 'Today'; }
 
 function scoreDotClass(s) { return s >= 3 ? 'dot-score-3' : s == 2 ? 'dot-score-2' : 'dot-score-1'; }
 function scoreBadgeClass(s) { return s >= 3 ? 'badge-score-3' : s == 2 ? 'badge-score-2' : 'badge-score-1'; }
-// Normalise any raw order status to one of the three real Shopify fulfilment states.
-function fulfilment(raw) {
-  if (!raw) return null;
-  const s = String(raw).toLowerCase();
-  if (s.includes('cancel')) return { label: 'Cancelled', cls: 'os-cancelled' };
-  if (s.includes('partial')) return { label: 'Partially fulfilled', cls: 'os-partial' };
-  if (s.includes('deliver') || s.includes('shipped') || s === 'fulfilled') return { label: 'Fulfilled', cls: 'os-fulfilled' };
-  return { label: 'Unfulfilled', cls: 'os-unfulfilled' };
-}
 
 let ticketTab = 'toaction';   // 'toaction' | 'marked'
 function switchTicketTab(tab) { ticketTab = tab; renderTicketTable(); }
@@ -2319,6 +2283,9 @@ function openTicket(id) {
   renderMessages(ticket, sub);
   renderReplySection(ticket, sub);
   renderCustomerSidebar(ticket);
+  localStorage.setItem('shop_ctx', String(id));
+  shopActions = [];
+  loadShopActions(id).then(() => { if (activeTicketId === id && shopActions.length) renderCustomerSidebar(ticket); });
 }
 
 // A ticket's `message` may be a thread: segments separated by [[LOLA]] / [[AGENT]] / [[CUSTOMER]]
@@ -2731,7 +2698,7 @@ function renderReplySection(ticket, sub) {
         <div class="reply-textarea" id="reply-input" contenteditable="true" role="textbox" aria-multiline="true" data-ph="${isNote ? 'Write an internal note for the CW team…' : 'Click here to reply…'}" oninput="replyTidy(this)"></div>
         <div class="actions-note-wrap">
           <div class="drag-handle" data-target="actions-input" title="Drag to resize"></div>
-          <div class="actions-note-label"><span class="an-title">ACTIONS</span> <span class="an-hint">(fill in each line: what the order status is, what the ticket is about, then the steps you'd take on Shopify / Swap / Recharge etc.)</span></div>
+          <div class="actions-note-label"><span class="an-title">ACTIONS</span> <span class="an-hint">(fill in each line: what the order status is, what the ticket is about, then your steps. Anything you do in the Shopify sim is recorded for you; write the Swap / Recharge / Slack steps here.)</span></div>
           <div class="actions-doc" id="actions-input" contenteditable="true" spellcheck="true">${actionsDrafts[ticket.id] || ACTIONS_TEMPLATE_HTML}</div>
         </div>
         ${fmtToolbar()}
@@ -3060,52 +3027,40 @@ document.addEventListener('pointerup', () => {
   _resize = null;
 });
 
-// A ticket's order_items may hold ONE order (legacy: line items only, header from the
-// order_number/value/status columns) OR MULTIPLE orders, each prefixed by a header line
-// "@@ORDER|<number>|<value>|<status>|<date>". Returns an array of order objects.
-function parseOrders(ticket) {
-  const raw = (ticket.order_items || '').trim();
-  if (raw.indexOf('@@ORDER|') !== -1) {
-    return raw.split('@@ORDER|').map(s => s.trim()).filter(Boolean).map(block => {
-      const nl = block.indexOf('\n');
-      const header = (nl === -1 ? block : block.slice(0, nl)).trim();
-      const items = nl === -1 ? '' : block.slice(nl + 1).trim();
-      const p = header.split('|').map(x => (x || '').trim());
-      return { number: p[0] || '', value: p[1] || '', status: p[2] || '', date: p[3] || '', items };
-    });
-  }
-  if (ticket.order_number) return [{ number: ticket.order_number, value: ticket.order_value || '', status: ticket.order_status || '', date: ticket.order_date || '', items: raw }];
-  return [];
-}
 function orderBoxHtml(o, open, extra, ticket) {
   const items = o.items || '';
   const n = items ? items.split('\n').filter(l => l.trim()).length : 0;
-  const fs = fulfilment(o.status);
+  // What the trainee has done to this order in the Shopify sim shows here, as Gorgias would.
+  const so = applyShopActions(ticket, shopActions).find(x => x.number === o.number);
+  const pay = so ? shopPaymentLabel(so) : 'Paid';
+  const fs = so && so.cancelled ? { label: 'Cancelled', cls: 'os-cancelled' } : fulfilment(o.status);
+  const enc = encodeURIComponent(o.number), oh = '#/orders/' + ticket.id + '/' + enc;
   const meta = [o.date || '', n ? (n + ' item' + (n !== 1 ? 's' : '')) : '', o.value || ''].filter(Boolean).join(' · ');
   return `
       <div class="order-box${open ? ' open' : ''}">
         <div class="order-box-head" onclick="this.closest('.order-box').classList.toggle('open')">
           <div class="order-box-row">
-            <span class="ob-head-ico">${ICONS.shopify}<span class="order-num">${o.number}</span><span class="ob-ext" title="Open in Shopify">${ICONS.ext}</span></span>
+            <span class="ob-head-ico">${ICONS.shopify}<a class="order-num" href="${shopifyHref(oh)}" target="healf-shopify" onclick="event.stopPropagation();return openShopify('${oh}')" title="Open in Shopify">${o.number}</a><a class="ob-ext" href="${shopifyHref(oh)}" target="healf-shopify" title="Open in Shopify" onclick="event.stopPropagation();return openShopify('${oh}')">${ICONS.ext}</a></span>
             <span class="order-box-chevron">▾</span>
           </div>
           ${meta ? `<div class="order-box-meta">${meta}</div>` : ''}
           <div class="ob-pills">
-            ${/cancel/i.test(o.status || '') ? '<span class="ob-pill can">Cancelled</span>' : '<span class="ob-pill paid">Paid</span>'}
-            ${fs ? `<span class="ob-pill ${fs.cls === 'ful' ? 'ful' : 'unf'}">${fs.label}</span>` : ''}
+            ${/cancel/i.test(o.status || '') || (so && so.cancelled) ? '<span class="ob-pill can">Cancelled</span>' : ''}
+            <span class="ob-pill paid">${pay}</span>
+            ${fs && fs.label !== 'Cancelled' ? `<span class="ob-pill ${fs.cls === 'ful' ? 'ful' : 'unf'}">${fs.label}</span>` : ''}
           </div>
         </div>
         <div class="order-box-body">
           <div class="ob-acts">
-            <span class="ob-act" title="On a live ticket this is where you would edit the order. Here, write it in your Actions.">\u270f Edit</span>
-            <span class="ob-act" title="On a live ticket this duplicates the order. Here, write it in your Actions.">\u29c9 Duplicate</span>
-            <span class="ob-act" title="On a live ticket this refunds the order. Here, write it in your Actions \u2014 including the refund reason.">\u21a9 Refund</span>
+            <span class="ob-act" title="Edit this order in Shopify" onclick="openShopify('${oh}/edit')">\u270f Edit</span>
+            <span class="ob-act" title="Duplicate this order in Shopify" onclick="openShopify('#/orders/new/${ticket.id}/${enc}')">\u29c9 Duplicate</span>
+            <span class="ob-act" title="Refund this order in Shopify" onclick="openShopify('${oh}/refund')">\u21a9 Refund</span>
           </div>
           ${spChips(spOrderTags(ticket, o))}
           ${items ? `<div class="order-lines-lbl">Line items<span class="order-lines-n">${n}</span></div><div class="cs-items">${renderProducts(items)}</div>` : '<div class="order-empty">No itemised products on file for this order yet.</div>'}
           ${o.value ? `<div class="order-total"><span>Total</span><span>${o.value}</span></div>` : ''}
           <div class="cs-frow"><span class="cs-flabel">Created at</span><span class="cs-fval">${o.date || '\u2014'}</span></div>
-          <div class="cs-frow"><span class="cs-flabel">Refunds</span><span class="cs-fval">\u2014</span></div>
+          <div class="cs-frow"><span class="cs-flabel">Refunds</span><span class="cs-fval">${so && so.refunded ? '\u2212' + shopMoney(so.refunded) : '\u2014'}</span></div>
           ${extra || ''}
         </div>
       </div>`;
@@ -3228,7 +3183,6 @@ async function openAttachment(tid, idx) {
 }
 function closeAttachment() { document.getElementById('rm-modal-root').innerHTML = ''; }
 
-const RECHARGE_CANCELLED = { 163: true };
 
 
 // The scorer was never told what the Recharge panel shows and started inventing a
@@ -3304,78 +3258,6 @@ function rechargePanelHtml(ticket) {
     </div>`;
 }
 
-// ── Royal Mail tracking (category 6 = UK Delivery) — SIMULATED, matched to each ticket's scenario ──
-const UK_TRACKING = {
-  166:'delivered_notreceived', 167:'delivered_notreceived', 168:'delivered_notreceived', 169:'delivered_ok',
-  170:'delivered_notreceived', 171:'lost_nomovement', 172:'delivered_wrongplace', 173:'lost_nomovement',
-  174:'delivered_wrongplace', 175:'delivered_notreceived', 176:'rts', 177:'delivered_notreceived',
-  178:'delivered_notreceived', 179:'delivered_wrongplace', 180:'late_intransit', 181:'late_intransit',
-  182:'late_labelcreated', 183:'late_intransit', 184:'lost_nomovement', 185:'rts', 186:'rts', 187:'rts',
-  188:'rts', 189:'rts', 190:'lost_nomovement', 191:'lost_nomovement', 192:'delivered_ok', 193:'delivered_ok',
-  194:'delivered_ok', 195:'delivered_wrongplace'
-};
-const TRACK_CACHE = {};
-function rmNumber(t) {
-  const base = String(t.order_number || ('H' + t.id)).replace(/\D/g, '') || String(1000000 + t.id);
-  const digits = (base + '000000000').slice(0, 9);
-  const A = 'ABDEHJKR';
-  return A[t.id % A.length] + A[(t.id * 7) % A.length] + digits + 'GB';
-}
-function rmDate(daysAgo) {
-  const d = new Date(); d.setDate(d.getDate() - daysAgo);
-  const ds = d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-  const hh = String(8 + (daysAgo * 3) % 10).padStart(2, '0');
-  const mm = String((daysAgo * 17) % 60).padStart(2, '0');
-  return ds + ' at ' + hh + ':' + mm;
-}
-function buildTracking(t) {
-  const code = UK_TRACKING[t.id] || 'delivered_notreceived';
-  const E = (daysAgo, title, loc) => ({ daysAgo, title, loc });
-  let headline, tone, events;
-  switch (code) {
-    case 'delivered_wrongplace':
-      headline = { s:'Delivered', sub:'Item delivered — left in a safe place / with a neighbour' }; tone = 'green';
-      events = [E(1,'Delivered','Left in safe place / handed to neighbour'), E(1,'Out for delivery','Local Delivery Office'), E(2,'Item Received','Southampton MC'), E(4,'Delivery request received','')];
-      break;
-    case 'rts':
-      headline = { s:'Returned to sender', sub:'We were unable to deliver this item' }; tone = 'amber';
-      events = [E(1,'Returned to sender','Southampton MC'), E(2,'Delivery unsuccessful — item being returned','Local Delivery Office'), E(3,'Out for delivery','Local Delivery Office'), E(4,'Item Received','Southampton MC'), E(6,'Delivery request received','')];
-      break;
-    case 'lost_nomovement':
-      headline = { s:'In transit', sub:'We have your item — no tracking updates recently' }; tone = 'grey';
-      events = [E(9,'Item Received','Southampton MC — no further tracking updates'), E(11,'Delivery request received','')];
-      break;
-    case 'late_labelcreated':
-      headline = { s:'Awaiting item', sub:'Sender is despatching your item' }; tone = 'grey';
-      events = [E(1,'Delivery request received','')];
-      break;
-    case 'late_intransit':
-      headline = { s:'In transit', sub:'On its way — running slightly behind schedule' }; tone = 'amber';
-      events = [E(0,'Item Received','Southampton MC'), E(1,'Delivery request received','')];
-      break;
-    case 'delivered_ok':
-    case 'delivered_notreceived':
-    default:
-      headline = { s:'Delivered', sub:'We\'ve delivered your item' }; tone = 'green';
-      events = [E(1,'Delivered','Delivered'), E(1,'Out for delivery','Local Delivery Office'), E(2,'Item Received','Southampton MC'), E(4,'Delivery request received','')];
-  }
-  return { num: rmNumber(t), service:'Royal Mail Tracked 24™', headline, tone, events };
-}
-// Synthetic (fake) UK shipping address per ticket — stable, deterministic, no real PII.
-function custAddress(t) {
-  const s = Math.abs(t.id || 1);
-  const STREETS = ['Maple Avenue','Bridge Road','Kingfisher Close','Elm Grove','Hanover Street','Priory Lane','Whitfield Road','Cedar Court','Marlow Gardens','Ashcroft Way','Fenwick Street','Latimer Road','Sycamore Drive','Beckett Road','Rosewood Lane'];
-  const CITIES = [['London','SW'],['London','SE'],['London','N'],['London','E'],['Manchester','M'],['Bristol','BS'],['Leeds','LS'],['Brighton','BN']];
-  const num = (s * 13 % 180) + 1;
-  const st = STREETS[s % STREETS.length];
-  const flat = (s % 3 === 0) ? ('Flat ' + ((s % 5) + 1) + ', ') : '';
-  const c = CITIES[s % CITIES.length];
-  const pc = c[1] + ((s % 9) + 1) + ' ' + ((s % 8) + 1) + String.fromCharCode(65 + (s % 6)) + String.fromCharCode(65 + ((s * 3) % 6));
-  const street = flat + num + ' ' + st;
-  const cityline = c[0] + ', ENG ' + pc;
-  const name = t.customer_name || 'the customer';
-  return { name, street, cityline, lines: [name, street, cityline, 'United Kingdom'], fillBlock: [street, cityline, 'United Kingdom'].join('\n') };
-}
 // Shipping + Shipping address block rendered INSIDE the Shopify order box (UK Delivery tickets).
 function shippingBlockHtml(t) {
   const tr = buildTracking(t); TRACK_CACHE[t.id] = tr;
@@ -3471,7 +3353,11 @@ function renderCustomerSidebar(ticket) {
     </div>`;
     })()}
     ${(function(){
-      const orders = parseOrders(ticket);
+      // Orders the trainee created in the Shopify sim appear first, exactly as new orders do in Gorgias.
+      const made = applyShopActions(ticket, shopActions).filter(x => x.manual).map(x => ({
+        number: x.number, value: shopMoney(x.total), status: 'unfulfilled', date: x.date,
+        items: x.lines.map(l => (l.productId ? `[${l.title}](https://admin.shopify.com/store/how2go/products/${l.productId})` : l.title) + ` (x${l.qty}) \u2014 ${shopMoney(l.price)}` + (l.vendor ? ' @@' + l.vendor : '')).join('\n') }));
+      const orders = made.concat(parseOrders(ticket));
       const isUK = Number(ticket.category_id) === 6;
       const ship = isUK ? shippingBlockHtml(ticket) : '';
       if (!orders.length) return ship ? `<div class="cs-section"><div class="cs-title">Shipping</div>${ship}</div>` : '';
@@ -3482,7 +3368,7 @@ function renderCustomerSidebar(ticket) {
         <button class="cs-collapse" title="Collapse" onclick="collapseSection(this)">${ICONS.chev}</button>
       </div>
       <div class="cs-sec-body">
-        <div class="sp-cust"><a class="cs-link" href="#" onclick="return false" title="Open this customer in Shopify">${ticket.customer_name}</a>${ICONS.ext}</div>
+        <div class="sp-cust"><a class="cs-link" href="${shopifyHref('#/customers/' + ticket.id)}" target="healf-shopify" onclick="return openShopify('#/customers/${ticket.id}')" title="Open this customer in Shopify">${ticket.customer_name}</a><a href="${shopifyHref('#/customers/' + ticket.id)}" target="healf-shopify" onclick="return openShopify('#/customers/${ticket.id}')" title="Open this customer in Shopify" style="display:flex">${ICONS.ext}</a></div>
         <div class="cs-frow"><span class="cs-flabel">Created at</span><span class="cs-fval" title="Earliest order on file in the simulator">${spCreatedAt(orders)}</span></div>
         ${spChips(spCustomerTags(ticket, orders))}
 
@@ -3491,12 +3377,12 @@ function renderCustomerSidebar(ticket) {
 
         <button class="cs-cf" onclick="toggleCustomerFields(this)">${ICONS.chev} Purchase summary</button>
         <div class="cs-cf-body">
-          <div class="cs-frow"><span class="cs-flabel">Number Of Orders</span><span class="cs-fval">${orders.length} order${orders.length === 1 ? '' : 's'}</span></div>
+          <div class="cs-frow"><span class="cs-flabel">Number Of Orders</span><a class="cs-fval cs-link" href="${shopifyHref('#/orders/q/' + encodeURIComponent(ticket.customer_email))}" target="healf-shopify" onclick="return openShopify('#/orders/q/${encodeURIComponent(ticket.customer_email)}')" title="View this customer's orders in Shopify">${orders.length} order${orders.length === 1 ? '' : 's'}</a></div>
           <div class="cs-frow"><span class="cs-flabel">Amount</span><span class="cs-fval">${spMoney(orders)}</span></div>
         </div>
 
         <div class="sp-orders-hdr"><h6>Orders<span class="cs-tchip">${orders.length}</span></h6>
-          <button class="sp-create" title="Creating a Manual Order is a live-Shopify action \u2014 describe it in your Actions instead.">+ Create order</button>
+          <button class="sp-create" title="Create an order for this customer in Shopify" onclick="openShopify('#/orders/new/${ticket.id}')">+ Create order</button>
         </div>
         ${orders.map((o, i) => orderBoxHtml(o, i === 0, (isUK && i === 0) ? ship : '', ticket)).join('')}
       </div>
@@ -3554,6 +3440,12 @@ async function submitReply(ticketId, andClose) {
   const btn = document.getElementById('submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
 
+  // Everything done in the Shopify sim on this ticket that is not yet part of a submission.
+  const { data: pendingShop } = await db.from('shop_actions').select('*')
+    .eq('trainee_id', trainee.id).eq('ticket_id', ticketId).is('submission_id', null).order('created_at');
+  const shopList = pendingShop || [];
+  const shopifyActions = shopList.length ? shopList.map((a, i) => (i + 1) + '. ' + a.summary).join('\n') : null;
+
   // Persist what the trainee actually chose/left, so the review view can show it and the
   // scorer's judgement on them can be audited (both are sent to the scorer either way).
   const notes = internalNotes[ticketId] || [];
@@ -3561,12 +3453,14 @@ async function submitReply(ticketId, andClose) {
     trainee_id: trainee.id, ticket_id: ticketId, reply_text: reply, actions_text: actions,
     contact_reason: contactReasons[ticketId] || null,
     internal_note: notes.map(n => n.body).join('\n\n') || null,
-    internal_note_at: notes.length ? notes[0].at : null
+    internal_note_at: notes.length ? notes[0].at : null,
+    shopify_actions: shopifyActions
   }).select().single();
 
   if (error) { if (btn) { btn.disabled = false; btn.textContent = 'Send'; } alert('Error: ' + error.message); return; }
 
   submissions.push(data);
+  if (shopList.length) await db.from('shop_actions').update({ submission_id: data.id }).in('id', shopList.map(a => a.id));
   delete actionsDrafts[ticketId];   // the ticket is answered; don't carry the note forward
   const ticket = tickets.find(t => t.id === ticketId);
   renderMessages(ticket, data);
@@ -3588,6 +3482,7 @@ async function submitReply(ticketId, andClose) {
         category_id: ticket.category_id,
         category_name: (categories.find(c => c.id === ticket.category_id) || {}).name || null,
         reply_text: reply, actions_text: actions,
+        shopify_actions: shopifyActions,
         macro_name: usedMacro ? usedMacro.name : null,
         macro_body: usedMacro ? usedMacro.body : null,
         customer_name: ticket.customer_name, message: threadText(ticket),

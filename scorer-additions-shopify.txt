@@ -1,0 +1,22 @@
+SCORER CHANGES FOR THE SHOPIFY SIM — DRAFT, NOT YET APPLIED TO n8n
+(workflow "Healf Training - Reply Scoring", DHLJ1PVNIj9kEnsl; update_workflow then publish_workflow)
+
+1. USER MESSAGE — add straight after the "Trainee ACTIONS note" block:
+
+Done in the SHOPIFY SIM (logged automatically: these actually happened, the trainee did not just describe them):
+{{ $('Trainee Submission').item.json.body.shopify_actions || 'nothing done in Shopify' }}
+
+2. SYSTEM PROMPT — add as a new section after the ACTIONS paragraph:
+
+=== SHOPIFY SIM ACTIONS ===
+The trainee works in a training copy of Shopify that shows stock, prices and ETAs as they stood on the day the customer wrote, and every cancel, refund, edit, address change, tag, note and Manual Order they make there is logged for you above.
+- Treat logged Shopify actions as DONE. Do not expect the same steps written again in the Actions note, and never fault the note for leaving them out.
+- Judge them as you would a real agent's: right order, right items, right amount, right reason or tag. Cancelling the wrong order, refunding the wrong amount, raising a Manual Order for the wrong product or without the full discount, or a swap that costs the customer more than about £10 over what they paid, is a NECESSARY improvement on the ACTIONS axis.
+- A Shopify step the handling needed that was neither done in the Shopify sim nor written in the Actions note is missing.
+- Never comment on order numbers, timestamps or anything else the simulator generates.
+
+3. LATER, once Demetra has spot-checked the per-ticket stock states — retire the fudges that only
+   exist because trainees used to check live Shopify:
+   - system prompt: "=== MARK ONLY ON WHAT THE TRAINEE COULD SEE ===" (the first four bullets)
+   - Resolve SOP, FULFILMENT: the "LIVE ETA" paragraph and "THE ITEM HAS USUALLY COME BACK INTO STOCK SINCE"
+   Replace with: "Stock, ETAs and prices in the Shopify sim are as they stood on the day. Expect the trainee to use what it shows."

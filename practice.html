@@ -1101,6 +1101,27 @@ function openShopify(hash) {
   return false;
 }
 function shopifyHref(hash) { return 'shopify.html?t=' + (activeTicketId || '') + hash; }
+// What the Shopify sim showed for this ticket's products — stock state and pre-order date
+// as they stood the day the customer wrote — so the scorer marks against the same screen.
+const SHOP_STOCK_SAY = {
+  in_stock: 'IN STOCK (Available above 0)',
+  out_of_stock: 'OUT OF STOCK (Available 0, Sell when out of stock Off, no pre-order date)',
+  preorder: 'PRE-ORDER (Available 0 or below, Sell when out of stock On)',
+  discontinued: 'DISCONTINUED (Available 0, selling Off, discontinued SKU:variant True)'
+};
+async function shopStockText(ticketId) {
+  try {
+    const { data: rows } = await db.from('shop_ticket_products').select('product_id,line_title,availability,eta').eq('ticket_id', ticketId);
+    if (!rows || !rows.length) return null;
+    const { data: ps } = await db.from('shop_products').select('id,title').in('id', rows.map(r => r.product_id));
+    const title = id => ((ps || []).find(p => String(p.id) === String(id)) || {}).title;
+    return rows.map(r => {
+      const d = (String(r.eta || '').match(/\d{1,2}\s+[A-Za-z]+\s+\d{4}/) || [])[0];
+      return '- ' + (title(r.product_id) || r.line_title || 'Product ' + r.product_id) + ': ' + (SHOP_STOCK_SAY[r.availability] || r.availability) +
+        (r.availability === 'preorder' ? '; Preorder date: ' + (d || 'none set') : '');
+    }).join('\n');
+  } catch (e) { return null; }
+}
 async function loadShopActions(ticketId) {
   if (!trainee) { shopActions = []; return; }
   const { data } = await db.from('shop_actions').select('*').eq('trainee_id', trainee.id).eq('ticket_id', ticketId).order('created_at');
@@ -3458,6 +3479,7 @@ async function submitReply(ticketId, andClose) {
     .eq('trainee_id', trainee.id).eq('ticket_id', ticketId).is('submission_id', null).order('created_at');
   const shopList = pendingShop || [];
   const shopifyActions = shopList.length ? shopList.map((a, i) => (i + 1) + '. ' + a.summary).join('\n') : null;
+  const shopifyStock = await shopStockText(ticketId);
 
   // Persist what the trainee actually chose/left, so the review view can show it and the
   // scorer's judgement on them can be audited (both are sent to the scorer either way).
@@ -3496,6 +3518,7 @@ async function submitReply(ticketId, andClose) {
         category_name: (categories.find(c => c.id === ticket.category_id) || {}).name || null,
         reply_text: reply, actions_text: actions,
         shopify_actions: shopifyActions,
+        shopify_stock: shopifyStock,
         macro_name: usedMacro ? usedMacro.name : null,
         macro_body: usedMacro ? usedMacro.body : null,
         customer_name: ticket.customer_name, message: threadText(ticket),

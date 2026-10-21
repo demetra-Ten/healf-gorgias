@@ -294,6 +294,12 @@ function shopDate(s) {
   const d = s ? new Date(String(s) + ' 10:00') : null;
   return d && !isNaN(d) ? d : null;
 }
+// Lines already with the warehouse (Shopify "In progress": Fulfillment accepted / in
+// progress), where CW can no longer cancel and must use the GXO x Healf sheet. Set from each
+// ticket's own wording: 22 the whole order, 32 the OOS item stuck in FIP (system error),
+// 38 one of its two pre-order items (the other is still Unfulfilled and CW can edit it out).
+const LINE_IN_PROGRESS = { 22: 'all', 32: 'all', 38: ['Ultimate Sampler Pack'] };
+
 function shopBaseOrders(ticket) {
   return parseOrders(ticket).map(o => {
     const cancelled = /cancel/i.test(o.status || '');
@@ -303,7 +309,9 @@ function shopBaseOrders(ticket) {
       let fs = l.status;
       if (!fs) fs = orderFul && orderFul.label === 'Fulfilled' ? 'fulfilled' : 'unfulfilled';
       const shipped = fs === 'fulfilled' || /shipped|deliver/.test(fs);
-      return Object.assign(l, { fulfilled: shipped, preorder: /pre-?order/.test(fs), refundedQty: 0, removed: false });
+      const ip = LINE_IN_PROGRESS[Number(ticket.id)];
+      const inProgress = !shipped && (ip === 'all' || (Array.isArray(ip) && ip.some(x => l.title.indexOf(x) === 0)) || /progress|accepted/.test(String(o.status || '').toLowerCase()));
+      return Object.assign(l, { fulfilled: shipped, inProgress, preorder: /pre-?order/.test(fs), refundedQty: 0, removed: false });
     });
     const subtotal = lines.reduce((a, l) => a + l.price * l.qty, 0);
     const total = o.value ? shopNum(o.value) : subtotal;
@@ -317,7 +325,7 @@ function shopBaseOrders(ticket) {
       shipping: total > subtotal + 0.005 ? +(total - subtotal).toFixed(2) : 0,
       cancelled, cancel: null, refunds: [], refunded: 0, comments: [],
       tags: spOrderTags(ticket, o), address: custAddress(ticket).lines.slice(), note: '',
-      manual: false, events: []
+      manual: false, events: [], hold: null, fulfillmentRequested: false, cancellationRequested: false, metafields: {}
     };
   });
 }
@@ -326,7 +334,10 @@ function shopFulfilmentLabel(o) {
   const live = o.lines.filter(l => !l.removed && l.qty - l.refundedQty > 0);
   const f = live.filter(l => l.fulfilled).length;
   if (!live.length) return o.lines.some(l => l.fulfilled) ? 'Fulfilled' : 'Unfulfilled';
-  return f === 0 ? 'Unfulfilled' : f === live.length ? 'Fulfilled' : 'Partially fulfilled';
+  if (f === live.length) return 'Fulfilled';
+  if (f > 0) return 'Partially fulfilled';
+  if (o.hold) return 'On hold';
+  return live.every(l => l.inProgress) ? 'In progress' : 'Unfulfilled';
 }
 function shopPaymentLabel(o) {
   if (o.refunded >= o.total - 0.005 && o.refunded > 0) return 'Refunded';
@@ -352,10 +363,17 @@ function applyShopActions(ticket, actions) {
           discount: disc, shipping: Number(d.shipping) || 0, total: +(subtotal - disc + (Number(d.shipping) || 0)).toFixed(2),
           discountReason: d.discount_reason || '', shipName: d.shipping_name || '', cancelled: false, cancel: null, refunds: [], refunded: 0, comments: [],
           tags: (d.tags || []).slice(), address: (d.address || custAddress(ticket).lines).slice(), note: d.note || '',
-          manual: true, events: [{ at, text: 'Order created manually from Create order' + (d.from ? ' (duplicated from ' + d.from + ')' : '') }] });
+          manual: true, events: [{ at, text: 'Order created manually from ' + (d.draft ? 'draft order ' + d.draft : 'Create order') + (d.from ? ' (duplicated from ' + d.from + ')' : '') }],
+          hold: null, fulfillmentRequested: false, cancellationRequested: false, metafields: {} });
+        orders[0].lines.forEach((l, i) => { const src = (d.lines || [])[i] || {}; l.sku = src.sku || ''; l.origPrice = src.origPrice != null ? Number(src.origPrice) : null; l.itemDiscountReason = src.itemDiscountReason || ''; });
         return;
       }
       const o = find(a.order_number); if (!o) return;
+      if (a.kind === 'hold') { o.hold = { reason: d.reason || '', at }; o.events.push({ at, text: 'Fulfillment was put on hold' + (d.reason ? ' — ' + d.reason : '') }); return; }
+      if (a.kind === 'release_hold') { o.hold = null; o.events.push({ at, text: 'Fulfillment hold was released' }); return; }
+      if (a.kind === 'request_fulfillment') { o.fulfillmentRequested = true; o.events.push({ at, text: 'Fulfillment was requested from PFS Fulfillment Service' }); return; }
+      if (a.kind === 'request_cancellation') { o.cancellationRequested = true; o.events.push({ at, text: 'Cancellation was requested from PFS Fulfillment Service' + (d.message ? ': "' + d.message + '"' : '') }); return; }
+      if (a.kind === 'metafield') { o.metafields[d.key] = d.value; o.events.push({ at, text: 'Metafield "' + (d.label || d.key) + '" was set to ' + (d.value || '(blank)') }); return; }
       if (a.kind === 'cancel') {
         o.cancelled = true; o.cancel = { reason: d.reason, at, restock: d.restock, notify: d.notify };
         if (d.refund) { o.refunded = o.total; o.refunds.push({ at, amount: o.total, reason: 'Order cancelled', lines: [] }); o.lines.forEach(l => { l.refundedQty = l.qty; }); }

@@ -118,6 +118,8 @@ for u in stock.get('unlisted_products', []):
 
 COLS = ['id', 'title', 'handle', 'vendor', 'product_type', 'tags', 'description', 'image_url', 'status', 'preorder', 'variants', 'published_at']
 prows = [{c: (p.get('tags') or []) if c == 'tags' else p.get(c) for c in COLS} for p in products.values()]
+# every SKU in one column so the Shopify sim can search by SKU (needs shopify-sim-2.sql)
+for r in prows: r['skus'] = ' '.join(v.get('sku') or '' for v in (r.get('variants') or []) if v.get('sku')) or None
 srows = list(state.values())
 print('products', len(prows), '(archived %d, seed-only %d)' % (sum(p['status'] == 'archived' for p in prows), sum(p['id'] < 0 for p in prows)),
       '| ticket stock rows', len(srows))

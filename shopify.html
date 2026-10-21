@@ -323,7 +323,7 @@ select.fld { appearance: none; background: #fdfdfd url("data:image/svg+xml,%3Csv
   <div class="nv dim" title="Not part of the training store"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/></svg>Home</div>
   <div class="nv" data-nav="orders" onclick="go('#/orders')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3.5 13h4.5l1.5 2.5h5L16 13h4.5"/><path d="M5.5 5.5h13l2 7.5v5a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18v-5z"/></svg>Orders<span class="cnt" id="nav-orders-n"></span></div>
   <div id="nav-orders-sub">
-    <div class="nv nv-sub" data-nav="drafts" onclick="go('#/orders/new')">Drafts</div>
+    <div class="nv nv-sub" data-nav="drafts" onclick="go('#/drafts')">Drafts</div>
     <div class="nv nv-sub dim">Shipping labels</div>
     <div class="nv nv-sub dim">Abandoned checkouts</div>
   </div>
@@ -333,11 +333,11 @@ select.fld { appearance: none; background: #fdfdfd url("data:image/svg+xml,%3Csv
     <div class="nv nv-sub" data-nav="inventory" onclick="go('#/products')">Inventory</div>
     <div class="nv nv-sub dim">Purchase orders</div>
     <div class="nv nv-sub dim">Transfers</div>
-    <div class="nv nv-sub dim">Gift cards</div>
+    <div class="nv nv-sub" data-nav="gift_cards" onclick="go('#/gift_cards')">Gift cards</div>
   </div>
   <div class="nv" data-nav="customers" onclick="go('#/customers')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.6-3.6 3.4-5.5 7-5.5s6.4 1.9 7 5.5"/></svg>Customers</div>
   <div class="nv dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19a8 8 0 1 1 16 0"/><path d="m12 15 4-5"/></svg>Growth</div>
-  <div class="nv dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="m9 15 6-6"/><circle cx="9.5" cy="9.5" r=".8"/><circle cx="14.5" cy="14.5" r=".8"/></svg>Discounts</div>
+  <div class="nv" data-nav="discounts" onclick="go('#/discounts')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="m9 15 6-6"/><circle cx="9.5" cy="9.5" r=".8"/><circle cx="14.5" cy="14.5" r=".8"/></svg>Discounts</div>
   <div class="nv dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 15l4-4 4 4 3-3 5 5"/></svg>Content</div>
   <div class="nv dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/></svg>Markets</div>
   <div class="nv dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 10h16M6 10v8M10 10v8M14 10v8M18 10v8M3 20h18M12 4l9 4H3z"/></svg>Finance</div>
@@ -495,6 +495,7 @@ function preorderDate(s) {
 }
 function inv(p, v, s) {
   const k = hash((v && v.id) || p.id);
+  if (v && v.eu) return { state: 'in_stock', unavailable: 0, committed: 0, available: 0, onHand: 0, sellOOS: false, date: '', ants: 8 + k % 140 };
   const st = s.dated ? s.state : p.status === 'archived' ? 'discontinued' : p.preorder ? 'preorder' : (v && v.available === false ? 'out_of_stock' : 'in_stock');
   if (st === 'in_stock') { const committed = k % 7, available = 6 + k % 214; return { state: st, unavailable: 0, committed, available, onHand: available + committed, sellOOS: false, date: '' }; }
   // A pre-order reads Available 0, as Healf's Shopify usually shows it — the same as out of
@@ -521,8 +522,8 @@ function invCard(p, v, s) {
     <div style="margin:0 12px;border:1px solid var(--line);border-radius:12px;overflow:hidden">
       <div style="display:flex;gap:4px;padding:8px"><span class="btn grey" style="height:26px">All</span><span class="btn" style="height:26px;border:none;box-shadow:none">Incoming</span></div>
       <div style="padding:0 8px"><table class="ix"><thead><tr><th>Locations</th><th class="num"><span class="dot-u">Unavailable</span></th><th class="num"><span class="dot-u">Committed</span></th><th class="num"><span class="dot-u">Available</span></th><th class="num"><span class="dot-u">On hand</span></th></tr></thead><tbody>
-        ${row(INV_LOCS[0], false, 0, 0, 0, 0)}${row(INV_LOCS[1], false, 0, 0, 0, 0)}${row(INV_LOCS[2], true, n.unavailable, n.committed, n.available, n.onHand)}
-        <tr><td><b>Total</b></td><td class="num"><b>${n.unavailable}</b></td><td class="num"><b>${n.committed}</b></td><td class="num"><b>${n.available}</b></td><td class="num"><b>${n.onHand}</b></td></tr></tbody></table></div>
+        ${row(INV_LOCS[0], false, 0, 0, n.ants || 0, n.ants || 0)}${row(INV_LOCS[1], false, 0, 0, 0, 0)}${row(INV_LOCS[2], true, n.unavailable, n.committed, n.available, n.onHand)}
+        <tr><td><b>Total</b></td><td class="num"><b>${n.unavailable}</b></td><td class="num"><b>${n.committed}</b></td><td class="num"><b>${n.available + (n.ants || 0)}</b></td><td class="num"><b>${n.onHand + (n.ants || 0)}</b></td></tr></tbody></table></div>
       <div style="background:var(--soft);padding:10px 14px;border-top:1px solid var(--line-2)"><a href="#" onclick="toast('Adjustment history is not part of the training store');return false" style="color:var(--ink);text-decoration:underline">View adjustment history</a></div>
     </div>
     <div class="cpad chips" style="gap:8px">${v && v.sku ? `<span class="chip" style="padding:2px 8px">SKU <b style="font-weight:500;background:#e0e0e0;border-radius:5px;padding:0 6px">${esc(v.sku)}</b></span>` : ''}
@@ -548,6 +549,8 @@ function fulBadge(o) {
   const f = shopFulfilmentLabel(o);
   if (f === 'Fulfilled') return '<span class="bdg"><i></i>Fulfilled</span>';
   if (f === 'Partially fulfilled') return '<span class="bdg yellow"><i class="half"></i>Partially fulfilled</span>';
+  if (f === 'In progress') return '<span class="bdg yellow"><i class="half"></i>In progress</span>';
+  if (f === 'On hold') return '<span class="bdg"><i class="ring"></i>On hold</span>';
   if (f === 'Cancelled') return '<span class="bdg yellow"><i class="ring"></i>Unfulfilled</span>';
   return '<span class="bdg yellow"><i class="ring"></i>Unfulfilled</span>';
 }
@@ -620,12 +623,19 @@ function route() {
   closeModal();
   const parts = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   const sec = parts[0] || 'orders';
-  const navKey = sec === 'orders' && parts[1] === 'new' ? 'drafts' : sec;
-  document.querySelectorAll('.nv[data-nav]').forEach(n => n.classList.toggle('on', n.dataset.nav === navKey || (navKey === 'drafts' && n.dataset.nav === 'orders')));
-  $('nav-orders-sub').style.display = sec === 'orders' ? '' : 'none';
-  $('nav-products-sub').style.display = sec === 'products' ? '' : 'none';
+  const navKey = (sec === 'orders' && parts[1] === 'new') || sec === 'drafts' ? 'drafts' : sec === 'gift_cards' ? 'gift_cards' : sec;
+  const parent = { drafts: 'orders', gift_cards: 'products' }[navKey];
+  document.querySelectorAll('.nv[data-nav]').forEach(n => n.classList.toggle('on', n.dataset.nav === navKey || n.dataset.nav === parent));
+  $('nav-orders-sub').style.display = sec === 'orders' || sec === 'drafts' ? '' : 'none';
+  $('nav-products-sub').style.display = sec === 'products' || sec === 'gift_cards' ? '' : 'none';
   $('scroll').scrollTop = 0; window.scrollTo(0, 0); $('bar').classList.remove('scrolled');
   if (sec === 'orders' && parts[1] === 'q') return viewOrders(parts[2] || '');
+  if (sec === 'drafts' && parts[1]) return viewDraft(parts[1]);
+  if (sec === 'drafts') return viewDrafts();
+  if (sec === 'gift_cards' && parts[1] === 'new') return viewNewGiftCard();
+  if (sec === 'gift_cards') return viewGiftCards();
+  if (sec === 'discounts' && parts[1] === 'new') return viewNewDiscount();
+  if (sec === 'discounts') return viewDiscounts();
   if (sec === 'orders' && parts[1] === 'new') return viewCreateOrder(parts[2] ? Number(parts[2]) : ctxId, parts[3]);
   if (sec === 'orders' && parts[1] && parts[3] === 'refund') return viewRefund(Number(parts[1]), parts[2]);
   if (sec === 'orders' && parts[1] && parts[3] === 'edit') return viewEditOrder(Number(parts[1]), parts[2]);
@@ -674,10 +684,24 @@ function viewOrders(q) {
         acts: `<button class="btn off">Export</button><button class="btn off">More actions ${I.caret}</button><button class="btn dark keep" onclick="go('#/orders/new')">Create order</button>` });
   drawOrders();
 }
+// Everything an order can be found by (Trainual: Locating Customer Accounts): number, name,
+// email, postcode/address, products, tracking code, tags — and card ending in, via the filter.
+function orderHaystack(o) {
+  const t = tById(o.ticketId); let trk = '';
+  try { if (o.lines.some(l => l.fulfilled)) trk = buildTracking(t, o).num; } catch (e) {}
+  return [o.number, o.number.replace('#', ''), t.customer_name, t.customer_email, (o.address || []).join(' '), o.lines.map(l => l.title).join(' '), trk, orderTags(o, t).join(' ')].join(' ').toLowerCase();
+}
+function custHaystack(t) { return [t.customer_name, t.customer_email, custAddress(t).lines.join(' ')].join(' ').toLowerCase(); }
+let orderFilters = { product: '', card: '', from: '', to: '' }, showOrderFilters = false;
 function drawOrders() {
   let list = allOrders();
   const q = ordersQ.trim().toLowerCase();
-  if (q) list = list.filter(o => { const t = tById(o.ticketId); return (o.number + ' ' + t.customer_name + ' ' + t.customer_email + ' ' + orderTags(o, t).join(' ')).toLowerCase().includes(q); });
+  if (q) list = list.filter(o => q.split(/\s+/).every(w => orderHaystack(o).includes(w)));
+  const f = orderFilters;
+  if (f.product.trim()) list = list.filter(o => o.lines.some(l => l.title.toLowerCase().includes(f.product.trim().toLowerCase())));
+  if (f.card.trim()) list = list.filter(o => cardOf(o).last4 === f.card.trim());
+  if (f.from) list = list.filter(o => o.created && o.created >= new Date(f.from + 'T00:00:00'));
+  if (f.to) list = list.filter(o => o.created && o.created <= new Date(f.to + 'T23:59:59'));
   const items = list.reduce((s, o) => s + o.lines.filter(l => !l.removed).reduce((a, l) => a + l.qty, 0), 0);
   const ful = list.filter(o => shopFulfilmentLabel(o) === 'Fulfilled').length;
   $('main').innerHTML = `<div class="wrap full">
@@ -686,7 +710,14 @@ function drawOrders() {
       <div class="stat"><div class="k">Items ordered</div><div class="v">${items.toLocaleString('en-GB')}</div></div>
       <div class="stat"><div class="k">Orders fulfilled</div><div class="v">${ful.toLocaleString('en-GB')}</div></div></div>
     <div class="filter"><span class="all">All ${I.updown}</span>${I.search}
-      <input id="oq" placeholder="Search and filter" value="${esc(ordersQ)}" oninput="ordersQ=this.value;const p=this.selectionStart;drawOrders();$('oq').focus();$('oq').setSelectionRange(p,p)">${I.cols}</div>
+      <input id="oq" placeholder="Search and filter" value="${esc(ordersQ)}" oninput="ordersQ=this.value;const p=this.selectionStart;drawOrders();$('oq').focus();$('oq').setSelectionRange(p,p)">
+      <button class="btn ${showOrderFilters || f.product || f.card || f.from || f.to ? 'grey' : ''}" onclick="showOrderFilters=!showOrderFilters;drawOrders()">Filters${[f.product, f.card, f.from || f.to].filter(Boolean).length ? ' (' + [f.product, f.card, f.from || f.to].filter(Boolean).length + ')' : ''}</button>${I.cols}</div>
+    ${showOrderFilters ? `<div class="filter" style="height:auto;padding:10px 12px;flex-wrap:wrap;gap:10px">
+      <label style="display:flex;gap:6px;align-items:center">Product <input class="fld" style="width:200px;height:28px" value="${esc(f.product)}" onchange="orderFilters.product=this.value;drawOrders()"></label>
+      <label style="display:flex;gap:6px;align-items:center">Card ending in <input class="fld" style="width:80px;height:28px" maxlength="4" value="${esc(f.card)}" onchange="orderFilters.card=this.value;drawOrders()"></label>
+      <label style="display:flex;gap:6px;align-items:center">Date from <input class="fld" type="date" style="width:150px;height:28px" value="${f.from}" onchange="orderFilters.from=this.value;drawOrders()"></label>
+      <label style="display:flex;gap:6px;align-items:center">to <input class="fld" type="date" style="width:150px;height:28px" value="${f.to}" onchange="orderFilters.to=this.value;drawOrders()"></label>
+      <a class="lnk" onclick="orderFilters={product:'',card:'',from:'',to:''};drawOrders()">Clear all</a></div>` : ''}
     ${list.length ? `<div style="overflow-x:auto"><table class="ix"><thead><tr><th class="ck"><span></span></th><th>Order</th><th>Date ↓</th><th>Customer</th><th class="hide-sm">Channel</th><th class="num">Total</th><th class="hide-sm">Items</th><th class="hide-sm">Tags</th><th>Payment status</th><th>Fulfillment status</th></tr></thead><tbody>
     ${list.slice(0, 50).map(o => { const t = tById(o.ticketId); const n = o.lines.filter(l => !l.removed).reduce((s, l) => s + l.qty, 0); return `
       <tr class="r" onclick="go('${oHref(o)}')"><td class="ck"><span></span></td><td><b>${esc(o.number)}</b></td><td>${fmtList(o.created)}</td>
@@ -753,15 +784,24 @@ async function viewOrder(tid, number) {
   // The same tracking the Gorgias sidebar and the tracking page show (buildTracking).
   const trk = buildTracking(t, o);
   const delivered = trk.delivered;
-  const unfCard = unf.length ? `
-    <div class="sec-h"><span class="tile${o.cancelled ? '' : ' yellow'}">${I.unful}</span><h2>${o.cancelled ? 'Removed' : 'Unfulfilled'}</h2>
-      ${o.cancelled ? '' : `<div class="acts"><button class="btn icon grey" style="background:none;border:none">${I.dots.replace('<svg', '<svg width="16" height="16"')}</button><button class="btn grey" onclick="toast('Holds are not part of the training store')">Mark as on hold</button><button class="btn dark" onclick="toast('Fulfilment is done by the warehouse (PFS / GXO), not by CW')">Request fulfillment</button></div>`}</div>
-    <div class="card cpad">
-      <div class="crow">${I.truck}<span>${esc(shipName)}</span><span class="loc">${I.pin}PFS Fulfillment Service</span></div>
-      <div class="crow">${I.box}<span>GXO Fulfilment (UK)</span></div>
-      <div class="hr" style="margin-bottom:0"></div>
-      ${unf.map(([l, i]) => lineHtml(t, l, i)).join('')}
-    </div>` : '';
+  // Unfulfilled lines the warehouse has NOT taken yet vs ones already "In progress" with
+  // GXO (Trainual: CW can cancel the first, must use the GXO sheet for the second).
+  const waiting = unf.filter(([l]) => !l.inProgress), inprog = unf.filter(([l]) => l.inProgress);
+  const dots = `<button class="btn icon grey" style="background:none;border:none">${I.dots.replace('<svg', '<svg width="16" height="16"')}</button>`;
+  const shipRows = `<div class="crow">${I.truck}<span>${esc(shipName)}</span><span class="loc">${I.pin}PFS Fulfillment Service</span></div><div class="crow">${I.box}<span>GXO Fulfilment (UK)</span></div><div class="hr" style="margin-bottom:0"></div>`;
+  const unfCard = (waiting.length ? `
+    <div class="sec-h"><span class="tile${o.cancelled || o.hold ? '' : ' yellow'}">${I.unful}</span><h2>${o.cancelled ? 'Removed' : o.hold ? 'On hold' : 'Unfulfilled'}</h2>
+      ${o.fulfillmentRequested && !o.cancelled ? '<span class="bdg blue">Fulfillment requested</span>' : ''}
+      ${o.cancelled ? '' : `<div class="acts">${dots}${o.hold
+        ? `<button class="btn dark" onclick="releaseHold(${tid}, '${n}')">Release hold</button>`
+        : `<button class="btn grey" onclick="openHold(${tid}, '${n}')">Mark as on hold</button><button class="btn dark" onclick="openRequestFulfillment(${tid}, '${n}')">Request fulfillment</button>`}</div>`}</div>
+    ${o.hold ? `<div class="banner warn" style="margin-bottom:10px">Fulfillment is on hold${o.hold.reason ? ': ' + esc(o.hold.reason) : ''}. Release the hold to let the warehouse fulfill these items.</div>` : ''}
+    <div class="card cpad">${shipRows}${waiting.map(([l, i]) => lineHtml(t, l, i)).join('')}</div>` : '') +
+    (inprog.length && !o.cancelled ? `
+    <div class="sec-h"><span class="tile yellow">${I.unful}</span><h2>In progress</h2><span class="bdg yellow"><i class="half"></i>Fulfillment in progress</span>
+      ${o.cancellationRequested ? '<span class="bdg">Cancellation requested</span>' : ''}
+      <div class="acts">${dots}<button class="btn" onclick="openRequestCancellation(${tid}, '${n}')">Request cancellation</button></div></div>
+    <div class="card cpad">${shipRows}${inprog.map(([l, i]) => lineHtml(t, l, i)).join('')}</div>` : '');
   const fulCard = ful.length ? `
     <div class="sec-h"><span class="tile">${I.ful}</span><h2>Fulfilled <span class="sub">${esc(o.number)}-F1</span></h2><div class="acts"><button class="btn icon" style="border:none;box-shadow:none">${I.dots.replace('<svg', '<svg width="16" height="16"')}</button></div></div>
     <div class="card cpad">
@@ -795,7 +835,7 @@ async function viewOrder(tid, number) {
   if (!o.manual) {
     const at = k => o.created ? new Date(o.created.getTime() + k * 1000) : null;   // same minute, Shopify's order
     ev.push({ at: at(0), text: `${t.customer_name} placed this order on ${channelOf(o, t)}.` });
-    ev.push({ at: at(1), text: `A ${shopMoney(o.total)} GBP payment was processed on Shopify Payments.` });
+    ev.push({ at: at(1), text: `A ${shopMoney(o.total)} GBP payment was processed using a ${cardOf(o).brand} ending in ${cardOf(o).last4} via Shopify Payments.` });
     ev.push({ at: at(2), text: `Order confirmation email was sent to ${t.customer_name} (${t.customer_email}).` });
     if (ful.length) {
       const sent = trk.events[trk.events.length - 1].at;
@@ -824,14 +864,19 @@ async function viewOrder(tid, number) {
     <div class="rs"><div class="rs-h">Notes<button title="Edit notes" onclick="openNote(${tid}, '${n}')">${o.note ? I.pen : I.plus}</button></div>
       <div class="${o.note ? '' : 'faint'}" style="white-space:pre-wrap;color:${o.note ? 'var(--ink)' : 'var(--ink-2)'}">${o.note ? esc(o.note) : 'No notes from customer'}</div></div>
     <div class="rs"><div class="rs-h">Channel Information</div><div style="color:var(--ink-2)">Channel</div><div>${channelOf(o, t)}</div></div>
-    <div class="rs"><div class="rs-h">Customer<button>${I.dots}</button></div>
+    <div class="rs"><div class="rs-h">Customer<span class="menu-wrap"><button onclick="toggleMenu(event,'cm')" title="More">${I.dots}</button>
+      <div class="menu" id="cm" style="top:28px;width:230px">
+        <button onclick="toast('Contact details are not part of the training store')">${I.edit}Edit contact information</button>
+        ${canEditAddr ? `<button onclick="openAddress(${tid}, '${n}')">${I.pin.replace('stroke-width="2"', 'stroke-width="1.8"')}Edit shipping address</button>` : `<button onclick="toast('The address can only be edited while the order is Unfulfilled. For In Progress orders, log it on the GXO x Healf sheet.')">${I.pin}Edit shipping address</button>`}
+        <button onclick="toast('Billing address is the same as shipping')">${I.edit}Edit billing address</button>
+        <button onclick="go('#/customers/${tid}')">${I.customers}View customer</button></div></span></div>
       <p><a href="#/customers/${tid}">${esc(t.customer_name)}</a></p><p><a href="#/orders/q/${encodeURIComponent(t.customer_email)}">${ordersFor(t).length} order${ordersFor(t).length === 1 ? '' : 's'}</a></p>
       <p style="margin-top:12px"><a href="#" onclick="return false">${esc(t.customer_email)}</a></p><p style="color:var(--ink-2)">No phone number</p></div>
     <div class="rs"><div class="rs-h">Shipping address${canEditAddr ? `<button title="Edit shipping address" onclick="openAddress(${tid}, '${n}')">${I.dots}</button>` : ''}</div>
       ${addr.map(x => `<p>${esc(x)}</p>`).join('')}<p style="margin-top:6px"><a href="#" onclick="return false">View map</a></p></div>
     <div class="rs"><div class="rs-h">Billing address</div><p style="color:var(--ink-2)">Same as shipping address</p></div>
-    <div class="rs"><div class="rs-h">Order risk</div><div class="risk"><i></i></div><div class="risk-l"><b>Low</b><span>Medium</span><span>High</span></div>
-      <p style="margin-top:6px">Chargeback risk is low. You can fulfill this order.</p></div>
+    ${(() => { const r = riskOf(t, o); return `<div class="rs"><div class="rs-h">Order risk</div><div class="risk"><i style="width:${r.w}%;background:${r.c}"></i></div><div class="risk-l">${['Low', 'Medium', 'High'].map(x => x === r.level ? `<b>${x}</b>` : `<span>${x}</span>`).join('')}</div>
+      <p style="margin-top:6px">${r.text}</p></div>`; })()}
     <div class="rs"><div class="rs-h">Tags<button title="Manage tags" onclick="$('tag-in').focus()">${I.pen}</button></div>
       <input class="fld" id="tag-in" style="margin-bottom:8px" placeholder="" onkeydown="if(event.key==='Enter'){addTag(${tid}, '${n}', this.value)}">
       <div class="chips">${tagsNow.map(x => `<span class="chip">${esc(x)}<button title="Remove" onclick="removeTag(${tid}, '${n}', '${jsq(x)}')">×</button></span>`).join('')}</div></div>`;
@@ -841,7 +886,7 @@ async function viewOrder(tid, number) {
       <div class="ttl"><h1>${esc(o.number)}</h1>${payBadge(o)}${o.cancelled ? '<span class="bdg"><i class="ring"></i>Canceled</span>' : fulBadge(o)}${o.cancelled || fs === 'Fulfilled' && !o.manual && o.created && (Date.now() - o.created > 60 * 86400000) ? '<span class="bdg">Archived</span>' : ''}</div>
       <div class="subttl">${fmtLong(o.created)} from ${channelOf(o, t)}${o.cancelled && o.cancel ? ` · Canceled ${fmtDay(o.cancel.at)}` : ''}</div>
       ${o.cancelled && o.cancel ? `<div class="banner bad">Order canceled: ${esc(o.cancel.reason || 'no reason given')}.</div>` : ''}
-      ${unfCard}${fulCard}${goneCard}${payCard}${tlCard}
+      ${unfCard}${fulCard}${goneCard}${payCard}${orderMetafieldsCard(tid, o)}${tlCard}
     </div><div class="side-col">${right}</div></div></div>`;
 }
 // Gorgias and Shopify share one login, so this signs out of both.
@@ -850,6 +895,38 @@ async function logOut() {
   localStorage.removeItem('trainee');
   try { await db.auth.signOut(); } catch (e) {}
   location.replace('library.html');
+}
+// The order metafields Healf has defined (as on the live admin). "Original order number" is
+// what a replacement MO must carry (Trainual: Processing a Manual Order).
+const ORDER_METAFIELDS = [['requested_delivery_date', 'Requested delivery date'], ['fragile_sku', 'Fragile SKU', 'bool'], ['original_order_number', 'Original order number'],
+  ['vip_subdomain', 'Vip Subdomain'], ['processed_for_gxo_changes', 'Processed for GXO changes'], ['processed_for_gxo_at', 'Processed for GXO at']];
+function orderMetafieldsCard(tid, o) {
+  const n = jsq(o.number);
+  const row = ([key, label, kind]) => { const v = o.metafields[key];
+    const val = kind === 'bool' ? `<span class="tf"><span${v === 'False' ? ' class="sel"' : ''} onclick="setMetafield(${tid}, '${n}', '${key}', '${jsq(label)}', 'False')" style="cursor:pointer">False</span><span${v === 'True' ? ' class="sel"' : ''} onclick="setMetafield(${tid}, '${n}', '${key}', '${jsq(label)}', 'True')" style="cursor:pointer">True</span></span>`
+      : v ? `<span style="display:flex;gap:8px;align-items:center">${esc(v)}<button class="btn icon" style="border:none;box-shadow:none;width:22px;height:22px" title="Edit" onclick="editMetafield(${tid}, '${n}', '${key}', '${jsq(label)}')">${I.pen.replace('<svg', '<svg width="14" height="14"')}</button></span>`
+      : `<button class="btn grey" style="height:24px" onclick="editMetafield(${tid}, '${n}', '${key}', '${jsq(label)}')">${I.plus.replace('<svg', '<svg width="12" height="12"')} Add</button>`;
+    return `<div class="mf"><span class="k">${label}</span><span class="v">${val}</span></div>`; };
+  return `<div class="sec-h"><h2>Metafields</h2><div class="acts"><span class="lnk" style="color:var(--ink);font-weight:550">View all</span><button class="btn grey" onclick="toast('Metafield definitions are set up by Healf, not CW')">Add definition</button></div></div>
+    <div class="card" style="padding:6px 0">${ORDER_METAFIELDS.map(row).join('')}</div>`;
+}
+function editMetafield(tid, number, key, label) {
+  const o = findOrder(tid, number);
+  modal(esc(label), `<input class="fld" id="mf-val" value="${esc(o.metafields[key] || '')}" placeholder="${key === 'original_order_number' ? 'e.g. #H-9262030' : ''}">`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn dark" onclick="setMetafield(${tid}, '${jsq(number)}', '${key}', '${jsq(label)}', $('mf-val').value.trim())">Save</button>`);
+  setTimeout(() => $('mf-val') && $('mf-val').focus(), 30);
+}
+async function setMetafield(tid, number, key, label, value) {
+  if (await logAction(tid, 'metafield', number, { key, label, value }, `Set the "${label}" metafield on ${number} to ${value || '(blank)'}`)) { toast('Metafield saved'); route(); }
+}
+// A stable card per order, so "card ending in" can be searched as the SOP describes.
+function cardOf(o) { const h = hash(o.number || ''); return { brand: ['Visa', 'Mastercard', 'Visa', 'American Express'][h % 4], last4: String(1000 + h % 9000) }; }
+// Shopify's chargeback risk, from what the SOPs flag: a first order of £250+ is the classic fraud sign.
+function riskOf(t, o) {
+  const os = ordersFor(t), first = os.filter(x => !x.manual).sort((a, b) => (a.created || 0) - (b.created || 0))[0] === o;
+  if (!o.manual && first && o.total >= 250) return { level: 'High', w: 95, c: '#e51c00', text: 'High risk of fraud detected. Before fulfilling this order or capturing payment, review the risk analysis.' };
+  if (!o.manual && first && o.total >= 150) return { level: 'Medium', w: 62, c: '#ffb800', text: 'Medium risk of fraud. Review the order before fulfilling it.' };
+  return { level: 'Low', w: 33, c: '#5fd45f', text: 'Chargeback risk is low. You can fulfill this order.' };
 }
 function toggleMenu(e, id) { e.stopPropagation(); document.querySelectorAll('.menu.open').forEach(m => { if (m.id !== id) m.classList.remove('open'); }); $(id).classList.toggle('open'); }
 document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach(m => m.classList.remove('open')));
@@ -881,6 +958,11 @@ function closeModal() { $('modal-root').innerHTML = ''; }
 const CANCEL_REASONS = ['Customer changed or canceled order', 'Fraudulent order', 'Items unavailable', 'Payment declined', 'Staff error', 'Other'];
 function openCancel(tid, number) {
   const o = findOrder(tid, number);
+  if (o.lines.some(l => l.inProgress && !l.fulfilled && !l.removed)) {
+    modal('Cancel order ' + esc(number) + '?', `<div class="banner warn" style="margin:0">This order has items that PFS Fulfillment Service is fulfilling. It can't be canceled until the fulfillment service cancels them.</div>`,
+      `<button class="btn" onclick="closeModal()">Close</button><button class="btn" onclick="closeModal();openRequestCancellation(${tid}, '${jsq(number)}')">Request cancellation</button>`);
+    return;
+  }
   if (o.lines.some(l => l.fulfilled && !l.removed)) {
     modal('Cancel order ' + esc(number) + '?', `<div class="banner bad" style="margin:0">Orders with fulfilled items can't be canceled. Refund or return the fulfilled items instead.</div>`,
       `<button class="btn" onclick="closeModal()">Close</button>`);
@@ -907,6 +989,38 @@ async function doCancel(tid, number) {
   if (await logAction(tid, 'cancel', number, d, s)) { toast('Order canceled'); route(); }
 }
 
+// ── Fulfilment holds and requests (Trainual: never press Request fulfillment after an MO,
+// never press Request cancellation — log the cancellation on the GXO x Healf sheet instead) ──
+function openHold(tid, number) {
+  modal('Hold fulfillment', `<div><label class="lbl">Reason</label><select class="fld" id="h-reason"><option>Inventory out of stock</option><option>Incorrect address</option><option>High risk of fraud</option><option>Awaiting payment</option><option>Other</option></select></div>
+    <div><label class="lbl">Note (optional)</label><textarea class="fld" id="h-note" rows="2"></textarea><div class="help">Holding fulfillment stops PFS Fulfillment Service from fulfilling these items until you release the hold.</div></div>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn dark" onclick="doHold(${tid}, '${jsq(number)}')">Hold fulfillment</button>`);
+}
+async function doHold(tid, number) {
+  const reason = $('h-reason').value + ($('h-note').value.trim() ? ' — ' + $('h-note').value.trim() : '');
+  if (await logAction(tid, 'hold', number, { reason }, `Put fulfillment of ${number} ON HOLD — reason: ${reason}`)) { toast('Fulfillment on hold'); route(); }
+}
+async function releaseHold(tid, number) {
+  if (await logAction(tid, 'release_hold', number, {}, `Released the fulfillment hold on ${number}`)) { toast('Hold released'); route(); }
+}
+function openRequestFulfillment(tid, number) {
+  modal('Request fulfillment', `<p>Send a fulfillment request to <b>PFS Fulfillment Service</b> for the unfulfilled items on ${esc(number)}.</p>
+    <div><label class="lbl">Message to fulfillment service (optional)</label><textarea class="fld" id="rf-msg" rows="3"></textarea></div>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn dark" onclick="doRequestFulfillment(${tid}, '${jsq(number)}')">Request fulfillment</button>`);
+}
+async function doRequestFulfillment(tid, number) {
+  const message = $('rf-msg').value.trim();
+  if (await logAction(tid, 'request_fulfillment', number, { message }, `Clicked REQUEST FULFILLMENT on ${number} (Trainual: never click this after an MO — it updates automatically within the hour)`)) { toast('Fulfillment requested'); route(); }
+}
+function openRequestCancellation(tid, number) {
+  modal('Request cancellation', `<p>Ask <b>PFS Fulfillment Service</b> to cancel the in-progress items on ${esc(number)}.</p>
+    <div><label class="lbl">Message to fulfillment service (optional)</label><textarea class="fld" id="rc-msg" rows="3"></textarea></div>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn dark" onclick="doRequestCancellation(${tid}, '${jsq(number)}')">Request cancellation</button>`);
+}
+async function doRequestCancellation(tid, number) {
+  const message = $('rc-msg').value.trim();
+  if (await logAction(tid, 'request_cancellation', number, { message }, `Clicked REQUEST CANCELLATION on ${number} (Trainual golden rule: never click this — log the cancellation on the GXO x Healf sheet instead)`)) { toast('Cancellation requested'); route(); }
+}
 function openAddress(tid, number) {
   const o = findOrder(tid, number);
   const a = o.address || [];
@@ -966,7 +1080,7 @@ async function viewRefund(tid, number) {
       ${rows.length ? '' : '<div class="empty">Every item on this order has already been refunded.</div>'}
       ${o.shipping ? `<div class="sec-h"><h2>Refund shipping</h2></div><div class="card cpad"><div class="help" style="margin:0 0 6px">${esc(o.shipName || 'Shipping')}: ${shopMoney(o.shipping)}</div><input class="fld" id="r-ship" type="number" min="0" max="${o.shipping}" step="0.01" value="0" oninput="refundCalc()" style="max-width:200px"></div>` : ''}
       <div class="sec-h"><h2>Reason for refund</h2></div>
-      <div class="card cpad"><input class="fld" id="r-reason" placeholder=""><div class="help">Only you and other staff can see this reason</div></div>
+      <div class="card cpad"><input class="fld" id="r-reason" list="refund-reasons" placeholder=""><datalist id="refund-reasons">${REFUND_REASONS.map(x => `<option value="${x}">`).join('')}</datalist><div class="help">Only you and other staff can see this reason</div></div>
     </div><div class="side-col">
       <div class="rs"><div class="rs-h">Summary</div><div id="r-sum" style="color:var(--ink-2)">No items selected</div></div>
       <div class="rs" style="border:none">
@@ -1011,37 +1125,53 @@ function wordFilter(req, q, cols) {
     .forEach(w => { req = req.or(cols.map(c => `${c}.ilike.%${w}%`).join(',')); });
   return req;
 }
+// Search by product name, brand, type — or SKU, as CW does when placing an MO.
+let SKU_COL = true;
 async function productSearch(q, limit) {
   q = q.trim();
-  let req = db.from('shop_products').select('*').eq('status', 'active').limit(limit || 25);
-  if (q) req = wordFilter(req, q, ['title', 'vendor', 'product_type']); else req = req.order('title');
-  const { data } = await req;
+  const run = cols => { let req = db.from('shop_products').select('*').eq('status', 'active').limit(limit || 25);
+    return q ? wordFilter(req, q, cols) : req.order('title'); };
+  let { data, error } = await run(SKU_COL ? ['title', 'vendor', 'product_type', 'skus'] : ['title', 'vendor', 'product_type']);
+  if (error && SKU_COL) { SKU_COL = false; ({ data } = await run(['title', 'vendor', 'product_type'])); }
   (data || []).forEach(p => { productCache[String(p.id)] = p; });
   return data || [];
+}
+// Healf's supplements also carry an Active Ants (NL) "-EU5" variant for EU orders. The SOP
+// warns never to MO it for a UK customer, so the sim shows one beside each UK variant. Real
+// EU5 variants in the catalogue are used as they are.
+const hasEU = p => /vitamin|supplement|eat >/i.test(p.product_type || '');
+function variantsFor(p) {
+  const vs = (p.variants || []).slice();
+  if (!hasEU(p) || vs.some(v => /EU5$/i.test(v.sku || ''))) return vs.map(v => Object.assign({}, v, { eu: /EU5$/i.test(v.sku || '') }));
+  const out = [];
+  vs.forEach(v => { out.push(Object.assign({}, v, { eu: false }));
+    if (v.sku) out.push(Object.assign({}, v, { id: String(v.id) + '-EU5', sku: v.sku.replace(/-?EU5$/i, '') + '-EU5', eu: true })); });
+  return out;
 }
 async function runPick(inputId, boxId, onPick) {
   const q = $(inputId).value;
   if (!q.trim()) { $(boxId).innerHTML = ''; $(boxId).style.borderTop = 'none'; return; }
   const res = await productSearch(q);
   const rows = [];
-  res.forEach(p => (p.variants || []).forEach(v => {
+  res.forEach(p => variantsFor(p).forEach(v => {
     const s = stockFor(p, pickTid);
     const img = p.image_url ? `style="background-image:url('${esc(imgUrl(p.image_url, 80))}')"` : '';
     const qn = availQty(p, v, s);
     rows.push(`<div class="li" onclick="${onPick}('${p.id}','${v.id}')"><div class="thumb" ${img}>${img ? '' : I.img}</div>
-      <div class="li-main"><div class="li-title">${esc(p.title)}</div><div class="li-meta">${v.title && v.title !== 'Default Title' ? `<span class="chip">${esc(v.title)}</span>` : ''}${esc(p.vendor || '')}</div></div>
+      <div class="li-main"><div class="li-title">${esc(p.title)}</div><div class="li-meta">${v.title && v.title !== 'Default Title' ? `<span class="chip">${esc(v.title)}</span>` : ''}${v.sku ? `<span>${esc(v.sku)}</span>` : ''}<span>${esc(p.vendor || '')}</span></div></div>
       <span class="stockline${qn > 0 ? '' : ' zero'}" style="white-space:nowrap">${qn} available</span><div class="li-tot">${shopMoney(s.price != null ? s.price : v.price)}</div></div>`);
   }));
   $(boxId).style.borderTop = '';
   $(boxId).innerHTML = rows.join('') || '<div class="empty">No products found</div>';
 }
 function pickedLine(pid, vid) {
-  const p = productCache[pid]; const v = (p.variants || []).find(x => String(x.id) === String(vid)) || {};
+  const p = productCache[pid]; const v = variantsFor(p).find(x => String(x.id) === String(vid)) || {};
   const s = stockFor(p, pickTid);
-  return { productId: pid, variantId: vid, title: p.title + (v.title && v.title !== 'Default Title' ? ' - ' + v.title : ''), vendor: p.vendor, price: s.price != null ? Number(s.price) : v.price, qty: 1, preorder: s.state === 'preorder', stock: s.state };
+  const price = s.price != null ? Number(s.price) : v.price;
+  return { productId: pid, variantId: String(vid), title: p.title + (v.title && v.title !== 'Default Title' ? ' - ' + v.title : ''), vendor: p.vendor, sku: v.sku || '', eu: !!v.eu,
+           price, origPrice: price, qty: 1, preorder: s.state === 'preorder', stock: s.state };
 }
 
-// ── Edit order (a full page, as in Shopify) ────────────────────────────────
 let editDraft = null;
 async function viewEditOrder(tid, number) {
   const t = tById(tid), o = t && findOrder(tid, number); pickTid = tid;
@@ -1049,14 +1179,15 @@ async function viewEditOrder(tid, number) {
   $('bar').querySelector('.cur').style.opacity = 1;
   if (!o) return;
   await loadProducts(o.lines.map(l => lineProductId(t, l)).filter(Boolean));
-  editDraft = { tid, number, remove: [], add: [] };
+  editDraft = { tid, number, remove: [], add: [], restock: {}, notify: true };
   drawEdit();
 }
 function drawEdit() {
   const { tid, number } = editDraft; const t = tById(tid), o = findOrder(tid, number);
   const q = $('eo-q') ? $('eo-q').value : '';
   const reason = $('eo-reason') ? $('eo-reason').value : '';
-  const unf = o.lines.map((l, i) => [l, i]).filter(([l]) => !l.removed && !l.fulfilled);
+  const unf = o.lines.map((l, i) => [l, i]).filter(([l]) => !l.removed && !l.fulfilled && !l.inProgress);
+  const locked = o.lines.map((l, i) => [l, i]).filter(([l]) => !l.removed && !l.fulfilled && l.inProgress);
   const ful = o.lines.map((l, i) => [l, i]).filter(([l]) => !l.removed && l.fulfilled);
   const keep = o.lines.filter((l, i) => !l.removed && editDraft.remove.indexOf(i) === -1).reduce((s, l) => s + l.price * l.qty, 0);
   const add = editDraft.add.reduce((s, l) => s + l.price * l.qty, 0);
@@ -1068,9 +1199,10 @@ function drawEdit() {
         <div style="display:flex;gap:8px"><div class="qin" style="flex:1;width:auto">${I.search.replace('<svg', '<svg width="16" height="16" style="color:var(--ink-2);margin-right:6px"')}<input id="eo-q" style="width:100%" placeholder="Search products to add" value="${esc(q)}" oninput="clearTimeout(this._t);this._t=setTimeout(()=>runPick('eo-q','eo-pick','editAdd'),250)"></div><button class="btn">Browse</button></div>
         <div class="pick" id="eo-pick" style="margin-top:8px"></div>
         ${unf.map(([l, i]) => { const rm = editDraft.remove.indexOf(i) > -1; return `<div class="li${rm ? ' gone' : ''}" style="align-items:center">${lineThumb(t, l)}
-          <div class="li-main"><div class="li-title">${esc(l.title)}</div><div class="li-meta">${rm ? '<span class="bdg">Removed</span>' : ''}</div></div>
+          <div class="li-main"><div class="li-title">${esc(l.title)}</div><div class="li-meta">${rm ? `<span class="bdg">Removed</span><label class="chk" style="text-decoration:none;color:var(--ink)"><input type="checkbox" ${editDraft.restock[i] !== false ? 'checked' : ''} onchange="editDraft.restock[${i}]=this.checked"><span>Restock item</span></label>` : ''}</div></div>
           <div class="li-px" style="margin:0">${shopMoney(l.price)} × <span class="qbox">${l.qty}</span></div>
-          <button class="btn" onclick="editToggle(${i})">${rm ? 'Restore item' : 'Remove item'}</button></div>`; }).join('')}
+          ${rm ? `<button class="btn" onclick="editToggle(${i})">Undo</button>` : `<button class="btn icon" title="Remove item" style="border:none;box-shadow:none" onclick="editToggle(${i})">✕</button>`}</div>`; }).join('')}
+        ${locked.map(([l, i]) => `<div class="li" style="align-items:center">${lineThumb(t, l)}<div class="li-main"><div class="li-title">${esc(l.title)}</div><div class="li-meta"><span class="bdg yellow">In progress</span><span>Being fulfilled by PFS Fulfillment Service — can't be edited</span></div></div><div class="li-px" style="margin:0">${shopMoney(l.price)} × <span class="qbox">${l.qty}</span></div></div>`).join('')}
         ${editDraft.add.map((l, i) => `<div class="li" style="align-items:center"><div class="thumb">${I.img}</div>
           <div class="li-main"><div class="li-title">${esc(l.title)}</div><div class="li-meta"><span class="bdg blue">Added</span></div></div>
           <div class="qin" style="width:90px"><input type="number" min="1" value="${l.qty}" onchange="editDraft.add[${i}].qty=Math.max(1,+this.value||1);drawEdit()"></div>
@@ -1086,7 +1218,7 @@ function drawEdit() {
         <div class="pr" style="grid-template-columns:1fr auto;color:var(--ink-2)"><span>Paid by customer</span><span class="v">${shopMoney(o.total)}</span></div>
         <div class="hr"></div>
         <div class="pr b" style="grid-template-columns:1fr auto"><span>${diff >= 0 ? 'Amount to collect' : 'Amount to refund'}</span><span class="v">${shopMoney(Math.abs(diff))}</span></div>
-        <label class="chk" style="margin-top:12px"><input type="checkbox" id="eo-notify" checked><span>Send invoice / notify customer</span></label>
+        <label class="chk" style="margin-top:12px"><input type="checkbox" id="eo-notify" ${editDraft.notify ? 'checked' : ''} onchange="editDraft.notify=this.checked"><span>Send notification to customer</span></label>
         <button class="btn dark" style="width:100%;justify-content:center;margin-top:14px;height:32px" ${editDraft.remove.length || editDraft.add.length ? '' : 'disabled'} onclick="doEditOrder()">Update order</button></div>
     </div></div></div>`;
   if (q) runPick('eo-q', 'eo-pick', 'editAdd');
@@ -1102,33 +1234,47 @@ async function doEditOrder() {
   const { tid, number } = editDraft; const o = findOrder(tid, number);
   if (!editDraft.remove.length && !editDraft.add.length) return;
   const parts = [];
-  if (editDraft.remove.length) parts.push('removed ' + editDraft.remove.map(i => o.lines[i].qty + '× ' + o.lines[i].title).join(', '));
+  if (editDraft.remove.length) parts.push('removed ' + editDraft.remove.map(i => o.lines[i].qty + '× ' + o.lines[i].title + ' (restock: ' + (editDraft.restock[i] !== false ? 'yes' : 'no') + ')').join(', '));
   if (editDraft.add.length) parts.push('added ' + editDraft.add.map(l => l.qty + '× ' + l.title + ' (' + shopMoney(l.price) + (l.stock !== 'in_stock' ? ', ' + l.stock.replace('_', ' ') : '') + ')').join(', '));
   const reason = $('eo-reason').value.trim();
-  const s = `Edited order ${number} — ${parts.join('; ')}${reason ? '; reason: ' + reason : ''}`;
-  if (await logAction(tid, 'edit_order', number, { remove: editDraft.remove, add: editDraft.add, reason }, s)) { toast('Order updated'); go('#/orders/' + tid + '/' + encodeURIComponent(number)); }
+  const notify = $('eo-notify').checked;
+  const s = `Edited order ${number} — ${parts.join('; ')}; customer notified: ${notify ? 'yes' : 'no'}${reason ? '; reason: ' + reason : ''}`;
+  if (await logAction(tid, 'edit_order', number, { remove: editDraft.remove, add: editDraft.add, reason, notify, restock: editDraft.remove.map(i => editDraft.restock[i] !== false) }, s)) { toast('Order updated'); go('#/orders/' + tid + '/' + encodeURIComponent(number)); }
 }
 
 // ── Create order (Manual Order) ───────────────────────────────────────────
+// Manual Orders, drafts and invoices (Trainual: Processing a Manual Order, Shipping
+// Upgrades, Product Swaps). Mark as paid creates the order; Save keeps a draft that can be
+// shared as an invoice link for a customer-paid shipping upgrade.
+// MO reason tags, from the CW MO REASONS table in CW Essentials (GG Categories tab).
+const MO_TAGS = ['productswap', 'productswappaid', 'damagedreplacement', 'lostreplacement', 'missingreplacement', 'rtsreplacement', 'mispickreplacement',
+  'faultyreplacement', 'gxoissuereplacement', 'notshippedreplacement', 'replacementother', 'gift', 'brand', 'signed'];
+const SHIP_OPTS = [['Free Shipping (2-3 Working Days)', 0], ['Next Working Day Shipping', 5.99], ['Signed Next Working Day Shipping', 7.99]];
+const isSigned = name => /^Signed/.test(name || '');
 let draft = null;
+function blankDraft(tid) { return { tid: tid || null, lines: [], discountType: 'percent', discountValue: 0, discountReason: '', shipping: 0, shipName: '', tags: [], note: '', from: null, draftNo: null }; }
 async function viewCreateOrder(tid, fromNumber) {
   pickTid = tid || null;
-  bar({ back: backTo('#/orders'), icon: I.orders, crumb: 'Drafts', crumbHref: '#/orders/new' });
-  draft = { tid: tid || null, lines: [], discountType: 'amount', discountValue: 0, discountReason: '', shipping: 0, shipName: '', tags: [], note: '', from: fromNumber || null };
+  draft = blankDraft(tid); draft.from = fromNumber || null;
   if (fromNumber && tid) {
     const o = findOrder(tid, fromNumber);
     if (o) {
       await loadProducts(o.lines.map(l => lineProductId(tById(tid), l)).filter(Boolean));
       draft.lines = o.lines.filter(l => !l.removed).map(l => { const pid = lineProductId(tById(tid), l); const p = pid && productCache[pid];
-        const s = p ? stockFor(p, tid) : { state: 'in_stock' };
-        return { productId: pid, variantId: l.variantId, title: l.title, vendor: l.vendor, price: l.price, qty: l.qty, preorder: s.state === 'preorder', stock: s.state }; });
+        const st = p ? stockFor(p, tid) : { state: 'in_stock' }; const v = p && l.variantId ? (p.variants || []).find(x => String(x.id) === l.variantId) : null;
+        return { productId: pid, variantId: l.variantId, title: l.title, vendor: l.vendor, sku: (v && v.sku) || '', eu: false, price: l.price, origPrice: l.price, qty: l.qty, preorder: st.state === 'preorder', stock: st.state }; });
     }
   }
   drawCreate();
 }
+function lineUnit(l) {
+  const d = l.itemDiscount; if (!d || !d.value) return l.origPrice;
+  return Math.max(0, +(d.type === 'percent' ? l.origPrice * (1 - Math.min(100, d.value) / 100) : l.origPrice - d.value).toFixed(2));
+}
 function draftTotals() {
+  draft.lines.forEach(l => { l.price = lineUnit(l); });
   const sub = draft.lines.reduce((s, l) => s + l.price * l.qty, 0);
-  const disc = draft.discountType === 'percent' ? sub * Math.min(100, draft.discountValue) / 100 : Math.min(sub, draft.discountValue);
+  const disc = isSigned(draft.shipName) ? 0 : draft.discountType === 'percent' ? sub * Math.min(100, draft.discountValue) / 100 : Math.min(sub, draft.discountValue);
   return { sub, disc: +disc.toFixed(2), total: +(sub - disc + draft.shipping).toFixed(2) };
 }
 function drawCreate() {
@@ -1136,27 +1282,32 @@ function drawCreate() {
   const q = $('co-q') ? $('co-q').value : '';
   if ($('co-note')) draft.note = $('co-note').value;
   const tt = draftTotals();
+  bar({ back: backTo('#/orders'), icon: I.orders, crumb: 'Drafts', crumbHref: '#/drafts', cur: draft.draftNo || 'Create order',
+        acts: `<button class="btn" onclick="saveDraft()" ${draft.lines.length && t ? '' : 'disabled'}>Save</button>` });
+  $('bar').querySelector('.cur').style.opacity = 1;
   $('main').innerHTML = `<div class="wrap"><div class="cols"><div>
-      <div class="ttl"><h1>Create order</h1></div>${draft.from ? `<div class="subttl">Duplicated from ${esc(draft.from)}</div>` : '<div style="height:10px"></div>'}
+      <div class="ttl"><h1>${draft.draftNo ? esc(draft.draftNo) : 'Create order'}</h1>${draft.draftNo ? '<span class="bdg">Open</span>' : ''}</div>${draft.from ? `<div class="subttl">Duplicated from ${esc(draft.from)}</div>` : '<div style="height:10px"></div>'}
       <div class="sec-h"><h2>Products</h2><div class="acts"><a class="lnk" onclick="toast('Custom items are not used for Manual Orders at Healf')">Add custom item</a></div></div>
       <div class="card cpad">
-        <div style="display:flex;gap:8px"><div class="qin" style="flex:1;width:auto">${I.search.replace('<svg', '<svg width="16" height="16" style="color:var(--ink-2);margin-right:6px"')}<input id="co-q" style="width:100%" placeholder="Search products" value="${esc(q)}" oninput="clearTimeout(this._t);this._t=setTimeout(()=>runPick('co-q','co-pick','createAdd'),250)"></div><button class="btn">Browse</button></div>
+        <div style="display:flex;gap:8px"><div class="qin" style="flex:1;width:auto">${I.search.replace('<svg', '<svg width="16" height="16" style="color:var(--ink-2);margin-right:6px"')}<input id="co-q" style="width:100%" placeholder="Search products or SKU" value="${esc(q)}" oninput="clearTimeout(this._t);this._t=setTimeout(()=>runPick('co-q','co-pick','createAdd'),250)"></div><button class="btn">Browse</button></div>
         <div class="pick" id="co-pick" style="margin-top:8px"></div>
         ${draft.lines.length ? `<table class="ix" style="margin-top:10px"><thead><tr><th>Product</th><th>Quantity</th><th class="num">Total</th><th></th></tr></thead><tbody>
-          ${draft.lines.map((l, i) => `<tr><td style="white-space:normal"><div style="font-weight:550">${esc(l.title)}</div><div style="color:var(--ink-2)">${shopMoney(l.price)}</div></td>
+          ${draft.lines.map((l, i) => `<tr><td style="white-space:normal"><div style="font-weight:550">${esc(l.title)}</div>
+              <div style="color:var(--ink-2);font-size:12.5px">${l.sku ? esc(l.sku) : ''}</div>
+              <div>${l.itemDiscount && l.itemDiscount.value ? `<s style="color:var(--ink-3)">${shopMoney(l.origPrice)}</s> ` : ''}<a class="lnk" style="text-decoration:underline" onclick="openItemDiscount(${i})">${shopMoney(l.price)}</a>${l.itemDiscount && l.itemDiscount.reason ? ` <span class="chip">${esc(l.itemDiscount.reason)}</span>` : ''}</div></td>
             <td><div class="qin" style="width:80px"><input type="number" min="1" value="${l.qty}" onchange="draft.lines[${i}].qty=Math.max(1,+this.value||1);drawCreate()"></div></td>
             <td class="num">${shopMoney(l.price * l.qty)}</td><td style="width:30px"><button class="btn icon" style="border:none;box-shadow:none" onclick="draft.lines.splice(${i},1);drawCreate()">×</button></td></tr>`).join('')}</tbody></table>` : ''}
       </div>
       <div class="sec-h"><h2>Payment</h2></div>
       <div class="card cpad">
         <div class="pr"><span class="k">Subtotal</span><span class="m">${draft.lines.reduce((s, l) => s + l.qty, 0)} items</span><span class="v">${shopMoney(tt.sub)}</span></div>
-        <div class="pr"><span class="k"><a class="lnk" onclick="openDiscount()">${tt.disc ? 'Discount' : 'Add discount'}</a></span><span class="m">${esc(draft.discountReason)}</span><span class="v">${tt.disc ? '−' + shopMoney(tt.disc) : '—'}</span></div>
+        <div class="pr"><span class="k"><a class="lnk" onclick="openDiscount()">${tt.disc ? 'Discount' : 'Add discount'}</a></span><span class="m">${esc(tt.disc ? draft.discountReason || (draft.discountType === 'percent' ? draft.discountValue + '% off' : '') : '')}</span><span class="v">${tt.disc ? '−' + shopMoney(tt.disc) : '—'}</span></div>
         <div class="pr"><span class="k"><a class="lnk" onclick="openShipping()">${draft.shipName ? 'Shipping' : 'Add shipping or delivery'}</a></span><span class="m">${esc(draft.shipName)}</span><span class="v">${draft.shipName ? shopMoney(draft.shipping) : '—'}</span></div>
         <div class="pr dim"><span class="k" style="color:var(--ink)">Estimated tax</span><span class="m">GB VAT 20%</span><span class="v">Included</span></div>
         <div class="pr b"><span class="k">Total</span><span class="m"></span><span class="v">${shopMoney(tt.total)}</span></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2)">
-          <button class="btn" disabled>Send invoice</button>
-          <button class="btn dark" onclick="doCreate()" ${!draft.lines.length || !t ? 'disabled' : ''}>${tt.total > 0 ? 'Mark as paid' : 'Create order'}</button></div>
+          <button class="btn" onclick="saveDraft(true)" ${draft.lines.length && t ? '' : 'disabled'}>Send invoice</button>
+          <button class="btn dark" onclick="openMarkPaid()" ${!draft.lines.length || !t ? 'disabled' : ''}>Mark as paid</button></div>
         ${!t ? '<div class="help" style="text-align:right">Add a customer to create the order.</div>' : ''}
       </div>
     </div><div class="side-col">
@@ -1168,45 +1319,274 @@ function drawCreate() {
           <div class="k">Billing address</div><p style="color:var(--ink-2)">Same as shipping address</p>`
           : `<div class="qin" style="width:100%">${I.search.replace('<svg', '<svg width="16" height="16" style="color:var(--ink-2);margin-right:6px"')}<input id="co-cq" style="width:100%" placeholder="Search or create a customer" oninput="coCust(this.value)"></div><div class="pick" id="co-cpick" style="margin-top:6px"></div>`}</div>
       <div class="rs"><div class="rs-h">Markets</div><p>United Kingdom (GBP £)</p></div>
-      <div class="rs"><div class="rs-h">Tags</div><input class="fld" id="co-tag" style="margin-bottom:8px" onkeydown="if(event.key==='Enter')coTag()">
+      <div class="rs"><div class="rs-h">Tags</div><input class="fld" id="co-tag" list="mo-tags" style="margin-bottom:8px" placeholder="Find or create tags" onkeydown="if(event.key==='Enter')coTag()" onchange="if(MO_TAGS.indexOf(this.value)>-1)coTag()">
+        <datalist id="mo-tags">${MO_TAGS.map(x => `<option value="${x}">`).join('')}</datalist>
         <div class="chips">${draft.tags.map((x, i) => `<span class="chip">${esc(x)}<button onclick="draft.tags.splice(${i},1);drawCreate()">×</button></span>`).join('')}</div></div>
     </div></div></div>`;
   if (!t) coCust('');
   if (q) runPick('co-q', 'co-pick', 'createAdd');
 }
 function createAdd(pid, vid) { draft.lines.push(pickedLine(pid, vid)); $('co-q').value = ''; drawCreate(); }
-function coTag() { const v = $('co-tag').value.trim(); if (v && draft.tags.indexOf(v) === -1) draft.tags.push(v); drawCreate(); setTimeout(() => $('co-tag').focus(), 20); }
+function coTag() { const v = $('co-tag').value.trim(); if (v && draft.tags.indexOf(v) === -1) draft.tags.push(v); drawCreate(); setTimeout(() => $('co-tag') && $('co-tag').focus(), 20); }
 function coCust(q) {
   q = q.trim().toLowerCase();
   const list = tickets.filter(t => !q || (t.customer_name + ' ' + t.customer_email).toLowerCase().includes(q)).slice(0, 8);
   $('co-cpick').innerHTML = q ? list.map(t => `<div class="li" onclick="draft.tid=${t.id};pickTid=${t.id};drawCreate()"><div class="li-main"><div class="li-title">${esc(t.customer_name)}</div><div class="li-meta">${esc(t.customer_email)}</div></div></div>`).join('') : '';
 }
+// The blue underlined price under an item: a discount on that item only (Product Swaps).
+function openItemDiscount(i) {
+  const l = draft.lines[i], d = l.itemDiscount || { type: 'amount', value: '', reason: '' };
+  modal('Apply discount to item', `<p style="margin:0">${esc(l.title)} · ${shopMoney(l.origPrice)} each</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label class="lbl">Discount type</label><select class="fld" id="id-type"><option value="amount" ${d.type === 'amount' ? 'selected' : ''}>Amount</option><option value="percent" ${d.type === 'percent' ? 'selected' : ''}>Percentage</option></select></div>
+    <div><label class="lbl">Value</label><input class="fld" id="id-val" type="number" min="0" step="0.01" value="${d.value || ''}"></div></div>
+    <div><label class="lbl">Reason for discount</label><input class="fld" id="id-reason" value="${esc(d.reason || '')}"><div class="help">Your customers can see this reason</div></div>`,
+    `<button class="btn" onclick="delete draft.lines[${i}].itemDiscount;closeModal();drawCreate()">Remove discount</button><button class="btn dark" onclick="draft.lines[${i}].itemDiscount={type:$('id-type').value,value:Math.max(0,+$('id-val').value||0),reason:$('id-reason').value.trim()};closeModal();drawCreate()">Done</button>`);
+}
 function openDiscount() {
+  if (isSigned(draft.shipName)) {
+    modal('Add discount', `<div class="banner warn" style="margin:0">A custom discount can't be applied to an order using Signed Next Working Day Shipping. Keep the product prices and add the tag <b>signed</b> alongside the MO reason.</div>`,
+      `<button class="btn" onclick="closeModal()">Close</button>`);
+    return;
+  }
   modal('Add discount', `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label class="lbl">Discount type</label><select class="fld" id="d-type"><option value="amount" ${draft.discountType === 'amount' ? 'selected' : ''}>Amount</option><option value="percent" ${draft.discountType === 'percent' ? 'selected' : ''}>Percentage</option></select></div>
     <div><label class="lbl">Value</label><input class="fld" id="d-val" type="number" min="0" step="0.01" value="${draft.discountValue || ''}"></div></div>
     <div><label class="lbl">Reason for discount</label><input class="fld" id="d-reason" value="${esc(draft.discountReason)}"><div class="help">Your customers can see this reason</div></div>`,
-    `<button class="btn" onclick="draft.discountValue=0;draft.discountReason='';closeModal();drawCreate()">Remove</button><button class="btn dark" onclick="draft.discountType=$('d-type').value;draft.discountValue=Math.max(0,+$('d-val').value||0);draft.discountReason=$('d-reason').value.trim();closeModal();drawCreate()">Apply</button>`);
+    `<button class="btn" onclick="draft.discountValue=0;draft.discountReason='';closeModal();drawCreate()">Remove</button><button class="btn dark" onclick="draft.discountType=$('d-type').value;draft.discountValue=Math.max(0,+$('d-val').value||0);draft.discountReason=$('d-reason').value.trim();closeModal();drawCreate()">Done</button>`);
 }
-const SHIP_OPTS = [['Free Shipping (2-3 Working Days)', 0], ['Standard Tracked 24', 3.99], ['Next Working Day Shipping', 5.99]];
 function openShipping() {
   modal('Add shipping or delivery', SHIP_OPTS.map(([n, p], i) => `<label class="chk"><input type="radio" name="ship" value="${i}" ${draft.shipName === n || (!draft.shipName && !i) ? 'checked' : ''}><span>${n} — ${shopMoney(p)}</span></label>`).join(''),
     `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn dark" onclick="const o=SHIP_OPTS[+document.querySelector('input[name=ship]:checked').value];draft.shipName=o[0];draft.shipping=o[1];closeModal();drawCreate()">Done</button>`);
 }
+function draftSummary(t, tt) {
+  return draft.lines.map(l => l.qty + '× ' + l.title + (l.sku ? ' [SKU ' + l.sku + (l.eu ? ' — EU5 / Active Ants variant' : '') + ']' : '') + ' @ ' + shopMoney(l.price) +
+      (l.itemDiscount && l.itemDiscount.value ? ' (item discount ' + (l.itemDiscount.type === 'percent' ? l.itemDiscount.value + '%' : shopMoney(l.itemDiscount.value)) + (l.itemDiscount.reason ? ', ' + l.itemDiscount.reason : '') + ')' : '') +
+      (l.stock && l.stock !== 'in_stock' ? ' [' + l.stock.replace('_', ' ') + ']' : '')).join(', ') +
+    `; order discount ${shopMoney(tt.disc)}${tt.disc ? ' (' + (draft.discountType === 'percent' ? draft.discountValue + '%' : 'amount') + (draft.discountReason ? ', ' + draft.discountReason : '') + ')' : ''}; shipping ${draft.shipName || SHIP_OPTS[0][0]} ${shopMoney(draft.shipping)}; total ${shopMoney(tt.total)}` +
+    (draft.tags.length ? '; tags: ' + draft.tags.join(', ') : '; no tags') + (draft.note ? '; note: "' + draft.note + '"' : '');
+}
+function draftDetail(t, tt) {
+  return { lines: draft.lines.map(l => Object.assign({}, l)), discount_amount: tt.disc, discount_type: draft.discountType, discount_value: draft.discountValue, discount_reason: draft.discountReason,
+           shipping: draft.shipping, shipping_name: draft.shipName || SHIP_OPTS[0][0], tags: draft.tags.slice(), note: draft.note, address: custAddress(t).lines, from: draft.from, draft: draft.draftNo };
+}
+function openMarkPaid() {
+  const tt = draftTotals();
+  modal('Mark as paid', `<p style="margin:0">Mark this order as paid if you received ${shopMoney(tt.total)} outside of Shopify.</p>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn dark" onclick="closeModal();doCreate()">Create order</button>`);
+}
 async function doCreate() {
   const t = tById(draft.tid); if (!t || !draft.lines.length) return;
-  draft.note = $('co-note').value.trim();
+  draft.note = $('co-note') ? $('co-note').value.trim() : draft.note;
   if (!draft.shipName) { draft.shipName = SHIP_OPTS[0][0]; draft.shipping = 0; }
   const tt = draftTotals();
-  // Training orders live in their own range (#H-97xxxxx–#H-99xxxxx): above every real Healf
-  // order and above the ticket orders (#H-91xxxxx–#H-95xxxxx), so a number never matches either.
+  // Training orders: #H-97xxxxx-#H-99xxxxx, above every real Healf order and every ticket order.
   const number = '#H-' + (9700000 + Math.floor(Math.random() * 300000));
-  const d = { lines: draft.lines, discount_amount: tt.disc, discount_reason: draft.discountReason, shipping: draft.shipping, shipping_name: draft.shipName,
-              tags: draft.tags, note: draft.note, address: custAddress(t).lines, from: draft.from };
-  const s = `Created Manual Order ${number} for ${t.customer_name}${draft.from ? ' (duplicated from ' + draft.from + ')' : ''} — ` +
-    draft.lines.map(l => l.qty + '× ' + l.title + ' @ ' + shopMoney(l.price) + (l.stock && l.stock !== 'in_stock' ? ' [' + l.stock.replace('_', ' ') + ']' : '')).join(', ') +
-    `; discount ${shopMoney(tt.disc)}${draft.discountReason ? ' (' + draft.discountReason + ')' : ''}; shipping ${draft.shipName} ${shopMoney(draft.shipping)}; total ${shopMoney(tt.total)}` +
-    (draft.tags.length ? '; tags: ' + draft.tags.join(', ') : '') + (draft.note ? '; note: "' + draft.note + '"' : '');
-  if (await logAction(t.id, 'create_order', number, d, s)) { toast('Order created'); go('#/orders/' + t.id + '/' + encodeURIComponent(number)); }
+  const s = `Created Manual Order ${number} for ${t.customer_name}${draft.draftNo ? ' from draft ' + draft.draftNo : ''}${draft.from ? ' (duplicated from ' + draft.from + ')' : ''}, marked as paid — ` + draftSummary(t, tt);
+  if (await logAction(t.id, 'create_order', number, draftDetail(t, tt), s)) { toast('Order created'); go('#/orders/' + t.id + '/' + encodeURIComponent(number)); }
+}
+// Save = a draft order (#D…) that can be shared as an invoice for the customer to pay.
+function draftsAll() {
+  const latest = {};
+  actions.filter(a => a.kind === 'draft_order' || a.kind === 'invoice' || (a.kind === 'create_order' && a.detail && a.detail.draft)).forEach(a => {
+    const no = a.kind === 'create_order' ? a.detail.draft : a.order_number;
+    const cur = latest[no] || { no, invoiceSent: false, completed: null };
+    if (a.kind === 'draft_order') Object.assign(cur, { d: a.detail, tid: a.ticket_id, at: new Date(a.created_at) });
+    if (a.kind === 'invoice') cur.invoiceSent = a.detail.url;
+    if (a.kind === 'create_order') cur.completed = a.order_number;
+    latest[no] = cur;
+  });
+  return Object.values(latest).filter(x => x.d).sort((a, b) => b.at - a.at);
+}
+async function saveDraft(thenShare) {
+  const t = tById(draft.tid); if (!t || !draft.lines.length) return;
+  draft.note = $('co-note') ? $('co-note').value.trim() : draft.note;
+  if (!draft.shipName) { draft.shipName = SHIP_OPTS[0][0]; draft.shipping = 0; }
+  const tt = draftTotals();
+  if (!draft.draftNo) draft.draftNo = '#D' + (1001 + draftsAll().length);
+  const s = `Saved draft order ${draft.draftNo} for ${t.customer_name} (not yet paid) — ` + draftSummary(t, tt);
+  if (await logAction(t.id, 'draft_order', draft.draftNo, draftDetail(t, tt), s)) {
+    toast('Draft order saved'); location.hash = '#/drafts/' + encodeURIComponent(draft.draftNo);
+    if (thenShare) setTimeout(() => openShare(draft.draftNo), 300);
+  }
+}
+function viewDrafts() {
+  bar({ icon: I.orders, crumb: 'Drafts', crumbHref: '#/drafts', acts: `<button class="btn dark keep" onclick="go('#/orders/new')">Create order</button>` });
+  const list = draftsAll();
+  $('main').innerHTML = `<div class="wrap full"><div class="filter">${I.search}<input placeholder="Search and filter" disabled></div>
+    ${list.length ? `<table class="ix"><thead><tr><th>Draft order</th><th>Date</th><th>Customer</th><th>Status</th><th class="num">Total</th></tr></thead><tbody>
+      ${list.map(x => { const t = tById(x.tid); return `<tr class="r" onclick="go('#/drafts/${encodeURIComponent(x.no)}')"><td><b>${esc(x.no)}</b></td><td>${fmtList(x.at)}</td><td>${esc(t ? t.customer_name : '')}</td>
+        <td>${x.completed ? '<span class="bdg">Completed</span>' : x.invoiceSent ? '<span class="bdg blue">Invoice sent</span>' : '<span class="bdg yellow">Open</span>'}</td>
+        <td class="num">${shopMoney(x.d.lines.reduce((s, l) => s + l.price * l.qty, 0) - (x.d.discount_amount || 0) + (x.d.shipping || 0))}</td></tr>`; }).join('')}</tbody></table>`
+      : '<div class="empty">No draft orders yet. Save an order from Create order to keep it here.</div>'}</div>`;
+}
+async function viewDraft(no) {
+  const x = draftsAll().find(d => d.no === no);
+  if (!x) { $('main').innerHTML = '<div class="wrap"><div class="empty">Draft not found.</div></div>'; return; }
+  if (x.completed) { go('#/orders/' + x.tid + '/' + encodeURIComponent(x.completed)); return; }
+  pickTid = x.tid;
+  draft = Object.assign(blankDraft(x.tid), { lines: x.d.lines.map(l => Object.assign({}, l)), discountType: x.d.discount_type || 'percent', discountValue: x.d.discount_value || 0,
+    discountReason: x.d.discount_reason || '', shipping: x.d.shipping || 0, shipName: x.d.shipping_name || '', tags: (x.d.tags || []).slice(), note: x.d.note || '', from: x.d.from || null, draftNo: no });
+  await loadProducts(draft.lines.map(l => l.productId).filter(Boolean));
+  drawCreate();
+  bar({ back: `go('#/drafts')`, icon: I.orders, crumb: 'Drafts', crumbHref: '#/drafts', cur: no,
+        acts: `${x.invoiceSent ? '<span class="bdg blue" style="margin-right:4px">Invoice sent</span>' : ''}<button class="btn" onclick="saveDraft()">Save</button><button class="btn" onclick="openShare('${jsq(no)}')">Share</button>` });
+  $('bar').querySelector('.cur').style.opacity = 1;
+}
+// Share: the invoice link CW copies to the customer (Shipping Upgrades, customer pays).
+function openShare(no) {
+  const x = draftsAll().find(d => d.no === no); if (!x) return;
+  const url = 'https://healf-training.myshopify.com/58712345678/invoices/' + hash(no + x.tid).toString(16) + hash(String(x.at)).toString(16);
+  modal('Share', `<div><label class="lbl">Invoice link</label><div style="display:flex;gap:8px"><input class="fld" id="inv-url" value="${url}" readonly><button class="btn" onclick="copyInvoice('${jsq(no)}')">Copy link</button></div>
+    <div class="help">Anyone with this link can view and pay for the draft order. The order is only created once it's paid.</div></div>`,
+    `<button class="btn" onclick="closeModal()">Done</button>`);
+}
+async function copyInvoice(no) {
+  const url = $('inv-url').value; const x = draftsAll().find(d => d.no === no);
+  try { await navigator.clipboard.writeText(url); } catch (e) {}
+  if (await logAction(x.tid, 'invoice', no, { url }, `Copied the invoice link for draft order ${no} to send to the customer to pay (draft stays unpaid until they pay)`)) { toast('Link copied'); route(); }
+}
+
+// Refund reasons (and gift card notes) from CW Essentials, GG Categories tab.
+const REFUND_REASONS = ['DISCONTINUED', 'PRE-ORDER', 'SUBSCRIPTIONS', 'MARKETING/DISCOUNT', 'UK DELIVERY ISSUES', 'INTERNATIONAL DELIVERY ISSUES', 'CUSTOMS INVOICE',
+  'RETURN: CONSUMABLE', 'RETURN: TECH (UNOPENED)', 'RETURN: TECH (OPEN)', 'FAULTY: TECH', 'FAULTY: CONSUMABLE', 'REFUND: OPENED CONSUMABLE', 'CANCEL ORDER',
+  'FRAUD', 'GXO', 'COMPLIANCE', 'GIFT', 'OUTBOUND'];
+// A gift card or discount belongs to a customer, so it is recorded against that customer's
+// ticket; with no customer chosen it goes against the ticket being worked on.
+function ownerTicket(tid) { return tid || ctxId; }
+
+// ── Gift cards (Products > Gift cards > Create gift card) ───────────────────
+function giftCardsAll() { return actions.filter(a => a.kind === 'gift_card').map(a => Object.assign({ at: new Date(a.created_at), tid: a.ticket_id }, a.detail)).sort((a, b) => b.at - a.at); }
+function viewGiftCards() {
+  bar({ icon: I.products, crumb: 'Gift cards', crumbHref: '#/gift_cards', acts: `<button class="btn off">Export</button><button class="btn dark keep" onclick="go('#/gift_cards/new')">Create gift card</button>` });
+  const list = giftCardsAll();
+  $('main').innerHTML = `<div class="wrap full"><div class="filter">${I.search}<input placeholder="Search and filter" disabled></div>
+    ${list.length ? `<table class="ix"><thead><tr><th>Code ending</th><th>Customer</th><th>Date issued</th><th>Expires</th><th class="num">Remaining / Initial</th></tr></thead><tbody>
+      ${list.map(g => { const t = tById(g.tid); return `<tr><td><b>•••• ${esc(g.code.slice(-4))}</b></td><td>${esc(t && g.customer ? t.customer_name : '—')}</td><td>${fmtList(g.at)}</td><td>${g.expires ? fmtDay(new Date(g.expires + 'T12:00:00')) : 'No expiration'}</td><td class="num">${shopMoney(g.value)} / ${shopMoney(g.value)}</td></tr>`; }).join('')}</tbody></table>`
+      : '<div class="empty">No gift cards issued yet.</div>'}</div>`;
+}
+let gcDraft = null;
+function viewNewGiftCard() {
+  const code = Array.from({ length: 16 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+  gcDraft = { code, value: '', expiry: 'none', expires: '', tid: ctxId, notify: true, note: '' };
+  drawGiftCard();
+}
+function drawGiftCard() {
+  const g = gcDraft, t = g.tid && tById(g.tid);
+  bar({ back: `go('#/gift_cards')`, icon: I.products, crumb: 'Gift cards', crumbHref: '#/gift_cards', cur: 'Create gift card' });
+  $('bar').querySelector('.cur').style.opacity = 1;
+  const inYear = new Date(); inYear.setFullYear(inYear.getFullYear() + 1);
+  $('main').innerHTML = `<div class="wrap"><div class="cols"><div>
+      <div class="ttl"><h1>Create gift card</h1></div><div style="height:10px"></div>
+      <div class="card cpad"><div style="font-weight:600;margin-bottom:10px">Gift card details</div>
+        <label class="lbl">Gift card code</label><input class="fld" id="gc-code" value="${esc(g.code)}" style="font-variant-numeric:tabular-nums;letter-spacing:.5px" oninput="gcDraft.code=this.value.toUpperCase().replace(/\s/g,'')">
+        <div class="help" style="margin-bottom:12px">Must be at least 8 characters, made of letters and numbers.</div>
+        <label class="lbl">Initial value</label><div class="qin" style="width:200px"><span style="margin:0 6px 0 0">£</span><input id="gc-val" type="number" min="0" step="0.01" value="${g.value}" style="width:100%" oninput="gcDraft.value=this.value"></div></div>
+      <div class="sec-h"><h2>Expiration date</h2></div>
+      <div class="card cpad"><label class="chk"><input type="radio" name="gc-exp" ${g.expiry === 'none' ? 'checked' : ''} onchange="gcDraft.expiry='none';drawGiftCard()"><span>No expiration date</span></label>
+        <label class="chk" style="margin-top:8px"><input type="radio" name="gc-exp" ${g.expiry === 'set' ? 'checked' : ''} onchange="gcDraft.expiry='set';gcDraft.expires=gcDraft.expires||'${inYear.toISOString().slice(0, 10)}';drawGiftCard()"><span>Set expiration date</span></label>
+        ${g.expiry === 'set' ? `<input class="fld" type="date" id="gc-date" value="${g.expires}" style="max-width:220px;margin-top:8px" onchange="gcDraft.expires=this.value">` : ''}
+        <div class="help" style="margin-top:8px">Countries have different laws for gift card expiry dates. Check the laws for your country before changing this date.</div></div>
+    </div><div class="side-col">
+      <div class="rs"><div class="rs-h">Customer${t ? '<button onclick="gcDraft.tid=null;drawGiftCard()" title="Remove customer">×</button>' : ''}</div>
+        ${t ? `<p><a href="#/customers/${t.id}">${esc(t.customer_name)}</a></p><p style="color:var(--ink-2)">${esc(t.customer_email)}</p>
+          <label class="chk" style="margin-top:10px"><input type="checkbox" ${g.notify ? 'checked' : ''} onchange="gcDraft.notify=this.checked"><span>Send gift card to customer by email</span></label>`
+          : `<div class="qin" style="width:100%">${I.search.replace('<svg', '<svg width="16" height="16" style="color:var(--ink-2);margin-right:6px"')}<input id="gc-cq" style="width:100%" placeholder="Search customers" oninput="gcCust(this.value)"></div><div class="pick" id="gc-cpick" style="margin-top:6px"></div>`}</div>
+      <div class="rs"><div class="rs-h">Internal notes</div><input class="fld" id="gc-note" list="refund-reasons-gc" value="${esc(g.note)}" oninput="gcDraft.note=this.value"><datalist id="refund-reasons-gc">${REFUND_REASONS.map(x => `<option value="${x}">`).join('')}</datalist><div class="help">Only staff can see these notes.</div></div>
+      <button class="btn dark" style="width:100%;justify-content:center;height:32px" onclick="doGiftCard()">Save</button>
+    </div></div></div>`;
+}
+function gcCust(q) {
+  q = q.trim().toLowerCase();
+  $('gc-cpick').innerHTML = q ? tickets.filter(t => (t.customer_name + ' ' + t.customer_email).toLowerCase().includes(q)).slice(0, 8).map(t => `<div class="li" onclick="gcDraft.tid=${t.id};drawGiftCard()"><div class="li-main"><div class="li-title">${esc(t.customer_name)}</div><div class="li-meta">${esc(t.customer_email)}</div></div></div>`).join('') : '';
+}
+async function doGiftCard() {
+  const g = gcDraft, t = g.tid && tById(g.tid), val = +(+g.value || 0).toFixed(2);
+  if (g.code.length < 8 || !/^[A-Z0-9]+$/.test(g.code)) { toast('Gift card code must be at least 8 letters and numbers'); return; }
+  if (val <= 0) { toast('Enter an initial value'); return; }
+  const tid = ownerTicket(t && t.id); if (!tid) { toast('Choose a customer for this gift card'); return; }
+  const d = { code: g.code, value: val, expires: g.expiry === 'set' ? g.expires : '', customer: !!t, notify: !!(t && g.notify), note: g.note.trim() };
+  const s = `Created gift card ending ${g.code.slice(-4)} worth ${shopMoney(val)} for ${t ? t.customer_name : 'no customer'}; expiry: ${d.expires ? fmtDay(new Date(d.expires + 'T12:00:00')) : 'none'}; emailed to customer: ${d.notify ? 'yes' : 'no'}; note: ${d.note || 'none'}`;
+  if (await logAction(tid, 'gift_card', null, d, s)) { toast('Gift card created'); go('#/gift_cards'); }
+}
+
+// ── Discounts (Discounts > Create discount > Amount off products) ───────────
+const DISCOUNT_COLLECTIONS = ['CW team - all items (excl OURA RING 5)', 'All products', 'Email discount codes - all items (excl OURA RING 5)', 'Healf Affiliates - all items (excl OURA RING 5)', 'Non Discounted Products', 'Subscription Products'];
+function discountsAll() { return actions.filter(a => a.kind === 'discount').map(a => Object.assign({ at: new Date(a.created_at), tid: a.ticket_id }, a.detail)).sort((a, b) => b.at - a.at); }
+function viewDiscounts() {
+  bar({ icon: '', crumb: 'Discounts', crumbHref: '#/discounts', acts: `<button class="btn off">Export</button><button class="btn dark keep" onclick="openDiscountType()">Create discount</button>` });
+  const list = discountsAll();
+  $('main').innerHTML = `<div class="wrap full"><div class="filter">${I.search}<input placeholder="Search and filter" disabled></div>
+    ${list.length ? `<table class="ix"><thead><tr><th>Title</th><th>Status</th><th>Method</th><th>Type</th><th class="num">Used</th></tr></thead><tbody>
+      ${list.map(x => `<tr><td><b>${esc(x.code)}</b><div style="color:var(--ink-2)">${esc(x.valueType === 'percent' ? x.value + '% off' : shopMoney(x.value) + ' off')} ${esc(x.appliesTo)}${x.minAmount ? ' · Minimum purchase of ' + shopMoney(x.minAmount) : ''}${x.oncePerCustomer ? ' · One use per customer' : ''}</div></td>
+        <td><span class="bdg green">Active</span></td><td>Code</td><td>Amount off products</td><td class="num">0</td></tr>`).join('')}</tbody></table>`
+      : '<div class="empty">No discounts yet. Create a discount code for a customer from here.</div>'}</div>`;
+}
+function openDiscountType() {
+  const opt = (k, t, sub) => `<div class="li" style="cursor:pointer;padding:12px 8px" onclick="${k === 'products' ? "closeModal();go('#/discounts/new')" : "toast('Only Amount off products is used by CW')"}"><div class="li-main"><div class="li-title">${t}</div><div class="li-meta">${sub}</div></div><span>${I.back.replace('<svg', '<svg style="transform:scaleX(-1)"')}</span></div>`;
+  modal('Select discount type', opt('products', 'Amount off products', 'Discount specific products or collections of products') + opt('bxgy', 'Buy X get Y', 'Discount products based on a customer’s purchase') +
+    opt('order', 'Amount off order', 'Discount the total order amount') + opt('ship', 'Free shipping', 'Offer free shipping on an order'), `<button class="btn" onclick="closeModal()">Cancel</button>`);
+}
+let dcDraft = null;
+function viewNewDiscount() {
+  const today = new Date().toISOString().slice(0, 10);
+  dcDraft = { method: 'code', code: '', valueType: 'percent', value: '', appliesTo: DISCOUNT_COLLECTIONS[0], purchase: 'one-time', minType: 'none', minAmount: '', minQty: '',
+              eligibility: 'all', tid: null, limitTotal: false, total: '', oncePerCustomer: false, start: today, setEnd: false, end: '' };
+  drawDiscount();
+}
+function drawDiscount() {
+  const d = dcDraft, t = d.tid && tById(d.tid);
+  bar({ back: `go('#/discounts')`, icon: '', crumb: 'Discounts', crumbHref: '#/discounts', cur: 'Create product discount' });
+  $('bar').querySelector('.cur').style.opacity = 1;
+  const radio = (name, val, label, extra) => `<label class="chk" style="margin-top:6px"><input type="radio" name="${name}" ${d[name] === val ? 'checked' : ''} onchange="dcDraft.${name}='${val}';drawDiscount()"><span>${label}</span></label>${d[name] === val && extra ? extra : ''}`;
+  const sum = [d.code || 'No discount code yet', d.value ? (d.valueType === 'percent' ? d.value + '% off ' : shopMoney(d.value) + ' off ') + d.appliesTo : '', d.purchase === 'both' ? 'For one-time and subscription purchases' : d.purchase === 'subscription' ? 'For subscription purchases' : 'For one-time purchases',
+    d.minType === 'amount' && d.minAmount ? 'Minimum purchase of ' + shopMoney(d.minAmount) : d.minType === 'qty' && d.minQty ? 'Minimum quantity of ' + d.minQty : 'No minimum purchase requirement',
+    d.eligibility === 'specific' ? (t ? 'For ' + t.customer_name : 'For specific customers') : 'All customers', d.oncePerCustomer ? 'One use per customer' : '', d.limitTotal && d.total ? 'Limit of ' + d.total + ' uses' : '', 'Active from ' + d.start].filter(Boolean);
+  $('main').innerHTML = `<div class="wrap"><div class="cols"><div>
+      <div class="ttl"><h1>Create product discount</h1></div><div style="height:10px"></div>
+      <div class="card cpad"><div style="display:flex;justify-content:space-between"><b style="font-weight:600">Amount off products</b><span style="color:var(--ink-2)">Product discount</span></div>
+        <div style="margin-top:10px;font-weight:550">Method</div>
+        <div style="display:flex;gap:6px;margin:6px 0 12px"><button class="btn ${d.method === 'code' ? 'grey' : ''}" onclick="dcDraft.method='code';drawDiscount()">Discount code</button><button class="btn ${d.method === 'auto' ? 'grey' : ''}" onclick="dcDraft.method='auto';drawDiscount()">Automatic discount</button></div>
+        <div style="display:flex;justify-content:space-between"><label class="lbl">${d.method === 'code' ? 'Discount code' : 'Title'}</label>${d.method === 'code' ? `<a class="lnk" onclick="dcDraft.code=Array.from({length:12},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');drawDiscount()">Generate random code</a>` : ''}</div>
+        <input class="fld" id="dc-code" value="${esc(d.code)}" oninput="dcDraft.code=this.value.toUpperCase()" onchange="drawDiscount()"><div class="help">Customers must enter this code at checkout.</div></div>
+      <div class="sec-h"><h2>Discount value</h2></div>
+      <div class="card cpad"><div style="display:flex;gap:8px"><select class="fld" style="max-width:200px" onchange="dcDraft.valueType=this.value;drawDiscount()"><option value="percent" ${d.valueType === 'percent' ? 'selected' : ''}>Percentage</option><option value="amount" ${d.valueType === 'amount' ? 'selected' : ''}>Fixed amount</option></select>
+        <div class="qin" style="width:160px"><input type="number" min="0" step="0.01" value="${d.value}" oninput="dcDraft.value=this.value" onchange="drawDiscount()" style="width:100%"><span>${d.valueType === 'percent' ? '%' : '£'}</span></div></div>
+        <label class="lbl" style="margin-top:12px">Applies to</label><select class="fld" onchange="dcDraft.appliesTo=this.value;drawDiscount()">${DISCOUNT_COLLECTIONS.map(c => `<option ${c === d.appliesTo ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+        <div class="help">Specific collections</div></div>
+      <div class="sec-h"><h2>Purchase type</h2></div>
+      <div class="card cpad">${radio('purchase', 'one-time', 'One-time purchase')}${radio('purchase', 'subscription', 'Subscription')}${radio('purchase', 'both', 'Both')}</div>
+      <div class="sec-h"><h2>Minimum purchase requirements</h2></div>
+      <div class="card cpad">${radio('minType', 'none', 'No minimum requirements')}${radio('minType', 'amount', 'Minimum purchase amount (£)', `<div class="qin" style="width:180px;margin:6px 0 0 24px"><span style="margin:0 6px 0 0">£</span><input type="number" min="0" value="${d.minAmount}" oninput="dcDraft.minAmount=this.value" style="width:100%"></div>`)}${radio('minType', 'qty', 'Minimum quantity of items', `<div class="qin" style="width:120px;margin:6px 0 0 24px"><input type="number" min="1" value="${d.minQty}" oninput="dcDraft.minQty=this.value"></div>`)}</div>
+      <div class="sec-h"><h2>Customer eligibility</h2></div>
+      <div class="card cpad">${radio('eligibility', 'all', 'All customers')}${radio('eligibility', 'segments', 'Specific customer segments')}${radio('eligibility', 'specific', 'Specific customers',
+        t ? `<div style="margin:8px 0 0 24px" class="chips"><span class="chip">${esc(t.customer_name)} · ${esc(t.customer_email)}<button onclick="dcDraft.tid=null;drawDiscount()">×</button></span></div>`
+          : `<div class="qin" style="width:calc(100% - 24px);margin:8px 0 0 24px">${I.search.replace('<svg', '<svg width="14" height="14" style="color:var(--ink-2);margin-right:6px"')}<input id="dc-cq" style="width:100%" placeholder="Search customers" oninput="dcCust(this.value)"></div><div class="pick" id="dc-cpick" style="margin:6px 0 0 24px"></div>`)}</div>
+      <div class="sec-h"><h2>Maximum discount uses</h2></div>
+      <div class="card cpad"><label class="chk"><input type="checkbox" ${d.limitTotal ? 'checked' : ''} onchange="dcDraft.limitTotal=this.checked;drawDiscount()"><span>Limit number of times this discount can be used in total</span></label>
+        ${d.limitTotal ? `<div class="qin" style="width:120px;margin:6px 0 0 24px"><input type="number" min="1" value="${d.total}" oninput="dcDraft.total=this.value"></div>` : ''}
+        <label class="chk" style="margin-top:8px"><input type="checkbox" ${d.oncePerCustomer ? 'checked' : ''} onchange="dcDraft.oncePerCustomer=this.checked;drawDiscount()"><span>Limit to one use per customer</span></label></div>
+      <div class="sec-h"><h2>Active dates</h2></div>
+      <div class="card cpad"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label class="lbl">Start date</label><input class="fld" type="date" value="${d.start}" onchange="dcDraft.start=this.value"></div></div>
+        <label class="chk" style="margin-top:10px"><input type="checkbox" ${d.setEnd ? 'checked' : ''} onchange="dcDraft.setEnd=this.checked;drawDiscount()"><span>Set end date</span></label>
+        ${d.setEnd ? `<input class="fld" type="date" value="${d.end}" style="max-width:220px;margin-top:6px" onchange="dcDraft.end=this.value">` : ''}</div>
+    </div><div class="side-col">
+      <div class="rs"><div class="rs-h">Summary</div>${sum.map(x => `<p style="margin-bottom:4px">• ${esc(x)}</p>`).join('')}</div>
+      <button class="btn dark" style="width:100%;justify-content:center;height:32px" onclick="doDiscount()">Save discount</button>
+    </div></div></div>`;
+}
+function dcCust(q) {
+  q = q.trim().toLowerCase();
+  $('dc-cpick').innerHTML = q ? tickets.filter(t => (t.customer_name + ' ' + t.customer_email).toLowerCase().includes(q)).slice(0, 8).map(t => `<div class="li" onclick="dcDraft.tid=${t.id};drawDiscount()"><div class="li-main"><div class="li-title">${esc(t.customer_name)}</div><div class="li-meta">${esc(t.customer_email)}</div></div></div>`).join('') : '';
+}
+async function doDiscount() {
+  const d = dcDraft, t = d.tid && tById(d.tid);
+  if (!d.code.trim()) { toast('Enter a discount code'); return; }
+  if (!(+d.value > 0)) { toast('Enter a discount value'); return; }
+  const tid = ownerTicket(d.eligibility === 'specific' && t ? t.id : null); if (!tid) { toast('Open a ticket, or choose the specific customer this code is for'); return; }
+  const rec = { code: d.code.trim(), method: d.method, valueType: d.valueType, value: +d.value, appliesTo: d.appliesTo, purchase: d.purchase, minAmount: d.minType === 'amount' ? +d.minAmount || 0 : 0,
+    minQty: d.minType === 'qty' ? +d.minQty || 0 : 0, eligibility: d.eligibility, customer: d.eligibility === 'specific' && t ? t.customer_email : null, oncePerCustomer: d.oncePerCustomer,
+    totalLimit: d.limitTotal ? +d.total || 0 : 0, start: d.start, end: d.setEnd ? d.end : '' };
+  const s = `Created discount code ${rec.code}: ${rec.valueType === 'percent' ? rec.value + '%' : shopMoney(rec.value)} off ${rec.appliesTo}; purchase type: ${rec.purchase}; minimum: ${rec.minAmount ? shopMoney(rec.minAmount) : rec.minQty ? rec.minQty + ' items' : 'none'}; eligibility: ${rec.eligibility === 'specific' ? 'specific customer ' + (t ? t.customer_name + ' (' + t.customer_email + ')' : '(none chosen)') : rec.eligibility}; one use per customer: ${rec.oncePerCustomer ? 'yes' : 'no'}; total limit: ${rec.totalLimit || 'none'}; active ${rec.start}${rec.end ? ' to ' + rec.end : ''}`;
+  if (await logAction(tid, 'discount', null, rec, s)) { toast('Discount created'); go('#/discounts'); }
 }
 
 // ── Customers ─────────────────────────────────────────────────────────────
@@ -1218,7 +1598,7 @@ function viewCustomers() {
 }
 function drawCustomers() {
   const q = custQ.trim().toLowerCase();
-  const list = tickets.filter(t => !q || (t.customer_name + ' ' + t.customer_email).toLowerCase().includes(q)).sort((a, b) => a.customer_name.localeCompare(b.customer_name));
+  const list = tickets.filter(t => !q || q.split(/\s+/).every(w => custHaystack(t).includes(w))).sort((a, b) => a.customer_name.localeCompare(b.customer_name));
   $('main').innerHTML = `<div class="wrap full">
     <div class="filter">${I.search}<input id="cq" placeholder="Search customers" value="${esc(custQ)}" oninput="custQ=this.value;const p=this.selectionStart;drawCustomers();$('cq').focus();$('cq').setSelectionRange(p,p)">${I.cols}</div>
     <div style="overflow-x:auto"><table class="ix"><thead><tr><th class="ck"><span></span></th><th>Customer name</th><th>Email subscription</th><th class="hide-sm">Location</th><th class="hide-sm">Email</th><th class="num">Orders</th><th class="num">Amount spent</th></tr></thead><tbody>
@@ -1317,9 +1697,9 @@ async function viewProduct(id) {
         acts: `<button class="btn off">View</button><button class="btn off">Share ${I.caret}</button><button class="btn off">More actions ${I.caret}</button>` });
   if (!p) { $('main').innerHTML = '<div class="wrap"><div class="empty">This product couldn’t be found.</div></div>'; return; }
   const s = stockFor(p, ctxId);
-  const vs = p.variants || [];
+  const vs = variantsFor(p);
   const single = vs.length === 1 && isDefault(vs[0]);
-  const optVals = vs.map(v => v.title).filter(x => x && x !== 'Default Title');
+  const optVals = [...new Set(vs.map(v => v.title).filter(x => x && x !== 'Default Title'))];
   const img = u => u ? `style="background-image:url('${esc(imgUrl(u, 600))}')"` : '';
   // A product with options lists its variants, and the stock for each lives on the variant's
   // own page (SOP step 5). A product with no options shows Price and Inventory right here.
@@ -1364,7 +1744,7 @@ async function viewProduct(id) {
 async function viewVariant(pid, vid) {
   await loadProducts([pid]);
   const p = productCache[String(pid)];
-  const vs = (p && p.variants) || [];
+  const vs = p ? variantsFor(p) : [];
   const v = vs.find(x => String(x.id) === String(vid)) || vs[0];
   bar({ back: `go('#/products/${pid}')`, icon: I.products, crumb: 'Products', crumbHref: '#/products', cur: p ? p.title + (v && !isDefault(v) ? ' / ' + v.title : '') : '',
         acts: `<button class="btn off">Actions ${I.caret}</button>` });
@@ -1406,8 +1786,8 @@ function openPalette() {
 }
 async function paletteSearch() {
   const q = $('pal-q').value.trim().toLowerCase(); if (!q) { $('pal-res').innerHTML = ''; return; }
-  const ords = allOrders().filter(o => { const t = tById(o.ticketId); return (o.number + ' ' + t.customer_name + ' ' + t.customer_email).toLowerCase().includes(q); }).slice(0, 6);
-  const custs = tickets.filter(t => (t.customer_name + ' ' + t.customer_email).toLowerCase().includes(q)).slice(0, 5);
+  const ords = allOrders().filter(o => q.split(/\s+/).every(w => orderHaystack(o).includes(w))).slice(0, 6);
+  const custs = tickets.filter(t => q.split(/\s+/).every(w => custHaystack(t).includes(w))).slice(0, 5);
   const prods = await productSearch(q, 6);
   if (!$('pal-res')) return;
   const it = (h, icon, a, b) => `<div class="pal-i" onclick="closeModal();go('${h}')">${icon.replace('<svg', '<svg width="16" height="16" style="color:var(--ink-2)"')}<span>${a}</span><span class="s">${b}</span></div>`;

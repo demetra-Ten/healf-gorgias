@@ -12,6 +12,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // A ticket preview opened from the admin panel reads with the admin's own sign-in.
+  if (new URLSearchParams(location.search).has('preview')) window.SUPABASE_STORAGE_KEY = 'healf-admin-auth';
+</script>
 <script src="supabase.js"></script>
 <script src="sim-shared.js"></script>
 <style>
@@ -1002,7 +1006,7 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
         <div class="pm-divider"></div>
         <div class="pm-row" onclick="startTour('list', true)">Replay the walkthrough</div>
         <div class="pm-row" onclick="openShopify('#/orders')">Open the Shopify simulator</div>
-        <div class="pm-row" onclick="location.href='library.html'">All training tools</div>
+        <div class="pm-row" onclick="window.open('library.html','healf-library')">All training tools</div>
         <div class="pm-divider"></div>
         <div class="pm-row pm-signout" onclick="signOut()">Sign out</div>
       </div>

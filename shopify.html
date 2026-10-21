@@ -1197,7 +1197,9 @@ async function doCreate() {
   draft.note = $('co-note').value.trim();
   if (!draft.shipName) { draft.shipName = SHIP_OPTS[0][0]; draft.shipping = 0; }
   const tt = draftTotals();
-  const number = '#H-' + (3000000 + Math.floor(Math.random() * 900000));
+  // Training orders live in their own range (#H-97xxxxx–#H-99xxxxx): above every real Healf
+  // order and above the ticket orders (#H-91xxxxx–#H-95xxxxx), so a number never matches either.
+  const number = '#H-' + (9700000 + Math.floor(Math.random() * 300000));
   const d = { lines: draft.lines, discount_amount: tt.disc, discount_reason: draft.discountReason, shipping: draft.shipping, shipping_name: draft.shipName,
               tags: draft.tags, note: draft.note, address: custAddress(t).lines, from: draft.from };
   const s = `Created Manual Order ${number} for ${t.customer_name}${draft.from ? ' (duplicated from ' + draft.from + ')' : ''} — ` +

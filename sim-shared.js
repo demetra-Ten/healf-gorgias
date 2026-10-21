@@ -91,7 +91,7 @@ function parseOrders(ticket) {
       // number and value. (Status is left as stored: it drives the badge trainees see.)
       if (!o.number && i === 0 && ticket.order_number) { o.number = ticket.order_number; o.value = o.value || ticket.order_value || ''; }
       // Real orders always have a number and the Shopify sim finds orders by it.
-      if (!o.number) o.number = '#H-' + (2100000 + ((Number(ticket.id) || 0) * 97 + i * 7919) % 99991);
+      if (!o.number) o.number = '#H-' + (9600000 + ((Number(ticket.id) || 0) * 97 + i * 7919) % 99991);   // fake range, see shopify.html
       return o;
     });
   }

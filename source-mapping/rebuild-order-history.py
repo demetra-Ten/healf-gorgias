@@ -4,6 +4,20 @@ SB=os.environ.get("SUPABASE_URL","https://imtapqvlfjcnyrsmpatg.supabase.co")
 # Never hardcode the key. Export it before running:  export SUPABASE_SECRET_KEY=...
 K=os.environ["SUPABASE_SECRET_KEY"]
 def hdr(): return {'apikey':K,'Authorization':'Bearer '+K}
+
+# Real Healf order numbers never go into the sim (2026-10-21). Every real number pulled from
+# Gorgias is swapped for its fake one from order-number-map.json (git-ignored); an unseen one
+# gets the next free fake in #H-91xxxxx-#H-95xxxxx and the map is saved.
+MAP_FILE=os.path.join(os.path.dirname(os.path.abspath(__file__)),'order-number-map.json')
+NUMS=json.load(open(MAP_FILE)) if os.path.exists(MAP_FILE) else {}
+def fake_number(real):
+    real='#H-'+re.sub(r'\D','',str(real or ''))
+    if real in NUMS: return NUMS[real]
+    nxt=max([int(v[3:]) for v in NUMS.values()] + [9104000]) + 1 + len(NUMS) % 997
+    assert nxt < 9600000, 'fake ticket-order range used up'
+    NUMS[real]='#H-%d' % nxt
+    json.dump(NUMS, open(MAP_FILE,'w'), indent=0)
+    return NUMS[real]
 def sim(tid):
     r=urllib.request.Request(SB+"/rest/v1/tickets?select=*&id=eq.%d"%tid, headers=hdr())
     return json.load(urllib.request.urlopen(r))[0]
@@ -27,7 +41,7 @@ def build(orders, cutoff, keep=5):
     blocks=[]
     for dt,o in ok:
         st=(o.get('fulfillment_status') or 'unfulfilled')
-        blocks.append("@@ORDER|%s|£%s|%s|%s" % (o.get('name'), o.get('total_price'), st, dt.strftime('%d/%m/%Y')))
+        blocks.append("@@ORDER|%s|£%s|%s|%s" % (fake_number(o.get('name')), o.get('total_price'), st, dt.strftime('%d/%m/%Y')))
         for l in (o.get('line_items') or []):
             title=l.get('title') or ''
             vt=l.get('variant_title')
@@ -52,7 +66,7 @@ for l in items.splitlines():
 if apply:
     body={'order_items':items}
     if top:
-        body['order_number']=top.get('name')
+        body['order_number']=fake_number(top.get('name'))
         body['order_value']='£%s' % top.get('total_price')
         body['order_status']=top.get('fulfillment_status') or 'unfulfilled'
     req=urllib.request.Request(SB+"/rest/v1/tickets?id=eq.%d"%tid, data=json.dumps(body).encode(),

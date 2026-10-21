@@ -11,3 +11,5 @@ co-*.json
 # Per-ticket stock state for the Shopify sim — its notes quote the hidden ideal answers.
 source-mapping/ticket-stock*.json
 source-mapping/catalogue*.json
+# Real -> fake order numbers (2026-10-21). Real numbers must never be published.
+source-mapping/order-number-map.json

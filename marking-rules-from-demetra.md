@@ -105,7 +105,7 @@ done. Judge only on information visible on the ticket.
 ## Ticket data fixes from the same feedback
 
 - **Ticket 163 (Clive Denton)** — REVERTED 2026-09-01. A second order was briefly added,
-  but the real customer has only ONE Shopify order (`#H-1852082`, 03/02/2026, £31.04,
+  but the real customer has only ONE Shopify order (`#H-9149467`, 03/02/2026, £31.04,
   fulfilled) and Demetra marked the ticket on exactly that basis — the customer had already
   cancelled the subscription under this account. Ticket now shows that single real order,
   with the real message date (11/05/2026 from source ticket 262633886).

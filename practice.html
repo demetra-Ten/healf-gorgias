@@ -656,6 +656,7 @@ html[data-theme="dark"] .co-mode-hint { color: #a3a19e; }
 .order-ship-title { font-size:12px; font-weight:700; color:#1b1c1d; margin-bottom:8px; }
 .ship-link { color:#644b9e; font-size:11px; text-decoration:none; word-break:break-all; }
 .ship-link:hover { text-decoration:underline; }
+.ship-url { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1; }
 .ship-code { text-align:right; max-width:180px; font-size:11px; }
 .ship-addr { font-size:12px; color:#474646; line-height:1.65; }
 html[data-theme="dark"] .order-ship { border-top-color:#2e2e2e; }
@@ -3091,6 +3092,7 @@ function orderBoxHtml(o, open, extra, ticket) {
           ${o.value ? `<div class="order-total"><span>Total</span><span>${o.value}</span></div>` : ''}
           <div class="cs-frow"><span class="cs-flabel">Created at</span><span class="cs-fval">${o.date || '\u2014'}</span></div>
           <div class="cs-frow"><span class="cs-flabel">Refunds</span><span class="cs-fval">${so && so.refunded ? '\u2212' + shopMoney(so.refunded) : '\u2014'}</span></div>
+          ${orderSectionsHtml(ticket, so)}
           ${extra || ''}
         </div>
       </div>`;
@@ -3289,23 +3291,29 @@ function rechargePanelHtml(ticket) {
 }
 
 // Shipping + Shipping address block rendered INSIDE the Shopify order box (UK Delivery tickets).
+// The sections real Gorgias shows under a Shopify order: Metafields, then Fulfillments
+// (tracking url + number, once anything has shipped), then Shipping lines. The tracking
+// url opens the sim's courier tracking page — the same tracking the Shopify sim shows.
+function orderSectionsHtml(t, so) {
+  if (!so) return '';
+  const cf = (title, body) => `<button class="cs-cf" onclick="toggleCustomerFields(this)">${ICONS.chev} ${title}</button><div class="cs-cf-body">${body}</div>`;
+  const shipped = so.lines.some(l => l.fulfilled && !l.removed);
+  const tr = shipped ? buildTracking(t, so) : null;
+  const late = tr && /^late_/.test(tr.code) && Number(t.category_id) === 6;
+  const shipName = so.shipName || (so.shipping || late ? 'Next Working Day Shipping (for orders placed before 12pm)' : 'Free Shipping (2-3 Working Days)');
+  const shipPrice = so.shipping || (late ? 5.99 : 0);
+  const full = tr ? 'https://' + tr.url.replace(/^https?:\/\//, '').replace(/^royalmail\.com/, 'www.royalmail.com').replace(/^fedex\.com/, 'www.fedex.com') : '';
+  return cf('Metafields', '<div class="sp-empty">Order has no metafields populated.</div>') +
+    (tr ? cf('Fulfillments', `
+      <div class="cs-frow"><span class="cs-flabel">Tracking url</span><span class="cs-fval" style="display:flex;align-items:center;gap:4px;min-width:0"><a class="cs-link ship-url" href="${trackingHref(t, so)}" target="_blank" rel="noopener" title="${full}">${full}</a>${ICONS.ext}</span></div>
+      <div class="cs-frow"><span class="cs-flabel">Tracking number</span><span class="cs-fval" style="overflow:visible;text-overflow:clip;white-space:nowrap;font-variant-numeric:tabular-nums">${tr.num}</span></div>`) : '') +
+    cf('Shipping lines', `
+      <div class="cs-frow"><span class="cs-flabel">Title</span><span class="cs-fval">${shipName}</span></div>
+      <div class="cs-frow"><span class="cs-flabel">Price</span><span class="cs-fval">${shopMoney(shipPrice)}</span></div>`);
+}
 function shippingBlockHtml(t, o) {
-  // Same tracking as the Shopify sim and the tracking page; the link opens that page.
-  const tr = buildTracking(t, o);
   const a = custAddress(t);
-  const late = /^late_/.test(tr.code);
-  const cost = late ? '£5.99' : 'Free';
-  const code = late ? 'Next Working Day Shipping (for orders placed before 12pm)' : 'Standard Tracked 24 Shipping';
-  const short = tr.carrier === 'Amazon Shipping' ? 'track.amazon.co.uk/…' : tr.carrier === 'FedEx' ? 'fedex.com/fedextrack…' : 'royalmail.com/track…';
   return `
-    <div class="order-ship">
-      <div class="order-ship-title">Shipping</div>
-      <div class="cs-row"><span class="cs-label">Shipment status</span><span class="track-status ${tr.tone}">${tr.headline.s}</span></div>
-      <div class="cs-row"><span class="cs-label">Tracking url</span><a class="ship-link" href="${trackingHref(t, o)}" target="_blank" rel="noopener" title="Open ${tr.carrier} tracking">${short}</a></div>
-      <div class="cs-row"><span class="cs-label">Tracking number</span><span class="cs-value" style="font-size:11px">${tr.num}</span></div>
-      <div class="cs-row"><span class="cs-label">Shipping cost</span><span class="cs-value">${cost}</span></div>
-      <div class="cs-row"><span class="cs-label">Code</span><span class="cs-value ship-code">${code}</span></div>
-    </div>
     <div class="order-ship">
       <div class="order-ship-title">Shipping address</div>
       <div class="ship-addr">${a.lines.join('<br>')}</div>

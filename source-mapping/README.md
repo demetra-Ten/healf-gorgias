@@ -10,7 +10,7 @@ Filter col C for `Subscription:`.
 
 **Matching method:** the sim reused the REAL Gorgias `subject` (only the customer
 name was scrubbed), so subject matches source. Strongest signal is an order number
-inside the subject — 140 (#H-2533487), 152 (#H-2553151) and 147 (#H-2470138) match
+inside the subject — 140 (#H-9472023), 152 (#H-9485814) and 147 (#H-9425448) match
 exactly, which validates the method.
 
 **Fetching:** `get_ticket(id, include_messages=false, with_customer=false)` returns

@@ -1099,7 +1099,7 @@ function shopifyHref(hash) { return 'shopify.html?t=' + (activeTicketId || '') +
 const SHOP_STOCK_SAY = {
   in_stock: 'IN STOCK (Available above 0)',
   out_of_stock: 'OUT OF STOCK (Available 0, Sell when out of stock Off, no pre-order date)',
-  preorder: 'PRE-ORDER (Available 0 or below, Sell when out of stock On)',
+  preorder: 'PRE-ORDER (Available 0, Sell when out of stock On)',
   discontinued: 'DISCONTINUED (Available 0, selling Off, discontinued SKU:variant True)'
 };
 async function shopStockText(ticketId) {

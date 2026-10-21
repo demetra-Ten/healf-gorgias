@@ -482,8 +482,8 @@ function stockFor(p, tid) {
 // ── Inventory, as Shopify shows it on a variant ─────────────────────────────
 // Nothing on an order or a product list says "pre-order": the trainee finds it the way the
 // Trainual SOP (Stock Level Monitoring) teaches — Products > product > variant > Inventory
-// box. There, as on Healf's live admin, a pre-order variant has Available below zero (more
-// committed than on hand) with "Sell when out of stock" On, and its date sits in the
+// box. There, as on Healf's live admin, a pre-order variant has Available at or below zero
+// (as much or more committed than on hand) with "Sell when out of stock" On, and its date sits in the
 // variant's Preorder metafield. Out of stock = 0 everywhere with selling switched off.
 // The source feed has no quantities, so counts are stable stand-ins that fit each state.
 const INV_LOCS = ['Active Ants (NL)', 'Dropship', 'PFS Fulfillment Service'];
@@ -497,7 +497,12 @@ function inv(p, v, s) {
   const k = hash((v && v.id) || p.id);
   const st = s.dated ? s.state : p.status === 'archived' ? 'discontinued' : p.preorder ? 'preorder' : (v && v.available === false ? 'out_of_stock' : 'in_stock');
   if (st === 'in_stock') { const committed = k % 7, available = 6 + k % 214; return { state: st, unavailable: 0, committed, available, onHand: available + committed, sellOOS: false, date: '' }; }
-  if (st === 'preorder') { const onHand = k % 30, short = 1 + k % 24; return { state: st, unavailable: 0, committed: onHand + short, available: -short, onHand, sellOOS: true, date: preorderDate(s) }; }
+  // A pre-order can read 0 or below zero; what marks it out from plain out of stock is
+  // "Sell when out of stock" On and a date in the Preorder metafield.
+  if (st === 'preorder') {
+    const onHand = k % 30, short = k % 3 === 0 ? 0 : 1 + k % 24;
+    return { state: st, unavailable: 0, committed: onHand + short, available: -short, onHand, sellOOS: true, date: preorderDate(s) };
+  }
   return { state: st, unavailable: 0, committed: 0, available: 0, onHand: 0, sellOOS: false, date: '', discontinued: st === 'discontinued' };
 }
 function availQty(p, v, s) { return inv(p, v, s).available; }

@@ -61,7 +61,6 @@ function spCustomerTags(ticket, orders) {
 function spOrderTags(ticket, o) {
   const t = ['UK'];
   if (Number(ticket.category_id) === 5) t.push('Subscription');
-  if (/pre-?order/i.test(o.items || '')) t.push('Pre-order');
   return t;
 }
 

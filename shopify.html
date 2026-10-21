@@ -252,6 +252,15 @@ select.fld { appearance: none; background: #fdfdfd url("data:image/svg+xml,%3Csv
 .mf + .mf { border-top: 1px solid var(--line-2); }
 .mf .k { color: var(--ink); } .mf .v { color: var(--ink); }
 .fakesel { height: 32px; border: 1px solid #8a8a8a; border-radius: 8px; display: flex; align-items: center; padding: 0 10px; background: #fdfdfd; justify-content: space-between; }
+.tog { width: 30px; height: 16px; border-radius: 8px; background: #e3e3e3; position: relative; display: inline-block; }
+.tog.on { background: #e3e3e3; } .tog::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.tf { display: inline-flex; border: 1px solid var(--line-2); border-radius: 999px; overflow: hidden; }
+.tf span { padding: 2px 14px; color: var(--ink-3); font-size: 12.5px; } .tf span.sel { background: var(--chip); color: var(--ink); font-weight: 550; }
+.dot-u { border-bottom: 2px dotted var(--line); }
+.vgrid { display: grid; grid-template-columns: 220px minmax(0, 600px); gap: 12px; justify-content: center; align-items: start; }
+.vlist .vi { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.vlist .vi:hover { background: var(--soft); } .vlist .vi.on { background: var(--soft-2); font-weight: 550; }
+@media (max-width: 900px) { .vgrid { grid-template-columns: 1fr; } }
 .coll { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: flex; flex-wrap: wrap; gap: 4px; max-height: 200px; overflow-y: auto; }
 
 /* customer page */
@@ -447,7 +456,7 @@ function custTags(t) { return spCustomerTags(t, parseOrders(t)); }
 function channelOf(o, t) { return o.manual ? 'Draft Orders' : Number(t.category_id) === 5 ? 'Recharge Subscriptions' : 'Healf Headless'; }
 // The order tags Healf actually uses, in place of the sim's plain-English ones.
 function orderTags(o, t) {
-  const map = { 'Pre-order': 'Preorderorder', 'Subscription': 'Subscription Recurring Order' };
+  const map = { 'Subscription': 'Subscription Recurring Order' };
   const out = [];
   o.tags.forEach(x => { const y = map[x] || x; if (out.indexOf(y) === -1) out.push(y); });
   if (Number(t.category_id) === 5 && !o.manual && out.indexOf('Subscription') === -1) out.unshift('Subscription');
@@ -470,21 +479,59 @@ function stockFor(p, tid) {
   if (p.preorder) return { state: 'preorder' };
   return { state: (p.variants || []).some(v => v.available) ? 'in_stock' : 'out_of_stock' };
 }
-// Shopify shows a number in "Available". The source feed only says in/out of stock, so an
-// in-stock variant gets a stable stand-in count; anything not sellable is 0, as on Shopify.
-function availQty(p, v, s) {
-  if (s.state !== 'in_stock') return 0;
-  if (!s.dated && v && v.available === false) return 0;
-  return 6 + hash((v && v.id) || p.id) % 214;
+// ── Inventory, as Shopify shows it on a variant ─────────────────────────────
+// Nothing on an order or a product list says "pre-order": the trainee finds it the way the
+// Trainual SOP (Stock Level Monitoring) teaches — Products > product > variant > Inventory
+// box. There, as on Healf's live admin, a pre-order variant has Available below zero (more
+// committed than on hand) with "Sell when out of stock" On, and its date sits in the
+// variant's Preorder metafield. Out of stock = 0 everywhere with selling switched off.
+// The source feed has no quantities, so counts are stable stand-ins that fit each state.
+const INV_LOCS = ['Active Ants (NL)', 'Dropship', 'PFS Fulfillment Service'];
+function preorderDate(s) {
+  const m = String((s && s.eta) || '').match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  if (!m) return '';
+  const d = new Date(m[1] + ' ' + m[2] + ' ' + m[3]);
+  return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+function inv(p, v, s) {
+  const k = hash((v && v.id) || p.id);
+  const st = s.dated ? s.state : p.status === 'archived' ? 'discontinued' : p.preorder ? 'preorder' : (v && v.available === false ? 'out_of_stock' : 'in_stock');
+  if (st === 'in_stock') { const committed = k % 7, available = 6 + k % 214; return { state: st, unavailable: 0, committed, available, onHand: available + committed, sellOOS: false, date: '' }; }
+  if (st === 'preorder') { const onHand = k % 30, short = 1 + k % 24; return { state: st, unavailable: 0, committed: onHand + short, available: -short, onHand, sellOOS: true, date: preorderDate(s) }; }
+  return { state: st, unavailable: 0, committed: 0, available: 0, onHand: 0, sellOOS: false, date: '', discontinued: st === 'discontinued' };
+}
+function availQty(p, v, s) { return inv(p, v, s).available; }
 function invText(p, s) {
   const vs = p.variants || [];
   const n = vs.reduce((a, v) => a + availQty(p, v, s), 0);
-  return `<span class="stockline${n ? '' : ' zero'}">${n} in stock${vs.length > 1 ? ' for ' + vs.length + ' variants' : ''}</span>`;
+  return `<span class="stockline${n > 0 ? '' : ' zero'}">${n} in stock${vs.length > 1 ? ' for ' + vs.length + ' variants' : ''}</span>`;
 }
-function stockChip(s) {
-  const m = { in_stock: '', out_of_stock: '<span class="bdg red">Out of stock</span>', preorder: '<span class="bdg blue">Pre-order</span>', discontinued: '<span class="bdg">Discontinued</span>' }[s.state];
-  return m || '';
+const isDefault = v => !v || !v.title || v.title === 'Default Title';
+function variantHref(pid, vid) { return '#/products/' + pid + (vid ? '/variants/' + vid : ''); }
+function invCard(p, v, s) {
+  const n = inv(p, v, s);
+  const row = (name, custom, u, c, a, h) => `<tr><td>${custom ? '<span class="chip" style="margin-right:6px">Custom</span>' : ''}${name}</td><td class="num">${u}</td><td class="num">${c}</td><td class="num">${a}</td><td class="num">${h}</td></tr>`;
+  return `<div class="card" style="overflow:hidden">
+    <div class="cpad" style="display:flex;align-items:center"><b style="font-weight:600">Inventory</b><span style="margin-left:auto;color:var(--ink-2);font-size:12px;display:flex;align-items:center;gap:8px">Inventory tracked <span class="tog on"></span></span></div>
+    <div style="margin:0 12px;border:1px solid var(--line);border-radius:12px;overflow:hidden">
+      <div style="display:flex;gap:4px;padding:8px"><span class="btn grey" style="height:26px">All</span><span class="btn" style="height:26px;border:none;box-shadow:none">Incoming</span></div>
+      <div style="padding:0 8px"><table class="ix"><thead><tr><th>Locations</th><th class="num"><span class="dot-u">Unavailable</span></th><th class="num"><span class="dot-u">Committed</span></th><th class="num"><span class="dot-u">Available</span></th><th class="num"><span class="dot-u">On hand</span></th></tr></thead><tbody>
+        ${row(INV_LOCS[0], false, 0, 0, 0, 0)}${row(INV_LOCS[1], false, 0, 0, 0, 0)}${row(INV_LOCS[2], true, n.unavailable, n.committed, n.available, n.onHand)}
+        <tr><td><b>Total</b></td><td class="num"><b>${n.unavailable}</b></td><td class="num"><b>${n.committed}</b></td><td class="num"><b>${n.available}</b></td><td class="num"><b>${n.onHand}</b></td></tr></tbody></table></div>
+      <div style="background:var(--soft);padding:10px 14px;border-top:1px solid var(--line-2)"><a href="#" onclick="toast('Adjustment history is not part of the training store');return false" style="color:var(--ink);text-decoration:underline">View adjustment history</a></div>
+    </div>
+    <div class="cpad chips" style="gap:8px">${v && v.sku ? `<span class="chip" style="padding:2px 8px">SKU <b style="font-weight:500;background:#e0e0e0;border-radius:5px;padding:0 6px">${esc(v.sku)}</b></span>` : ''}
+      <span class="chip" style="padding:2px 8px">Sell when out of stock <b style="font-weight:500;background:#e0e0e0;border-radius:5px;padding:0 6px">${n.sellOOS ? 'On' : 'Off'}</b></span></div>
+  </div>`;
+}
+function variantMetafields(p, v, s) {
+  const n = inv(p, v, s);
+  const tf = on => `<span class="tf"><span${on === false ? ' class="sel"' : ''}>False</span><span${on === true ? ' class="sel"' : ''}>True</span></span>`;
+  const rows = [['FR TON', ''], ['Active Ants SKU', ''], ['LOT number', 'Y'], ['Expiry Threshold', '60'], ['Organic', ''], ['High Value', ''], ['Chilled SKU', ''],
+    ['Fragile SKU', tf(null)], ['Preorder', n.date ? `<span style="display:inline-flex;align-items:center;gap:6px">${I.cal.replace('<svg', '<svg width="15" height="15" style="color:var(--ink-2)"')}${esc(n.date)}</span>` : ''],
+    ['Preorder Override', tf(null)], ['Servings per container', ''], ['en-uk price (£)', v ? '# ' + (s.price != null ? Number(s.price) : v.price) : ''],
+    ['EU5_preorder_date', ''], ['double_up_eligible', tf(null)], ['discontinued SKU:variant', tf(n.discontinued ? true : null)], ['activepreorderdate', '']];
+  return `<div class="card" style="padding:6px 0">${rows.map(([k, val]) => `<div class="mf" style="grid-template-columns:180px 1fr"><span class="k">${k}</span><span class="v">${val}</span></div>`).join('')}</div>`;
 }
 
 function payBadge(o) {
@@ -581,6 +628,7 @@ function route() {
   if (sec === 'customers' && parts[1]) return viewCustomer(Number(parts[1]));
   if (sec === 'customers') return viewCustomers();
   if (sec === 'line') return openLine(Number(parts[1]), parts[2] || '');
+  if (sec === 'products' && parts[1] && parts[2] === 'variants') return viewVariant(parts[1], parts[3]);
   if (sec === 'products' && parts[1]) return viewProduct(parts[1]);
   if (sec === 'products') return viewProducts();
   return viewOrders(null);
@@ -657,7 +705,7 @@ function lineHtml(t, l, i, opts) {
   const sku = v ? v.sku : '';
   return `<div class="li${l.removed ? ' gone' : ''}">
     <div class="thumb" ${img}>${img ? '' : I.img}</div>
-    <div class="li-main"><div class="li-title">${pid ? `<a href="#/products/${esc(pid)}">${esc(title)}</a>` : esc(title)}</div>
+    <div class="li-main"><div class="li-title">${pid ? `<a href="${variantHref(esc(pid), v && !isDefault(v) ? v.id : null)}">${esc(title)}</a>` : esc(title)}</div>
       <div class="li-meta">${variant ? `<span class="chip">${esc(variant)}</span>` : ''}${sku ? `<span>${esc(sku)}</span>` : ''}
         ${l.added ? '<span class="bdg blue">Added</span>' : ''}${l.removed ? '<span class="bdg">Removed</span>' : ''}${l.refundedQty ? `<span class="bdg">${l.refundedQty} refunded</span>` : ''}</div>
       ${l.price === 0 && /sample|handbook/i.test(l.title) ? `<div class="li-meta">${I.code.replace('<svg', '<svg width="14" height="14"')} <span>source: gift:flow</span></div>` : ''}</div>
@@ -700,12 +748,11 @@ async function viewOrder(tid, number) {
   const tr = rmNumber(t);
   const delivered = o.created ? new Date(o.created.getTime() + 3 * 86400000) : null;
   const unfCard = unf.length ? `
-    <div class="sec-h"><span class="tile${o.cancelled ? '' : ' yellow'}">${I.unful}</span><h2>${o.cancelled ? 'Removed' : unf.some(([l]) => l.preorder) ? 'Unfulfilled' : 'Unfulfilled'}</h2>
+    <div class="sec-h"><span class="tile${o.cancelled ? '' : ' yellow'}">${I.unful}</span><h2>${o.cancelled ? 'Removed' : 'Unfulfilled'}</h2>
       ${o.cancelled ? '' : `<div class="acts"><button class="btn icon grey" style="background:none;border:none">${I.dots.replace('<svg', '<svg width="16" height="16"')}</button><button class="btn grey" onclick="toast('Holds are not part of the training store')">Mark as on hold</button><button class="btn dark" onclick="toast('Fulfilment is done by the warehouse (PFS / GXO), not by CW')">Request fulfillment</button></div>`}</div>
     <div class="card cpad">
       <div class="crow">${I.truck}<span>${esc(shipName)}</span><span class="loc">${I.pin}PFS Fulfillment Service</span></div>
       <div class="crow">${I.box}<span>GXO Fulfilment (UK)</span></div>
-      ${unf.some(([l]) => l.preorder) ? '<div class="crow" style="margin-top:4px"><span class="bdg blue">Pre-order</span></div>' : ''}
       <div class="hr" style="margin-bottom:0"></div>
       ${unf.map(([l, i]) => lineHtml(t, l, i)).join('')}
     </div>` : '';
@@ -809,7 +856,7 @@ async function addTag(tid, number, v) {
 }
 async function removeTag(tid, number, v) {
   const o = findOrder(tid, number);
-  const back = { 'Preorderorder': 'Pre-order', 'Subscription Recurring Order': 'Subscription' };
+  const back = { 'Subscription Recurring Order': 'Subscription' };
   const raw = o.tags.indexOf(v) > -1 ? v : (back[v] || v);
   if (await logAction(tid, 'tag', number, { add: [], remove: [raw] }, `Tags on ${number}: removed ${v}`)) route();
 }
@@ -974,7 +1021,7 @@ async function runPick(inputId, boxId, onPick) {
     const qn = availQty(p, v, s);
     rows.push(`<div class="li" onclick="${onPick}('${p.id}','${v.id}')"><div class="thumb" ${img}>${img ? '' : I.img}</div>
       <div class="li-main"><div class="li-title">${esc(p.title)}</div><div class="li-meta">${v.title && v.title !== 'Default Title' ? `<span class="chip">${esc(v.title)}</span>` : ''}${esc(p.vendor || '')}</div></div>
-      <span class="stockline${qn ? '' : ' zero'}" style="white-space:nowrap">${qn} available</span>${stockChip(s)}<div class="li-tot">${shopMoney(s.price != null ? s.price : v.price)}</div></div>`);
+      <span class="stockline${qn > 0 ? '' : ' zero'}" style="white-space:nowrap">${qn} available</span><div class="li-tot">${shopMoney(s.price != null ? s.price : v.price)}</div></div>`);
   }));
   $(boxId).style.borderTop = '';
   $(boxId).innerHTML = rows.join('') || '<div class="empty">No products found</div>';
@@ -1016,7 +1063,7 @@ function drawEdit() {
           <div class="li-px" style="margin:0">${shopMoney(l.price)} × <span class="qbox">${l.qty}</span></div>
           <button class="btn" onclick="editToggle(${i})">${rm ? 'Restore item' : 'Remove item'}</button></div>`; }).join('')}
         ${editDraft.add.map((l, i) => `<div class="li" style="align-items:center"><div class="thumb">${I.img}</div>
-          <div class="li-main"><div class="li-title">${esc(l.title)}</div><div class="li-meta"><span class="bdg blue">Added</span>${stockChip({ state: l.stock })}</div></div>
+          <div class="li-main"><div class="li-title">${esc(l.title)}</div><div class="li-meta"><span class="bdg blue">Added</span></div></div>
           <div class="qin" style="width:90px"><input type="number" min="1" value="${l.qty}" onchange="editDraft.add[${i}].qty=Math.max(1,+this.value||1);drawEdit()"></div>
           <div class="li-tot" style="margin:0">${shopMoney(l.price * l.qty)}</div><button class="btn icon" onclick="editDraft.add.splice(${i},1);drawEdit()">×</button></div>`).join('')}
         ${!unf.length && !editDraft.add.length ? '<div class="empty" style="padding:16px">There are no unfulfilled items to edit.</div>' : ''}
@@ -1087,7 +1134,7 @@ function drawCreate() {
         <div style="display:flex;gap:8px"><div class="qin" style="flex:1;width:auto">${I.search.replace('<svg', '<svg width="16" height="16" style="color:var(--ink-2);margin-right:6px"')}<input id="co-q" style="width:100%" placeholder="Search products" value="${esc(q)}" oninput="clearTimeout(this._t);this._t=setTimeout(()=>runPick('co-q','co-pick','createAdd'),250)"></div><button class="btn">Browse</button></div>
         <div class="pick" id="co-pick" style="margin-top:8px"></div>
         ${draft.lines.length ? `<table class="ix" style="margin-top:10px"><thead><tr><th>Product</th><th>Quantity</th><th class="num">Total</th><th></th></tr></thead><tbody>
-          ${draft.lines.map((l, i) => `<tr><td style="white-space:normal"><div style="font-weight:550">${esc(l.title)}</div><div style="color:var(--ink-2)">${shopMoney(l.price)} ${stockChip({ state: l.stock })}</div></td>
+          ${draft.lines.map((l, i) => `<tr><td style="white-space:normal"><div style="font-weight:550">${esc(l.title)}</div><div style="color:var(--ink-2)">${shopMoney(l.price)}</div></td>
             <td><div class="qin" style="width:80px"><input type="number" min="1" value="${l.qty}" onchange="draft.lines[${i}].qty=Math.max(1,+this.value||1);drawCreate()"></div></td>
             <td class="num">${shopMoney(l.price * l.qty)}</td><td style="width:30px"><button class="btn icon" style="border:none;box-shadow:none" onclick="draft.lines.splice(${i},1);drawCreate()">×</button></td></tr>`).join('')}</tbody></table>` : ''}
       </div>
@@ -1235,6 +1282,23 @@ async function loadProdList() {
     <div class="pager"><button ${prodPage ? '' : 'disabled'} onclick="prodPage--;loadProdList()">${I.back}</button><span>${prodPage * size + 1}-${Math.min(count, prodPage * size + size)}</span><button ${(prodPage + 1) * size < count ? '' : 'disabled'} onclick="prodPage++;loadProdList()" style="transform:scaleX(-1)">${I.back}</button></div>`
     : `<div class="empty">No products found</div>`;
 }
+function productOrg(p, s) {
+  // Healf files pre-order / out-of-stock lines into collections, as on the live admin.
+  const colls = ['All products', p.vendor].filter(Boolean);
+  if (s.state === 'preorder') colls.unshift('Pre orders');
+  if (s.state === 'out_of_stock' || s.state === 'preorder') colls.unshift('OOS');
+  const tags = (p.tags || []).slice();
+  return `<div class="rs"><div class="rs-h">Product organization</div>
+    <div style="margin-bottom:4px">Type</div><div class="fakesel" style="margin-bottom:12px">${esc((p.product_type || '').replace(/^-$/, '') || '-')}${I.updown}</div>
+    <div style="margin-bottom:4px">Vendor</div><div class="fakesel" style="margin-bottom:12px">${esc(p.vendor || '')}${I.updown}</div>
+    <div style="margin-bottom:4px">Collections</div><div class="coll" style="margin-bottom:12px">${colls.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
+    <div style="margin-bottom:4px">Tags</div><div class="coll">${tags.slice(0, 24).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${tags.length > 24 ? `<span class="chip" style="background:#fff;border:1px solid var(--line)">+${tags.length - 24} more</span>` : ''}${tags.length ? '' : '<span style="color:var(--ink-2)">No tags</span>'}</div></div>`;
+}
+const priceOf = (v, s) => (s.price != null ? Number(s.price) : v.price);
+function priceCard(v, s) {
+  return `<div class="card cpad"><div style="font-weight:550;margin-bottom:6px">Price</div><div class="fakesel" style="max-width:220px;justify-content:flex-start;gap:6px">£ ${priceOf(v, s).toFixed(2)}</div>
+    <div class="chips" style="margin-top:12px;gap:8px"><span class="chip" style="padding:2px 8px">Compare-at${v.compare_at && v.compare_at > v.price ? ` <b style="font-weight:500;background:#e0e0e0;border-radius:5px;padding:0 6px">£${v.compare_at.toFixed(2)}</b>` : ''}</span><span class="chip" style="padding:2px 8px">Charge tax <b style="font-weight:500;background:#e0e0e0;border-radius:5px;padding:0 6px">Yes</b></span></div></div>`;
+}
 async function viewProduct(id) {
   await loadProducts([id]);
   const p = productCache[String(id)];
@@ -1243,16 +1307,24 @@ async function viewProduct(id) {
   if (!p) { $('main').innerHTML = '<div class="wrap"><div class="empty">This product couldn’t be found.</div></div>'; return; }
   const s = stockFor(p, ctxId);
   const vs = p.variants || [];
+  const single = vs.length === 1 && isDefault(vs[0]);
   const optVals = vs.map(v => v.title).filter(x => x && x !== 'Default Title');
-  const totalAvail = vs.reduce((a, v) => a + availQty(p, v, s), 0);
-  // Healf shows pre-order / out of stock through collections and tags, and the date in the Preorder metafield.
-  const colls = ['All products', p.vendor].filter(Boolean);
-  if (s.state === 'preorder') colls.unshift('Pre orders');
-  if (s.state === 'out_of_stock' || s.state === 'preorder') colls.unshift('OOS');
-  if (s.state === 'discontinued') colls.unshift('Discontinued');
-  const tags = (p.tags || []).slice();
   const img = u => u ? `style="background-image:url('${esc(imgUrl(u, 600))}')"` : '';
-  const ctx = tById(ctxId);
+  // A product with options lists its variants, and the stock for each lives on the variant's
+  // own page (SOP step 5). A product with no options shows Price and Inventory right here.
+  const variantsBlock = single ? `
+      <div class="sec-h"><h2>Price</h2></div>${priceCard(vs[0], s)}
+      <div class="sec-h"><h2>Inventory</h2></div>${invCard(p, vs[0], s)}
+      <div class="sec-h"><h2>Variant metafields</h2></div>${variantMetafields(p, vs[0], s)}` : `
+      <div class="sec-h"><h2>Variants</h2></div>
+      <div class="card" style="overflow:hidden">
+        ${optVals.length ? `<div class="opt"><div style="font-weight:550;margin-bottom:6px">Option</div><div class="chips">${optVals.map(x => `<span class="chip" style="background:#e3e3e3">${esc(x)}</span>`).join('')}</div></div>` : ''}
+        <div style="display:flex;justify-content:flex-end;gap:6px;padding:0 12px 10px"><button class="btn grey">${I.search.replace('<svg', '<svg width="14" height="14"')}</button><button class="btn grey">All locations ${I.caret}</button></div>
+        <table class="ix" style="margin:0 10px;width:calc(100% - 20px)"><thead><tr><th>Variant</th><th>Price</th><th>Available</th><th class="hide-sm">Publishing</th></tr></thead><tbody>
+          ${vs.map(v => `<tr class="r" onclick="go('${variantHref(p.id, v.id)}')"><td><div style="display:flex;gap:12px;align-items:center"><div class="thumb lg" ${p.image_url ? img(p.image_url) : ''}>${p.image_url ? '' : I.img}</div><div><div>${esc(isDefault(v) ? p.title : v.title)}</div><div style="color:var(--ink-2)">${esc(v.sku || '')}</div></div></div></td>
+            <td>£ ${priceOf(v, s).toFixed(2)}</td><td>${availQty(p, v, s)}</td><td class="hide-sm">All</td></tr>`).join('')}</tbody></table>
+        <div style="padding:12px 16px">Total inventory across all locations: ${vs.reduce((a, v) => a + availQty(p, v, s), 0)} available</div>
+      </div>`;
   $('main').innerHTML = `<div class="wrap"><div class="cols"><div>
       <div class="ttl"><h1>${esc(p.title)}</h1>${p.status === 'active' ? '<span class="bdg green">Active</span>' : '<span class="bdg">Archived</span>'}</div>
       <div class="card ttl-box" style="margin-top:12px">
@@ -1263,32 +1335,52 @@ async function viewProduct(id) {
         <div style="display:flex;justify-content:space-between;margin:14px 0 6px"><span style="font-weight:550">Category</span><span class="chip">2 metafields</span></div>
         <div class="fakesel">${esc((p.product_type || '').replace(/^-$/, '') || 'Uncategorized')}${I.updown}</div>
       </div>
-      <div class="sec-h"><h2>Variants</h2></div>
-      <div class="card" style="overflow:hidden">
-        ${optVals.length ? `<div class="opt"><div style="font-weight:550;margin-bottom:6px">Option</div><div class="chips">${optVals.map(x => `<span class="chip" style="background:#e3e3e3">${esc(x)}</span>`).join('')}</div></div>` : ''}
-        <div style="display:flex;justify-content:flex-end;gap:6px;padding:0 12px 10px"><button class="btn grey">${I.search.replace('<svg', '<svg width="14" height="14"')}</button><button class="btn grey">All locations ${I.caret}</button></div>
-        <table class="ix" style="margin:0 10px;width:calc(100% - 20px)"><thead><tr><th>Variant</th><th>Price</th><th>Available</th><th class="hide-sm">Publishing</th></tr></thead><tbody>
-          ${vs.map(v => `<tr><td><div style="display:flex;gap:12px;align-items:center"><div class="thumb lg" ${p.image_url ? img(p.image_url) : ''}>${p.image_url ? '' : I.img}</div><div><div>${esc(v.title === 'Default Title' ? p.title : v.title)}</div><div style="color:var(--ink-2)">${esc(v.sku || '')}</div></div></div></td>
-            <td>£ ${(s.price != null ? Number(s.price) : v.price).toFixed(2)}${v.compare_at && v.compare_at > v.price ? ` <s style="color:var(--ink-3)">£${v.compare_at.toFixed(2)}</s>` : ''}</td>
-            <td>${availQty(p, v, s)}</td><td class="hide-sm">All</td></tr>`).join('')}</tbody></table>
-        <div style="padding:12px 16px">Total inventory across all locations: ${totalAvail} available</div>
-      </div>
+      ${variantsBlock}
       <div class="sec-h"><h2>Metafields</h2><div class="acts"><span class="lnk" style="color:var(--ink);font-weight:550">View all</span></div></div>
       <div class="card" style="padding:6px 0">
         <div class="mf"><span class="k">Why Its Healf</span><span class="v" style="color:var(--ink-2)">${esc((p.description || '').slice(0, 140))}${(p.description || '').length > 140 ? '…' : ''}</span></div>
-        <div class="mf"><span class="k">Preorder</span><span class="v">${s.state === 'preorder' ? (s.eta ? esc(s.eta) : '') : ''}</span></div>
         <div class="mf"><span class="k">Healf Pillar</span><span class="v">${esc(((p.product_type || '').split('>')[0] || '').trim().toUpperCase())}</span></div>
         <div class="mf"><span class="k">Delivery &amp; Returns</span><span class="v"></span></div>
       </div>
     </div><div class="side-col">
       <div class="rs"><div class="rs-h">Status</div><div class="fakesel">${p.status === 'active' ? 'Active' : 'Archived'}${I.updown}</div></div>
       <div class="rs"><div class="rs-h">Publishing</div><p>${p.status === 'active' ? 'All channels' : 'Not published'}</p></div>
-      ${s.state !== 'in_stock' ? `<div class="rs"><div class="rs-h">Stock</div>${stockChip(s)}${s.eta ? `<p style="margin-top:6px">${esc(s.eta)}</p>` : ''}${ctx && s.dated ? `<p style="color:var(--ink-2);margin-top:4px">As at ${fmtDay(asAt(ctx))}</p>` : ''}</div>` : ''}
-      <div class="rs"><div class="rs-h">Product organization</div>
-        <div style="margin-bottom:4px">Type</div><div class="fakesel" style="margin-bottom:12px">${esc((p.product_type || '').replace(/^-$/, '') || '-')}${I.updown}</div>
-        <div style="margin-bottom:4px">Vendor</div><div class="fakesel" style="margin-bottom:12px">${esc(p.vendor || '')}${I.updown}</div>
-        <div style="margin-bottom:4px">Collections</div><div class="coll" style="margin-bottom:12px">${colls.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
-        <div style="margin-bottom:4px">Tags</div><div class="coll">${tags.slice(0, 24).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${tags.length > 24 ? `<span class="chip" style="background:#fff;border:1px solid var(--line)">+${tags.length - 24} more</span>` : ''}${tags.length ? '' : '<span style="color:var(--ink-2)">No tags</span>'}</div></div>
+      ${productOrg(p, s)}
+    </div></div></div>`;
+}
+// The variant page: where the SOP sends the trainee for stock (Inventory) and, for a
+// pre-order, the date (Preorder metafield). Laid out as on Healf's live admin.
+async function viewVariant(pid, vid) {
+  await loadProducts([pid]);
+  const p = productCache[String(pid)];
+  const vs = (p && p.variants) || [];
+  const v = vs.find(x => String(x.id) === String(vid)) || vs[0];
+  bar({ back: `go('#/products/${pid}')`, icon: I.products, crumb: 'Products', crumbHref: '#/products', cur: p ? p.title + (v && !isDefault(v) ? ' / ' + v.title : '') : '',
+        acts: `<button class="btn off">Actions ${I.caret}</button>` });
+  $('bar').querySelector('.cur') && ($('bar').querySelector('.cur').style.opacity = 1);
+  if (!p || !v) { $('main').innerHTML = '<div class="wrap"><div class="empty">This variant couldn’t be found.</div></div>'; return; }
+  const s = stockFor(p, ctxId);
+  const thumb = p.image_url ? `style="background-image:url('${esc(imgUrl(p.image_url, 120))}')"` : '';
+  const grams = v.grams;
+  $('main').innerHTML = `<div class="wrap"><div class="vgrid">
+    <div></div><div class="ttl" style="margin:6px 0 6px"><h1>${esc(isDefault(v) ? p.title : v.title)}</h1></div>
+    <div class="card" style="padding:10px">
+      <div style="display:flex;gap:10px;align-items:center;padding:4px 4px 10px;border-bottom:1px solid var(--line-2);cursor:pointer" onclick="go('#/products/${p.id}')">
+        <div class="thumb" ${thumb}>${thumb ? '' : I.img}</div>
+        <div style="min-width:0"><div style="font-weight:600;line-height:1.3">${esc(p.title)}</div>${p.status === 'active' ? '<span class="bdg green" style="margin-top:3px">Active</span>' : '<span class="bdg" style="margin-top:3px">Archived</span>'}<div style="color:var(--ink-2)">${vs.length} variant${vs.length === 1 ? '' : 's'}</div></div></div>
+      <div class="qin" style="width:100%;margin:10px 0 6px">${I.search.replace('<svg', '<svg width="14" height="14" style="color:var(--ink-2);margin-right:6px"')}<input placeholder="Search variants" style="width:100%" oninput="const q=this.value.toLowerCase();document.querySelectorAll('.vlist .vi').forEach(e=>e.style.display=e.textContent.toLowerCase().includes(q)?'':'none')"></div>
+      <div style="color:var(--ink-2);font-size:12.5px;padding:4px 10px">${vs.length} variant${vs.length === 1 ? '' : 's'}</div>
+      <div class="vlist">${vs.map(x => `<div class="vi${String(x.id) === String(v.id) ? ' on' : ''}" onclick="go('${variantHref(p.id, x.id)}')"><div class="thumb" style="width:28px;height:28px">${I.img}</div>${esc(isDefault(x) ? 'Default Title' : x.title)}</div>`).join('')}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0">
+      <div class="card cpad" style="display:flex;gap:12px;align-items:center"><div class="thumb lg" ${thumb}>${thumb ? '' : I.img}</div>
+        <div><div style="font-weight:600">${esc(isDefault(v) ? p.title : v.title)}</div><div style="color:var(--ink-2);display:flex;gap:4px;align-items:center">${p.status === 'active' ? 'All channels' : 'Not published'}</div></div></div>
+      <div class="sec-h"><h2>Price</h2></div>${priceCard(v, s)}
+      <div style="height:16px"></div>${invCard(p, v, s)}
+      <div class="sec-h"><h2>Shipping</h2></div>
+      <div class="card cpad"><div class="pr" style="grid-template-columns:150px 1fr"><span>Weight</span><span>${grams ? (grams / 1000).toFixed(2) + ' kg' : '—'}</span></div>
+        <div class="chips" style="margin-top:8px;gap:8px"><span class="chip" style="padding:2px 8px">Country of origin</span><span class="chip" style="padding:2px 8px">HS Code</span></div></div>
+      <div class="sec-h"><h2>Metafields</h2></div>${variantMetafields(p, v, s)}
     </div></div></div>`;
 }
 

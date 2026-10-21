@@ -1183,13 +1183,15 @@ function renderProducts(str) {
     const pm = rest.match(/£[\d.,]+/); if (pm) price = pm[0];
     const meta = [qty, price].filter(Boolean).join(' · ');
     // Per-line status. On a part-shipped order the trainee has to know WHICH line is
-    // still outstanding — that is the one whose ETA they go and check on Shopify.
+    // still outstanding — that is the one whose stock and pre-order date they go and check
+    // on Shopify. A pre-order line is never labelled as one: finding that out on the
+    // variant's Inventory box and Preorder date is the skill (Trainual: Stock Level Monitoring).
     const sm = rest.match(/\[([^\]]+)\]/);
     const st = sm ? sm[1].trim().toLowerCase() : '';
     let chip = '';
     if (st) {
-      const cls = /pre-?order/.test(st) ? 'pre' : (st === 'fulfilled' ? 'ful' : 'unf');
-      const label = /pre-?order/.test(st) ? 'Pre-order' : (st === 'fulfilled' ? 'Shipped' : 'Not shipped');
+      const cls = st === 'fulfilled' ? 'ful' : 'unf';
+      const label = st === 'fulfilled' ? 'Shipped' : 'Not shipped';
       chip = `<span class="li-status ${cls}">${label}</span>`;
     }
     // Every product opens in the Shopify sim, never live Shopify or healf.com. Lines without a

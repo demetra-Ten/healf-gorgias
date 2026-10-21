@@ -1088,6 +1088,7 @@ const SCORING_WEBHOOK = 'https://aiwellbeing.app.n8n.cloud/webhook/score-submiss
 // ticket is open here via localStorage, and everything done in it is a shop_actions row
 // that this page replays onto the sidebar and sends to the scorer on Send & Close.
 let shopActions = [];
+window.name = 'healf-gorgias';   // so the Shopify sim's "Open the Gorgias simulator" comes back to this tab
 function openShopify(hash) {
   if (activeTicketId) localStorage.setItem('shop_ctx', String(activeTicketId));
   window.open('shopify.html?t=' + (activeTicketId || '') + (hash || '#/orders'), 'healf-shopify');
@@ -3364,7 +3365,7 @@ function renderCustomerSidebar(ticket) {
       return `
     <div class="cs-section">
       <div class="cs-sechdr">${ICONS.shopify}<h5>Shopify</h5>
-        <button class="sp-store" title="Store">healf-uk \u25be</button>
+        <button class="sp-store" title="Open the Healf store in Shopify" onclick="openShopify('#/orders')">healf-uk \u25be</button>
         <button class="cs-collapse" title="Collapse" onclick="collapseSection(this)">${ICONS.chev}</button>
       </div>
       <div class="cs-sec-body">

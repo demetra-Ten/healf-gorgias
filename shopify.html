@@ -338,7 +338,14 @@ select.fld { appearance: none; background: #fdfdfd url("data:image/svg+xml,%3Csv
   <div class="side-lbl">Apps ›</div>
   <div class="side-spacer"></div>
   <div class="nv dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg>Settings</div>
-  <div class="side-store"><span class="hlogo">h.</span>Healf</div>
+  <div class="menu-wrap" style="position:relative">
+    <div class="side-store" onclick="toggleMenu(event,'acct')" style="cursor:pointer" title="Account"><span class="hlogo">h.</span>Healf</div>
+    <div class="menu" id="acct" style="left:0;right:auto;top:auto;bottom:38px;width:192px;color:var(--ink)">
+      <div style="padding:6px 8px 8px;border-bottom:1px solid var(--line-2);margin-bottom:4px"><div style="font-weight:600" id="acct-name"></div><div style="color:var(--ink-2)" id="acct-email"></div></div>
+      <button onclick="window.open('practice.html','healf-gorgias')">Open the Gorgias simulator</button>
+      <button class="danger" onclick="logOut()">Log out</button>
+    </div>
+  </div>
   <div class="side-train" id="side-train">Training store. Nothing here touches the real Shopify, but everything you do is recorded against your ticket and marked.</div>
 </aside>
 
@@ -351,6 +358,10 @@ select.fld { appearance: none; background: #fdfdfd url("data:image/svg+xml,%3Csv
 <div class="toast" id="toast"></div>
 
 <script>
+// This tab is "the Shopify admin": the Gorgias sim opens its links in the window with this
+// name, so clicks keep landing here instead of stacking up new tabs.
+window.name = 'healf-shopify';
+
 // ── State ─────────────────────────────────────────────────────────────────
 let trainee = null;
 let tickets = [];          // the tickets this trainee can see = the customers in this store
@@ -503,8 +514,12 @@ async function loadActions() {
 async function init() {
   const stored = localStorage.getItem('trainee');
   const { data: { session } } = await db.auth.getSession();
-  if (!stored || !session) { location.href = 'index.html'; return; }
+  if (!stored || !session) {
+    location.replace('shopify-login.html?next=' + encodeURIComponent('shopify.html' + location.search + location.hash));
+    return;
+  }
   trainee = JSON.parse(stored);
+  $('acct-name').textContent = trainee.name; $('acct-email').textContent = trainee.email;
   let q = db.from('tickets').select('*').not('category_id', 'is', null);
   if (trainee.current_category_id) q = q.eq('category_id', trainee.current_category_id);
   const { data: tix } = await q;
@@ -556,7 +571,7 @@ function route() {
   document.querySelectorAll('.nv[data-nav]').forEach(n => n.classList.toggle('on', n.dataset.nav === navKey || (navKey === 'drafts' && n.dataset.nav === 'orders')));
   $('nav-orders-sub').style.display = sec === 'orders' ? '' : 'none';
   $('nav-products-sub').style.display = sec === 'products' ? '' : 'none';
-  $('scroll').scrollTop = 0; $('bar').classList.remove('scrolled');
+  $('scroll').scrollTop = 0; window.scrollTo(0, 0); $('bar').classList.remove('scrolled');
   if (sec === 'orders' && parts[1] === 'q') return viewOrders(parts[2] || '');
   if (sec === 'orders' && parts[1] === 'new') return viewCreateOrder(parts[2] ? Number(parts[2]) : ctxId, parts[3]);
   if (sec === 'orders' && parts[1] && parts[3] === 'refund') return viewRefund(Number(parts[1]), parts[2]);
@@ -771,6 +786,13 @@ async function viewOrder(tid, number) {
       ${o.cancelled && o.cancel ? `<div class="banner bad">Order canceled: ${esc(o.cancel.reason || 'no reason given')}.</div>` : ''}
       ${unfCard}${fulCard}${goneCard}${payCard}${tlCard}
     </div><div class="side-col">${right}</div></div></div>`;
+}
+// Gorgias and Shopify share one login, so this signs out of both.
+async function logOut() {
+  if (!confirm('Log out? This also signs you out of the Gorgias simulator.')) return;
+  localStorage.removeItem('trainee');
+  try { await db.auth.signOut(); } catch (e) {}
+  location.replace('shopify-login.html');
 }
 function toggleMenu(e, id) { e.stopPropagation(); document.querySelectorAll('.menu.open').forEach(m => { if (m.id !== id) m.classList.remove('open'); }); $(id).classList.toggle('open'); }
 document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach(m => m.classList.remove('open')));

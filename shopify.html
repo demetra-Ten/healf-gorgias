@@ -1465,46 +1465,77 @@ function viewGiftCards() {
 }
 let gcDraft = null;
 function viewNewGiftCard() {
-  const code = Array.from({ length: 16 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
-  gcDraft = { code, value: '', expiry: 'none', expires: '', tid: ctxId, notify: true, note: '' };
+  // Shopify generates a 16-character lower-case code; the gift card starts with no customer.
+  const code = Array.from({ length: 16 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 31)]).join('');
+  const yr = new Date(); yr.setFullYear(yr.getFullYear() + 1);
+  gcDraft = { code, value: '', expiry: 'year', expires: yr.toISOString().slice(0, 10), tid: null, note: '' };
   drawGiftCard();
+}
+function gcExpiryLabel(g) {
+  if (g.expiry === 'none') return 'No expiry date';
+  if (g.expiry === 'year') return 'Expires in 1 year';
+  return 'Expires on ' + fmtDay(new Date(g.expires + 'T12:00:00'));
 }
 function drawGiftCard() {
   const g = gcDraft, t = g.tid && tById(g.tid);
-  bar({ back: `go('#/gift_cards')`, icon: I.products, crumb: 'Gift cards', crumbHref: '#/gift_cards', cur: 'Create gift card' });
+  bar({ back: `go('#/gift_cards')`, icon: I.products, crumb: 'Gift cards', crumbHref: '#/gift_cards', cur: 'Create gift card', acts: `<button class="btn dark keep" onclick="doGiftCard()">Save</button>` });
   $('bar').querySelector('.cur').style.opacity = 1;
-  const inYear = new Date(); inYear.setFullYear(inYear.getFullYear() + 1);
   $('main').innerHTML = `<div class="wrap"><div class="cols"><div>
-      <div class="ttl"><h1>Create gift card</h1></div><div style="height:10px"></div>
-      <div class="card cpad"><div style="font-weight:600;margin-bottom:10px">Gift card details</div>
-        <label class="lbl">Gift card code</label><input class="fld" id="gc-code" value="${esc(g.code)}" style="font-variant-numeric:tabular-nums;letter-spacing:.5px" oninput="gcDraft.code=this.value.toUpperCase().replace(/\s/g,'')">
-        <div class="help" style="margin-bottom:12px">Must be at least 8 characters, made of letters and numbers.</div>
-        <label class="lbl">Initial value</label><div class="qin" style="width:200px"><span style="margin:0 6px 0 0">£</span><input id="gc-val" type="number" min="0" step="0.01" value="${g.value}" style="width:100%" oninput="gcDraft.value=this.value"></div></div>
-      <div class="sec-h"><h2>Expiration date</h2></div>
-      <div class="card cpad"><label class="chk"><input type="radio" name="gc-exp" ${g.expiry === 'none' ? 'checked' : ''} onchange="gcDraft.expiry='none';drawGiftCard()"><span>No expiration date</span></label>
-        <label class="chk" style="margin-top:8px"><input type="radio" name="gc-exp" ${g.expiry === 'set' ? 'checked' : ''} onchange="gcDraft.expiry='set';gcDraft.expires=gcDraft.expires||'${inYear.toISOString().slice(0, 10)}';drawGiftCard()"><span>Set expiration date</span></label>
-        ${g.expiry === 'set' ? `<input class="fld" type="date" id="gc-date" value="${g.expires}" style="max-width:220px;margin-top:8px" onchange="gcDraft.expires=this.value">` : ''}
-        <div class="help" style="margin-top:8px">Countries have different laws for gift card expiry dates. Check the laws for your country before changing this date.</div></div>
+      <div class="ttl"><h1>Create gift card</h1></div>
+      <div class="sec-h"><h2>Gift card details</h2></div>
+      <div class="card" style="overflow:hidden"><div class="cpad" style="padding:16px">
+        <label class="lbl">Gift card code</label>
+        <input class="fld" id="gc-code" value="${esc(g.code)}" style="margin-bottom:14px" oninput="gcDraft.code=this.value.replace(/\s/g,'')">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div><label class="lbl">Currency</label><select class="fld"><option>Store currency (GBP £)</option></select></div>
+          <div><label class="lbl">Redemption in</label><select class="fld" disabled style="background-color:var(--soft-2);color:var(--ink-2)"><option>All currencies</option></select></div>
+          <div><label class="lbl">Initial value</label><div class="qin" style="width:100%"><span style="margin:0 6px 0 0">£</span><input id="gc-val" type="number" min="0" step="0.01" placeholder="0.00" value="${g.value}" style="width:100%" oninput="gcDraft.value=this.value"></div></div>
+          <div><label class="lbl">Expiry date</label><button class="btn grey" style="height:26px" onclick="openGcExpiry()">${I.cal.replace('<svg', '<svg width="14" height="14"')} ${gcExpiryLabel(g)}</button>
+            <div class="help">Gift card expiration laws can vary by country</div></div>
+        </div></div>
+        <div style="background:var(--soft);padding:14px 16px;color:var(--ink-2);border-top:1px solid var(--line-2)">Gift cards are issued in the store currency and can be redeemed in any currency. Exchange rates will be determined at checkout using your Market settings.</div>
+      </div>
     </div><div class="side-col">
       <div class="rs"><div class="rs-h">Customer${t ? '<button onclick="gcDraft.tid=null;drawGiftCard()" title="Remove customer">×</button>' : ''}</div>
-        ${t ? `<p><a href="#/customers/${t.id}">${esc(t.customer_name)}</a></p><p style="color:var(--ink-2)">${esc(t.customer_email)}</p>
-          <label class="chk" style="margin-top:10px"><input type="checkbox" ${g.notify ? 'checked' : ''} onchange="gcDraft.notify=this.checked"><span>Send gift card to customer by email</span></label>`
-          : `<div class="qin" style="width:100%">${I.search.replace('<svg', '<svg width="16" height="16" style="color:var(--ink-2);margin-right:6px"')}<input id="gc-cq" style="width:100%" placeholder="Search customers" oninput="gcCust(this.value)"></div><div class="pick" id="gc-cpick" style="margin-top:6px"></div>`}</div>
-      <div class="rs"><div class="rs-h">Internal notes</div><input class="fld" id="gc-note" list="refund-reasons-gc" value="${esc(g.note)}" oninput="gcDraft.note=this.value"><datalist id="refund-reasons-gc">${REFUND_REASONS.map(x => `<option value="${x}">`).join('')}</datalist><div class="help">Only staff can see these notes.</div></div>
-      <button class="btn dark" style="width:100%;justify-content:center;height:32px" onclick="doGiftCard()">Save</button>
+        ${t ? `<p><a href="#/customers/${t.id}">${esc(t.customer_name)}</a></p><p style="color:var(--ink-2)">${esc(t.customer_email)}</p>`
+          : `<div class="qin" style="width:100%">${I.search.replace('<svg', '<svg width="16" height="16" style="color:var(--ink-2);margin-right:6px"')}<input id="gc-cq" style="width:100%" placeholder="Search or create customer" oninput="gcCust(this.value)"></div><div class="pick" id="gc-cpick" style="margin-top:6px;border-top:none"></div>`}</div>
+      <div class="rs"><div class="rs-h">Notes<button title="Edit notes" onclick="openGcNote()">${I.pen}</button></div>
+        <p style="color:${g.note ? 'var(--ink)' : 'var(--ink-2)'};white-space:pre-wrap">${g.note ? esc(g.note) : 'No notes'}</p></div>
     </div></div></div>`;
+}
+function openGcExpiry() {
+  const g = gcDraft;
+  modal('Expiry date', `<label class="chk"><input type="radio" name="gce" value="year" ${g.expiry === 'year' ? 'checked' : ''}><span>Expires in 1 year</span></label>
+    <label class="chk"><input type="radio" name="gce" value="none" ${g.expiry === 'none' ? 'checked' : ''}><span>No expiry date</span></label>
+    <label class="chk"><input type="radio" name="gce" value="set" ${g.expiry === 'set' ? 'checked' : ''}><span>Set expiry date</span></label>
+    <input class="fld" type="date" id="gce-date" value="${g.expires}" style="max-width:220px" onfocus="document.querySelector('input[name=gce][value=set]').checked=true">`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn dark" onclick="gcSetExpiry()">Done</button>`);
+}
+function gcSetExpiry() {
+  const v = document.querySelector('input[name=gce]:checked').value;
+  gcDraft.expiry = v;
+  if (v === 'year') { const yr = new Date(); yr.setFullYear(yr.getFullYear() + 1); gcDraft.expires = yr.toISOString().slice(0, 10); }
+  if (v === 'set') gcDraft.expires = $('gce-date').value || gcDraft.expires;
+  closeModal(); drawGiftCard();
+}
+function openGcNote() {
+  modal('Edit notes', `<input class="fld" id="gcn" list="gc-reasons" value="${esc(gcDraft.note)}" placeholder="e.g. PRE-ORDER">
+    <datalist id="gc-reasons">${REFUND_REASONS.map(x => `<option value="${x}">`).join('')}</datalist><div class="help">Only staff can see these notes.</div>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn dark" onclick="gcDraft.note=$('gcn').value.trim();closeModal();drawGiftCard()">Done</button>`);
+  setTimeout(() => $('gcn') && $('gcn').focus(), 30);
 }
 function gcCust(q) {
   q = q.trim().toLowerCase();
-  $('gc-cpick').innerHTML = q ? tickets.filter(t => (t.customer_name + ' ' + t.customer_email).toLowerCase().includes(q)).slice(0, 8).map(t => `<div class="li" onclick="gcDraft.tid=${t.id};drawGiftCard()"><div class="li-main"><div class="li-title">${esc(t.customer_name)}</div><div class="li-meta">${esc(t.customer_email)}</div></div></div>`).join('') : '';
+  $('gc-cpick').style.borderTop = q ? '' : 'none';
+  $('gc-cpick').innerHTML = q ? tickets.filter(t => custHaystack(t).includes(q)).slice(0, 8).map(t => `<div class="li" onclick="gcDraft.tid=${t.id};drawGiftCard()"><div class="li-main"><div class="li-title">${esc(t.customer_name)}</div><div class="li-meta">${esc(t.customer_email)}</div></div></div>`).join('') || '<div class="empty" style="padding:12px">No customers found</div>' : '';
 }
 async function doGiftCard() {
   const g = gcDraft, t = g.tid && tById(g.tid), val = +(+g.value || 0).toFixed(2);
-  if (g.code.length < 8 || !/^[A-Z0-9]+$/.test(g.code)) { toast('Gift card code must be at least 8 letters and numbers'); return; }
+  if (g.code.length < 8 || !/^[A-Za-z0-9]+$/.test(g.code)) { toast('Gift card code must be at least 8 letters and numbers'); return; }
   if (val <= 0) { toast('Enter an initial value'); return; }
   const tid = ownerTicket(t && t.id); if (!tid) { toast('Choose a customer for this gift card'); return; }
-  const d = { code: g.code, value: val, expires: g.expiry === 'set' ? g.expires : '', customer: !!t, notify: !!(t && g.notify), note: g.note.trim() };
-  const s = `Created gift card ending ${g.code.slice(-4)} worth ${shopMoney(val)} for ${t ? t.customer_name : 'no customer'}; expiry: ${d.expires ? fmtDay(new Date(d.expires + 'T12:00:00')) : 'none'}; emailed to customer: ${d.notify ? 'yes' : 'no'}; note: ${d.note || 'none'}`;
+  const d = { code: g.code, value: val, expires: g.expiry === 'none' ? '' : g.expires, customer: !!t, note: g.note.trim() };
+  const s = `Created gift card ending ${g.code.slice(-4)} worth ${shopMoney(val)}; assigned to customer: ${t ? t.customer_name + ' (' + t.customer_email + ')' : 'NONE'}; expiry: ${d.expires ? fmtDay(new Date(d.expires + 'T12:00:00')) : 'no expiry'}; notes: ${d.note || 'none'}`;
   if (await logAction(tid, 'gift_card', null, d, s)) { toast('Gift card created'); go('#/gift_cards'); }
 }
 

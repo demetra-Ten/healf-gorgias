@@ -516,7 +516,7 @@ async function init() {
   const stored = localStorage.getItem('trainee');
   const { data: { session } } = await db.auth.getSession();
   if (!stored || !session) {
-    location.replace('shopify-login.html?next=' + encodeURIComponent('shopify.html' + location.search + location.hash));
+    location.replace('library.html?next=' + encodeURIComponent('shopify.html' + location.search + location.hash));
     return;
   }
   trainee = JSON.parse(stored);
@@ -793,7 +793,7 @@ async function logOut() {
   if (!confirm('Log out? This also signs you out of the Gorgias simulator.')) return;
   localStorage.removeItem('trainee');
   try { await db.auth.signOut(); } catch (e) {}
-  location.replace('shopify-login.html');
+  location.replace('library.html');
 }
 function toggleMenu(e, id) { e.stopPropagation(); document.querySelectorAll('.menu.open').forEach(m => { if (m.id !== id) m.classList.remove('open'); }); $(id).classList.toggle('open'); }
 document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach(m => m.classList.remove('open')));

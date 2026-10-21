@@ -45,6 +45,16 @@ a.card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.0
 .card.soon .tile { opacity: .35; }
 .foot { margin-top: 40px; display: flex; gap: 18px; font-size: 12.5px; color: var(--ink-3); flex-wrap: wrap; }
 .foot a { color: #644b9e; } html[data-theme="dark"] .foot a { color: #b8a3e3; }
+.signin { max-width: 400px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+.signin h2 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.signin .sub { color: var(--ink-2); margin-bottom: 18px; font-size: 13px; }
+.signin label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px; }
+.signin input { width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 9px; padding: 0 12px; font: inherit; font-size: 14px; color: var(--ink); background: var(--card); outline: none; margin-bottom: 14px; }
+.signin input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(27,28,29,.1); }
+.signin button { width: 100%; height: 40px; border: none; border-radius: 9px; background: var(--tile); color: var(--glyph); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.signin button:disabled { opacity: .6; cursor: default; }
+.signin .err { display: none; background: #fef2f2; border: 1px solid #fecaca; color: #d9003e; border-radius: 9px; padding: 9px 12px; font-size: 12.5px; margin-bottom: 14px; }
+.hidden { display: none !important; }
 @media (max-width: 560px) { .wrap { padding: 28px 16px 48px; } h1 { font-size: 23px; } .who { display: none; } }
 </style>
 </head>
@@ -57,12 +67,22 @@ a.card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.0
   </div>
   <h1>Practise on the tools you'll use every day</h1>
   <p class="lead">Each simulator is a safe copy of a real CW tool, filled with real (anonymised) tickets and orders. Nothing you do here touches live customers. One login works across all of them.</p>
-  <div class="grid" id="grid"></div>
+  <div class="signin hidden" id="signin">
+    <h2>Sign in</h2>
+    <p class="sub">Sign in once and every simulator opens straight away.</p>
+    <div class="err" id="err"></div>
+    <label for="email">Email address</label>
+    <input type="email" id="email" placeholder="you@healf.com" autocomplete="username">
+    <label for="pin">Password</label>
+    <input type="password" id="pin" placeholder="Training password" autocomplete="current-password">
+    <button id="go" onclick="login()">Sign in</button>
+  </div>
+  <div class="grid hidden" id="grid"></div>
   <div class="foot"><a href="admin.html" target="healf-admin">Admin panel →</a><span>Built and run by CW Onboarding &amp; Enablement</span></div>
 </div>
 <script>
-// Add a simulator here and it appears in the library. `href` is where a signed-out
-// trainee lands: each tool's own sign-in page, which skips straight in when signed in.
+// Add a simulator here and it appears in the library. This page is the ONLY sign-in: the
+// tools send a signed-out visitor here (?next=<tool page>) and come straight back after.
 // `tab` opens each tool in its own named tab (the name the tool gives itself), so a second
 // click goes back to that tool's tab and Gorgias -> Shopify links keep landing in it.
 const G = {
@@ -71,9 +91,9 @@ const G = {
   plus: '<path d="M12 5v14M5 12h14"/>'
 };
 const TOOLS = [
-  { name: 'Gorgias Simulator', glyph: 'headset', live: true, href: 'index.html', tab: 'healf-gorgias',
+  { name: 'Gorgias Simulator', glyph: 'headset', live: true, href: 'practice.html', tab: 'healf-gorgias',
     blurb: 'Work real customer tickets: read the thread, choose the macro, write the reply and log your actions. Every ticket is marked with feedback.' },
-  { name: 'Shopify Simulator', glyph: 'store', live: true, href: 'shopify-login.html', tab: 'healf-shopify',
+  { name: 'Shopify Simulator', glyph: 'store', live: true, href: 'shopify.html', tab: 'healf-shopify',
     blurb: 'Look up orders, customers, stock and ETAs as they were on the day, then cancel, refund, edit or raise Manual Orders. Opens from any Gorgias ticket too.' },
   { name: 'More simulators', glyph: 'plus', live: false,
     blurb: 'More CW tools are on the way, so you can practise the whole journey in one place.' }
@@ -88,19 +108,60 @@ document.getElementById('grid').innerHTML = TOOLS.map(t => t.live ? `
     <div class="card-head"><div class="tile lg">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="status">Coming soon</span></div></div>
     <p>${t.blurb}</p></div>`).join('');
 
-// Signed in? Say who, and offer a sign-out that covers every tool (they share one session).
-(async () => {
-  try {
-    const who = JSON.parse(localStorage.getItem('trainee') || 'null');
-    const { data: { session } } = await db.auth.getSession();
-    if (!who || !session) return;
-    document.getElementById('who').innerHTML = `Signed in as <b>${String(who.name).replace(/[<>&]/g, '')}</b><br><button onclick="signOut()">Sign out of all tools</button>`;
-  } catch (e) {}
-})();
+// ── The one sign-in for every simulator ─────────────────────────────────────
+// Every trainee authenticates through one shared account and is identified by their own
+// email; the session lives in localStorage and refreshes itself, so it survives reloads,
+// new tabs and browser restarts. Only "Sign out of all tools" (or a tool's sign-out) ends it.
+const TRAINEE_ACCOUNT = 'trainee-access@healf.com';
+const $id = x => document.getElementById(x);
+function nextUrl() {
+  const n = new URLSearchParams(location.search).get('next') || '';
+  return /^(practice|shopify)\.html([?#].*)?$/.test(n) ? n : '';
+}
+function showTiles(who) {
+  $id('signin').classList.add('hidden'); $id('grid').classList.remove('hidden');
+  $id('who').innerHTML = `Signed in as <b>${String(who.name).replace(/[<>&]/g, '')}</b><br><button onclick="signOut()">Sign out of all tools</button>`;
+}
+function showSignIn() {
+  $id('grid').classList.add('hidden'); $id('signin').classList.remove('hidden'); $id('who').innerHTML = '';
+  setTimeout(() => $id('email').focus(), 30);
+}
+function showError(m) { const e = $id('err'); e.textContent = m; e.style.display = 'block'; }
+async function login() {
+  const email = $id('email').value.trim().toLowerCase(), pin = $id('pin').value.trim(), btn = $id('go');
+  $id('err').style.display = 'none';
+  if (!email || !pin) { showError('Please enter your email and password.'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  const { error: authErr } = await db.auth.signInWithPassword({ email: TRAINEE_ACCOUNT, password: pin });
+  if (authErr) { showError('Incorrect password. Please try again.'); btn.disabled = false; btn.textContent = 'Sign in'; return; }
+  const { data, error } = await db.from('trainees').select('*').eq('email', email).single();
+  if (error || !data) { showError('No account found for that email address.'); await db.auth.signOut(); btn.disabled = false; btn.textContent = 'Sign in'; return; }
+  localStorage.setItem('trainee', JSON.stringify(data));
+  const n = nextUrl();
+  if (n) { location.replace(n); return; }
+  btn.disabled = false; btn.textContent = 'Sign in';
+  showTiles(data);
+}
+$id('pin').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+$id('email').addEventListener('keydown', e => { if (e.key === 'Enter') $id('pin').focus(); });
 async function signOut() {
   try { localStorage.removeItem('trainee'); await db.auth.signOut(); } catch (e) {}
-  location.reload();
+  showSignIn();
 }
+(async () => {
+  try {
+    // ?signin is the way back to the form from a borrowed or broken session.
+    if (new URLSearchParams(location.search).has('signin')) { await signOut(); return; }
+    const who = JSON.parse(localStorage.getItem('trainee') || 'null');
+    const { data: { session } } = await db.auth.getSession();
+    if (who && who.id && session && session.user.email === TRAINEE_ACCOUNT) {
+      const n = nextUrl();
+      if (n) { location.replace(n); return; }
+      showTiles(who); return;
+    }
+  } catch (e) {}
+  showSignIn();
+})();
 </script>
 </body>
 </html>

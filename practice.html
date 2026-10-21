@@ -2061,7 +2061,11 @@ async function init() {
   // never outlive the session key, or the app would render an inbox it cannot load.
   const stored = localStorage.getItem('trainee');
   const { data: { session } } = await db.auth.getSession();
-  if (!stored || !session) { localStorage.removeItem('trainee'); window.location.href = 'index.html'; return; }
+  if (!stored || !session) {
+    localStorage.removeItem('trainee');
+    window.location.replace('library.html?next=' + encodeURIComponent('practice.html' + location.search + location.hash));
+    return;
+  }
   trainee = JSON.parse(stored);
   document.getElementById('nav-mytickets-icon').innerHTML = ICONS.inbox;
   document.getElementById('footer-settings').innerHTML = ICONS.gear;
@@ -3581,10 +3585,10 @@ document.addEventListener('click', e => {
 async function signOut() {
   // Clear the identity first so a slow network can't leave the app half signed-out,
   // then end the session itself. Without the signOut() the stored token would still
-  // be valid and index.html would send them straight back in.
+  // be valid and the library would send them straight back in.
   localStorage.removeItem('trainee');
-  try { await db.auth.signOut(); } catch (e) { /* going to index.html regardless */ }
-  window.location.href = 'index.html';
+  try { await db.auth.signOut(); } catch (e) { /* going to the library regardless */ }
+  window.location.href = 'library.html';
 }
 
 // ══ CUSTOMER OBSESSION (read-only review, in-app) ══

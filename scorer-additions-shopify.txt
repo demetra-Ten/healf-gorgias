@@ -1,4 +1,6 @@
-SCORER CHANGES FOR THE SHOPIFY SIM — DRAFT, NOT YET APPLIED TO n8n
+SCORER CHANGES FOR THE SHOPIFY SIM — APPLIED AND PUBLISHED 2026-10-21 (n8n version 8bccc8f2)
+(Also added: shopify_stock — what the Shopify sim showed per product — and the date/stock rules;
+ step 3 below was done in the same release.)
 (workflow "Healf Training - Reply Scoring", DHLJ1PVNIj9kEnsl; update_workflow then publish_workflow)
 
 1. USER MESSAGE — add straight after the "Trainee ACTIONS note" block:

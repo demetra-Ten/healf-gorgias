@@ -1714,7 +1714,7 @@ function productOrg(p, s) {
     <div style="margin-bottom:4px">Type</div><div class="fakesel" style="margin-bottom:12px">${esc((p.product_type || '').replace(/^-$/, '') || '-')}${I.updown}</div>
     <div style="margin-bottom:4px">Vendor</div><div class="fakesel" style="margin-bottom:12px">${esc(p.vendor || '')}${I.updown}</div>
     <div style="margin-bottom:4px">Collections</div><div class="coll" style="margin-bottom:12px">${colls.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
-    <div style="margin-bottom:4px">Tags</div><div class="coll">${tags.slice(0, 24).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${tags.length > 24 ? `<span class="chip" style="background:#fff;border:1px solid var(--line)">+${tags.length - 24} more</span>` : ''}${tags.length ? '' : '<span style="color:var(--ink-2)">No tags</span>'}</div></div>`;
+    <div style="margin-bottom:4px">Tags</div><div class="coll">${tags.map(x => `<span class="chip">${esc(x)}</span>`).join('')}${tags.length ? '' : '<span style="color:var(--ink-2)">No tags</span>'}</div></div>`;
 }
 const priceOf = (v, s) => (s.price != null ? Number(s.price) : v.price);
 function priceCard(v, s) {

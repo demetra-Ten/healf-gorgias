@@ -236,28 +236,6 @@ function njTimelineHtml(a) {
   return `<div class="nj-tl"><div class="nj-bands">${bands}</div><div class="nj-weeks">${cells.join('')}</div></div>`;
 }
 
-// A small line chart: actual values per week vs a target line (and an optional minimum line).
-function njChartSvg(title, weeks, actual, goal, min, unit, maxHint) {
-  const W = 470, H = 190, L = 40, R = 12, T = 26, B = 28;
-  const vals = [...actual, ...goal, ...min].filter(v => v != null);
-  const max = Math.max(maxHint || 0, ...vals, 1) * 1.08;
-  const x = i => L + (weeks.length === 1 ? (W - L - R) / 2 : i * (W - L - R) / (weeks.length - 1));
-  const y = v => T + (H - T - B) * (1 - v / max);
-  const path = arr => { let d = '', pen = false; arr.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' '; pen = true; }); return d; };
-  const grid = [0, 0.5, 1].map(f => { const v = max / 1.08 * f; return `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#f0eeeb"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="#a3a19e">${Math.round(v)}${unit}</text>`; }).join('');
-  const xs = weeks.map((w, i) => `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#a3a19e">Wk ${w}</text>`).join('');
-  const dots = actual.map((v, i) => v == null ? '' : `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="#1b1c1d"><title>Wk ${weeks[i]}: ${v}${unit}</title></circle>`).join('');
-  const has = actual.some(v => v != null);
-  return `<div class="nj-chart"><div class="nj-chart-h">${njEsc(title)}
-      <span class="nj-legend"><i style="background:#1b1c1d"></i>Actual <i style="background:#00a862"></i>Goal${min.some(v => v != null) ? ' <i class="dash"></i>Minimum' : ''}</span></div>
-    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${njEsc(title)}">${grid}${xs}
-      <path d="${path(goal)}" fill="none" stroke="#00a862" stroke-width="2"/>
-      <path d="${path(min)}" fill="none" stroke="#e0a100" stroke-width="1.6" stroke-dasharray="5 4"/>
-      <path d="${path(actual)}" fill="none" stroke="#1b1c1d" stroke-width="2.2"/>${dots}
-      ${has ? '' : `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="12" fill="#a3a19e">No data yet</text>`}
-    </svg></div>`;
-}
-
 function njTargetText(t) {
   return [t.goal_messages ? `${t.goal_messages}${t.min_messages && t.min_messages !== t.goal_messages ? ` (min ${t.min_messages})` : ''} msgs` : '',
           t.quality_target_pct ? `${t.quality_target_pct}% 3s` : '', t.qa_mentions_max_pct ? `QA < ${t.qa_mentions_max_pct}%` : '',
@@ -325,11 +303,6 @@ async function njDeleteScore(id) {
 
 function renderJoinerAgent() {
   const a = njAgent(nj.agentId); if (!a) { njBack(); return; }
-  const wq = [1, 2, 3, 4], wm = [4, 5, 6, 7, 8, 9, 10];
-  const qChart = njChartSvg('Quality · % of scored tickets that are 3s', wq, wq.map(w => (njStat(a.id, w) || {}).quality_pct ?? null),
-    wq.map(w => njTarget(w).quality_target_pct ?? null), wq.map(() => null), '%', 100);
-  const mChart = njChartSvg('Messages sent a week', wm, wm.map(w => (njStat(a.id, w) || {}).messages_sent ?? null),
-    wm.map(w => njTarget(w).goal_messages ?? null), wm.map(w => njTarget(w).min_messages ?? null), '', 0);
   const lastWeek = NJ_DONE(a) ? 10 : Math.min(Math.max(a.current_week, 1), 10);
   const weeks = []; for (let w = lastWeek; w >= 1; w--) weeks.push(w);
   const facts = [['Started', njFmt(njDate(a.start_date))], ['Now', NJ_DONE(a) ? (a.status === 'left' ? 'Left' : 'Passed probation') : a.current_week > 0 ? `Week ${a.current_week} · ${njPhaseLabel(a.current_week)}` : 'Starts soon'],
@@ -347,7 +320,6 @@ function renderJoinerAgent() {
     <div id="nj-edit"></div>
     ${a.probation_flag && !NJ_DONE(a) ? `<div class="nj-flag-banner">⚑ <b>Below the probation minimum.</b> Week ${a.latest_week}: ${a.latest_messages ?? '–'} messages against a minimum of ${a.latest_min ?? '–'}${a.latest_qa_pct != null ? `, QA ${a.latest_qa_pct}%` : ''}. To pass at week 10: ${njTarget(10).min_messages} messages with QA under ${njTarget(10).qa_mentions_max_pct}%.</div>` : ''}
     <div class="card" style="padding:16px 18px">${njTimelineHtml(a)}</div>
-    <div class="nj-charts">${qChart}${mChart}</div>
     <div id="nj-entry"></div>
     <div class="nj-group-h">Week by week <span class="nj-muted">newest first · click a week to read the review</span></div>
     <div class="card nj-weekrows">${weeks.map(w => njWeekRowHtml(a, w)).join('')}</div>

@@ -14,6 +14,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>window.SUPABASE_STORAGE_KEY = 'healf-admin-auth';</script>
 <script src="supabase.js"></script>
+<!-- New Joiners tab. Loaded before the main script, which can call loadJoiners() as soon as a saved admin session resumes. -->
+<script src="admin-joiners.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; background: #f7f7f8; min-height: 100vh; color: #1b1c1d; -webkit-font-smoothing: antialiased; }
@@ -169,6 +171,37 @@ textarea { resize: vertical; min-height: 80px; }
 /* LOADING */
 .loading { color: #a3a19e; font-size: 13px; padding: 24px; text-align: center; }
 
+/* NEW JOINERS */
+.nj-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:0; flex-shrink:0; }
+.nj-rag { display:inline-flex; align-items:center; font-size:12px; color:#474646; }
+.nj-flag { display:inline-block; background:#ffe9e9; color:#6c041f; font-size:11px; font-weight:600; padding:2px 8px; border-radius:8px; margin-right:6px; }
+.nj-status { display:inline-block; background:#f7f5f3; border:1px solid #e8e5e2; color:#706f6e; font-size:11px; font-weight:600; padding:1px 8px; border-radius:8px; text-transform:capitalize; }
+.nj-flag-banner { background:#ffe9e9; border:1px solid #fecaca; color:#6c041f; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-weight:500; }
+.nj-tl { overflow-x:auto; }
+.nj-bands, .nj-weeks { display:grid; grid-template-columns:repeat(10, minmax(92px, 1fr)); gap:6px; min-width:960px; }
+.nj-bands { margin-bottom:6px; grid-auto-flow:dense; }
+.nj-band { grid-row:1; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:5px 8px; border-radius:6px; }
+.nj-band-onboarding { background:#eef2ff; color:#3b4aa3; }
+.nj-band-buddying { background:#fdf3e3; color:#8a5a00; }
+.nj-band-probation { background:#eef7f1; color:#1d6b43; }
+.nj-tl-tag { display:inline-block; margin-left:5px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; background:#1b1c1d; color:#fff; padding:1px 5px; border-radius:4px; vertical-align:1px; }
+.nj-wk { border:1px solid #e8e5e2; border-radius:8px; padding:9px 10px; cursor:pointer; background:#fff; transition:border-color .15s; }
+.nj-wk:hover { border-color:#1b1c1d; }
+.nj-wk.cur { border:2px solid #1b1c1d; padding:8px 9px; }
+.nj-wk-n { font-weight:700; font-size:12px; }
+.nj-wk-d { font-size:11px; color:#a3a19e; margin:1px 0 7px; }
+.nj-wk-r { font-size:11.5px; color:#474646; display:flex; align-items:baseline; }
+.nj-wk-rev { font-size:10.5px; color:#00834f; margin-top:5px; font-weight:600; }
+.nj-charts { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.nj-chart { background:#fff; border:1px solid #e8e5e2; border-radius:10px; padding:12px 14px 4px; }
+.nj-chart-h { font-weight:700; font-size:12.5px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.nj-legend { font-weight:500; font-size:11px; color:#706f6e; display:flex; align-items:center; gap:5px; }
+.nj-legend i { display:inline-block; width:14px; height:3px; border-radius:2px; margin-left:6px; }
+.nj-legend i.dash { background:repeating-linear-gradient(90deg,#e0a100 0 4px,transparent 4px 7px); }
+.nj-rv { margin-top:10px; }
+.nj-metric-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:0 12px; }
+@media (max-width: 760px) { .nj-charts { grid-template-columns:1fr; } .nj-metric-grid { grid-template-columns:1fr 1fr; } }
+
 body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Arial, Helvetica, sans-serif; }
 </style>
 </head>
@@ -205,6 +238,7 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
       Results
       <span id="marking-badge" style="background:#e9004a;color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px;display:none">0</span>
     </button>
+    <button class="tab-btn" onclick="switchTab('joiners', this)">New Joiners</button>
     <div class="admin-right"><span class="admin-badge">Admin</span><button class="signout-btn" onclick="adminSignOut()">Sign out</button></div>
   </nav>
 
@@ -267,6 +301,11 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
         </div>
       </div>
       <div id="marking-list"><div class="loading">Loading submissions…</div></div>
+    </div>
+
+    <!-- NEW JOINERS TAB (admin-joiners.js) -->
+    <div id="tab-joiners" style="display:none">
+      <div id="nj-root"><div class="loading">Loading new joiners…</div></div>
     </div>
   </div>
 </div>
@@ -363,6 +402,7 @@ async function loadAll() {
   renderTickets();
   renderMarking();
   updateMarkingBadge();
+  loadJoiners();
 }
 
 function populateCategorySelects() {
@@ -760,7 +800,7 @@ async function markSubmission(subId) {
 
 // ── UTILS ──
 function switchTab(name, btn) {
-  ['trainees','tickets','marking'].forEach(t => {
+  ['trainees','tickets','marking','joiners'].forEach(t => {
     document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none';
   });
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

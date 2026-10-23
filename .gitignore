@@ -13,3 +13,7 @@ source-mapping/ticket-stock*.json
 source-mapping/catalogue*.json
 # Real -> fake order numbers (2026-10-21). Real numbers must never be published.
 source-mapping/order-number-map.json
+
+# New joiner import: CSV exports of the Onboarding Master file + generated output. Staff
+# performance data — never publish.
+data/

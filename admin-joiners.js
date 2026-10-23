@@ -80,40 +80,97 @@ function renderJoiners() {
 }
 
 // ── Cohort view ─────────────────────────────────────────────────────────────
-function njSetFilter(f) { nj.filter = f; renderJoinerList(); }
+const NJ_DONE = a => ['passed', 'left'].includes(a.status);
+const NJ_AVATAR = ['#efe9fb', '#e6f4ec', '#fdf1e1', '#e8f0fb', '#fbe9ee', '#eef0f2'];
+function njAvatar(a, size) {
+  const ini = a.name.split(/\s+/).map(x => x[0]).join('').slice(0, 2).toUpperCase();
+  const bg = NJ_AVATAR[a.id % NJ_AVATAR.length];
+  return `<span class="nj-ava" style="background:${bg};width:${size || 34}px;height:${size || 34}px;font-size:${(size || 34) * 0.38}px">${njEsc(ini)}</span>`;
+}
+function njStrip(a) {
+  let h = '';
+  for (let w = 1; w <= 10; w++) {
+    const s = njStat(a.id, w), r = njReview(a.id, w), future = w > a.current_week;
+    const cls = s && s.rag ? s.rag : (s || r) ? 'done' : future ? 'future' : 'empty';
+    h += `<span class="nj-pill nj-pill-${cls} ${w === a.current_week ? 'cur' : ''}" title="Week ${w}: ${njEsc(s ? njStatSummary(s) : r ? 'Review only' : future ? 'Not reached yet' : 'Nothing entered')}"></span>`;
+  }
+  return `<span class="nj-strip">${h}</span>`;
+}
+function njLatestLine(a) {
+  const s = a.latest_week ? njStat(a.id, a.latest_week) : null;
+  if (!s) return '<span class="nj-muted">No numbers yet</span>';
+  const t = njTarget(s.week), bits = [];
+  if (s.messages_sent != null) bits.push(`<b>${s.messages_sent}</b>${t.goal_messages ? `<span class="nj-muted"> / ${t.goal_messages}</span>` : ''} msgs`);
+  if (s.quality_pct != null) bits.push(`<b>${s.quality_pct}%</b>${t.quality_target_pct ? `<span class="nj-muted"> / ${t.quality_target_pct}%</span>` : ''} 3s`);
+  if (s.qa_pct != null && s.week >= 5) bits.push(`QA <b>${s.qa_pct}%</b>`);
+  return `${njRagDot(s.rag)}<span>Wk ${s.week} · ${bits.join(' · ') || 'review only'}</span>`;
+}
+function njPersonRow(a) {
+  const flag = a.probation_flag && !NJ_DONE(a);
+  return `<div class="nj-person ${NJ_DONE(a) ? 'done' : ''}" onclick="njOpenAgent(${a.id})">
+    ${njAvatar(a)}
+    <div class="nj-p-name"><div class="nj-p-n">${njEsc(a.name)}</div>
+      <div class="nj-muted">Started ${njFmt(njDate(a.start_date))}${a.cohort ? ' · ' + njEsc(a.cohort) : ''}</div></div>
+    <div class="nj-p-strip">${njStrip(a)}<div class="nj-muted" style="margin-top:5px">${NJ_DONE(a) ? (a.status === 'left' ? 'Left' : 'Passed probation') : a.current_week > 0 ? `Week ${a.current_week} · ${njEsc(njPhaseLabel(a.current_week))}` : 'Starts soon'}</div></div>
+    <div class="nj-p-latest">${njLatestLine(a)}</div>
+    <div class="nj-p-flag">${flag ? '<span class="nj-flag">⚑ Below minimum</span>' : ''}<span class="nj-chev">›</span></div>
+  </div>`;
+}
+function njSetPage(p) { nj.page = p; renderJoinerList(); }
 function renderJoinerList() {
-  const list = nj.overview.filter(a => nj.filter === 'all' || !['passed', 'left'].includes(a.status));
-  const flagged = nj.overview.filter(a => a.probation_flag && !['passed', 'left'].includes(a.status)).length;
-  const rows = list.map(a => {
-    const t = njTarget(a.current_week);
-    const latest = a.latest_week ? `Wk ${a.latest_week} · ${njStatSummary(njStat(a.id, a.latest_week))}` : 'No data yet';
-    return `<tr class="trainee-row" onclick="njOpenAgent(${a.id})">
-      <td><b style="color:#1b1c1d">${njEsc(a.name)}</b>${a.cohort ? `<div style="color:#a3a19e;font-size:12px">${njEsc(a.cohort)}</div>` : ''}</td>
-      <td>${njFmt(njDate(a.start_date))}</td>
-      <td>${a.current_week > 0 ? `Week ${a.current_week}` : 'Starts soon'}<div style="color:#a3a19e;font-size:12px">${njEsc(njPhaseLabel(a.current_week))}</div></td>
-      <td>${njRagChip(a.latest_rag, latest)}${t.goal_messages && a.current_week >= 4 && a.current_week <= 11 ? `<div style="color:#a3a19e;font-size:12px;margin-top:3px">This week's goal: ${t.goal_messages}${t.min_messages ? ` (min ${t.min_messages})` : ''}</div>` : ''}</td>
-      <td>${a.probation_flag && !['passed', 'left'].includes(a.status) ? '<span class="nj-flag">⚑ Below probation minimum</span>' : ''}<span class="nj-status">${njEsc(a.status)}</span></td>
-    </tr>`;
-  }).join('');
+  const page = nj.page || 'people';
+  const active = nj.overview.filter(a => !NJ_DONE(a)).sort((x, y) => (y.start_date > x.start_date ? 1 : -1));
+  const done = nj.overview.filter(NJ_DONE).sort((x, y) => (y.start_date > x.start_date ? 1 : -1));
+  const flagged = active.filter(a => a.probation_flag).length;
+  const onTrack = active.filter(a => a.latest_rag === 'green').length;
+  const people = `
+    <div class="stat-tiles">
+      <div class="stat-tile"><div class="v">${active.length}</div><div class="l">In training</div></div>
+      <div class="stat-tile"><div class="v" style="color:#00834f">${onTrack}</div><div class="l">On track this week</div></div>
+      <div class="stat-tile"><div class="v" style="color:${flagged ? '#d9003e' : '#1b1c1d'}">${flagged}</div><div class="l">Below probation minimum</div></div>
+      <div class="stat-tile"><div class="v">${done.length}</div><div class="l">Completed</div></div>
+    </div>
+    <div class="nj-legend-row"><span>Weeks 1–10:</span>
+      <span><span class="nj-pill nj-pill-green"></span>On target</span><span><span class="nj-pill nj-pill-amber"></span>Close</span>
+      <span><span class="nj-pill nj-pill-red"></span>Below</span><span><span class="nj-pill nj-pill-done"></span>Review only</span>
+      <span><span class="nj-pill nj-pill-empty"></span>Nothing entered</span><span><span class="nj-pill nj-pill-future"></span>Not reached</span></div>
+    <div class="nj-group-h">In training <span class="nj-muted">${active.length}</span></div>
+    <div class="card nj-list">${active.map(njPersonRow).join('') || '<div class="nj-empty">Nobody in training right now.</div>'}</div>
+    <div class="nj-group-h">Completed <span class="nj-muted">${done.length}</span></div>
+    <div class="card nj-list">${done.map(njPersonRow).join('') || '<div class="nj-empty">Nobody has completed yet.</div>'}</div>`;
   document.getElementById('nj-root').innerHTML = `
     <div class="section-header">
       <div><div class="section-title">New Joiners</div>
-        <div class="section-sub">10-week training timeline per new joiner. Admin login only.</div></div>
-      <button class="btn btn-primary" onclick="njShowAdd()">+ Add new joiner</button>
+        <div class="section-sub">Each new joiner's 10-week journey against the KPI expectations. Admin login only.</div></div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="nj-seg"><button class="${page === 'people' ? 'on' : ''}" onclick="njSetPage('people')">People</button><button class="${page === 'kpi' ? 'on' : ''}" onclick="njSetPage('kpi')">KPI expectations</button></div>
+        <button class="btn btn-primary" onclick="njShowAdd()">+ Add new joiner</button></div>
     </div>
     <div class="card" id="nj-add" style="display:none;margin-bottom:20px"></div>
-    <div class="stat-tiles">
-      <div class="stat-tile"><div class="v">${nj.overview.filter(a => !['passed', 'left'].includes(a.status)).length}</div><div class="l">Active new joiners</div></div>
-      <div class="stat-tile"><div class="v">${nj.overview.filter(a => a.latest_rag === 'green' && !['passed', 'left'].includes(a.status)).length}</div><div class="l">On track (latest week)</div></div>
-      <div class="stat-tile"><div class="v" style="color:${flagged ? '#e9004a' : '#1b1c1d'}">${flagged}</div><div class="l">Probation flags</div></div>
-    </div>
-    <div class="filter-row" style="margin-bottom:12px"><span class="filter-label">Show</span>
-      <button class="filter-chip ${nj.filter === 'active' ? 'active' : ''}" onclick="njSetFilter('active')">Active</button>
-      <button class="filter-chip ${nj.filter === 'all' ? 'active' : ''}" onclick="njSetFilter('all')">All</button></div>
-    <div class="card"><table>
-      <thead><tr><th>Name</th><th>Started</th><th>Current week</th><th>Latest week vs KPI</th><th>Status</th></tr></thead>
-      <tbody>${rows || `<tr class="empty-row"><td colspan="5">${nj.overview.length ? 'Nobody active right now. Switch to All.' : 'No new joiners yet. Add one above.'}</td></tr>`}</tbody>
-    </table></div>`;
+    ${page === 'kpi' ? njKpiHtml() : people}`;
+}
+
+// ── KPI expectations (kpi_targets) ──────────────────────────────────────────
+function njKpiHtml() {
+  const phaseName = { onboarding: 'Onboarding', buddying: 'Buddying', probation: 'Probation', passed: 'Probation ended' };
+  const rows = nj.targets.map(t => `<tr>
+      <td><b>Week ${t.week}</b></td>
+      <td><span class="nj-phase nj-phase-${t.phase}">${phaseName[t.phase] || njEsc(t.phase)}</span>${t.week === 5 ? ' <span class="nj-tl-tag">TL handover</span>' : ''}</td>
+      <td>${t.goal_messages ? `<b>${t.goal_messages}${t.week === 11 ? '+' : ''}</b>${t.min_messages && t.min_messages !== t.goal_messages ? `<span class="nj-muted"> · min ${t.min_messages}</span>` : t.min_messages ? '<span class="nj-muted"> · minimum to pass</span>' : ''}` : '<span class="nj-muted">—</span>'}</td>
+      <td>${t.quality_target_pct ? `<b>${t.quality_target_pct}%</b> <span class="nj-muted">of scored tickets are 3s</span>` : '<span class="nj-muted">—</span>'}</td>
+      <td>${t.qa_mentions_max_pct ? `under <b>${t.qa_mentions_max_pct}%</b>` : '<span class="nj-muted">—</span>'}</td>
+      <td>${t.calls_target ? `<b>${t.calls_target}</b>${t.week === 10 ? '<span class="nj-muted"> in total</span>' : ''}` : '<span class="nj-muted">—</span>'}</td>
+      <td class="nj-muted" style="white-space:normal">${njEsc(t.notes || '')}</td></tr>`).join('');
+  return `<div class="card"><table class="nj-kpi">
+      <thead><tr><th>Week</th><th>Phase</th><th>Messages a week</th><th>Quality</th><th>QA mentions</th><th>Calls</th><th>What happens</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="card" style="padding:16px 18px"><div class="card-title" style="margin-bottom:8px">How the colours are worked out</div>
+      <div class="nj-rules">
+        <div>${njRagDot('green')}<b>On target</b> · messages at or above the goal, quality at or above 90%, QA mentions under 5%</div>
+        <div>${njRagDot('amber')}<b>Close</b> · messages between the minimum and the goal, or quality 80–89%</div>
+        <div>${njRagDot('red')}<b>Below</b> · messages under the minimum, quality under 80%, or QA mentions 5% or more</div>
+        <div style="margin-top:6px" class="nj-muted">Weeks 1–2 have no KPI. Weeks run Monday to Friday; week 1 is the week someone starts. The probation flag shows when the latest week from week 5 on is below that week's minimum or QA is 5%+. Quality % = score 3s ÷ tickets scored.</div>
+      </div></div>`;
 }
 
 function njAgentFormHtml(a, mode) {
@@ -163,17 +220,19 @@ function njScoresInWeek(a, w) {
 function njTimelineHtml(a) {
   const cells = [];
   for (let w = 1; w <= 10; w++) {
-    const s = njStat(a.id, w), r = njReview(a.id, w);
-    const cur = w === a.current_week;
-    cells.push(`<div class="nj-wk ${cur ? 'cur' : ''} ${w === 5 ? 'handover' : ''}" onclick="njOpenEntry(${w})" title="Enter or edit week ${w}">
-      <div class="nj-wk-n">Wk ${w}${cur ? ' · now' : ''}${w === 5 ? '<span class="nj-tl-tag">TL handover</span>' : ''}</div>
+    const s = njStat(a.id, w), r = njReview(a.id, w), t = njTarget(w);
+    const cur = w === a.current_week, future = w > a.current_week;
+    let main = '<span class="nj-muted">—</span>', sub = '';
+    if (s && s.messages_sent != null) { main = `<b>${s.messages_sent}</b>${t.goal_messages ? `<span class="nj-muted"> / ${t.goal_messages}</span>` : ''}`; sub = 'messages'; }
+    else if (s && s.quality_pct != null) { main = `<b>${s.quality_pct}%</b>${t.quality_target_pct ? `<span class="nj-muted"> / ${t.quality_target_pct}%</span>` : ''}`; sub = 'scored 3'; }
+    else if (r) { main = '<span class="nj-muted">Review only</span>'; }
+    cells.push(`<div class="nj-wk ${cur ? 'cur' : ''} ${future ? 'future' : ''} nj-wk-${(s && s.rag) || 'none'}" onclick="njOpenEntry(${w})" title="Enter or edit week ${w}">
+      <div class="nj-wk-n">Week ${w}${cur ? '<span class="nj-now">now</span>' : ''}</div>
       <div class="nj-wk-d">${njWeekRange(a.start_date, w)}</div>
-      <div class="nj-wk-r">${njRagDot(s && s.rag, s ? njStatSummary(s) : 'No data')}${s ? njEsc(njStatSummary(s)) : '<span style="color:#c0bdba">—</span>'}</div>
-      ${r ? '<div class="nj-wk-rev">Review ✓</div>' : ''}
+      <div class="nj-wk-v">${main}</div><div class="nj-wk-s">${sub}${w === 5 ? (sub ? ' · ' : '') + 'TL handover' : ''}</div>
     </div>`);
   }
-  const bands = NJ_PHASES.map(p => `<div class="nj-band nj-band-${p.label.toLowerCase()}" style="grid-column:${p.from} / ${p.to + 1}">${p.label}</div>`).join('')
-;
+  const bands = NJ_PHASES.map(p => `<div class="nj-band nj-band-${p.label.toLowerCase()}" style="grid-column:${p.from} / ${p.to + 1}">${p.label}</div>`).join('');
   return `<div class="nj-tl"><div class="nj-bands">${bands}</div><div class="nj-weeks">${cells.join('')}</div></div>`;
 }
 
@@ -199,22 +258,37 @@ function njChartSvg(title, weeks, actual, goal, min, unit, maxHint) {
     </svg></div>`;
 }
 
-function njReviewCardHtml(a, w) {
+function njTargetText(t) {
+  return [t.goal_messages ? `${t.goal_messages}${t.min_messages && t.min_messages !== t.goal_messages ? ` (min ${t.min_messages})` : ''} msgs` : '',
+          t.quality_target_pct ? `${t.quality_target_pct}% 3s` : '', t.qa_mentions_max_pct ? `QA < ${t.qa_mentions_max_pct}%` : '',
+          t.calls_target ? `${t.calls_target} call${t.calls_target > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ') || 'No KPI';
+}
+function njActualText(s) {
+  if (!s) return '<span class="nj-muted">—</span>';
+  return [s.messages_sent != null ? `<b>${s.messages_sent}</b> msgs` : '',
+          s.tickets_scored != null ? `<b>${s.quality_pct ?? '–'}%</b> 3s <span class="nj-muted">(${s.score_3s ?? '–'}/${s.score_2s ?? '–'}/${s.score_1s ?? '–'} of ${s.tickets_scored})</span>` : '',
+          s.qa_pct != null ? `QA <b>${s.qa_pct}%</b> <span class="nj-muted">(${s.qa_mentions})</span>` : '',
+          s.calls_done != null ? `<b>${s.calls_done}</b> calls` : ''].filter(Boolean).join(' · ') || '<span class="nj-muted">—</span>';
+}
+function njToggleWeek(w) { const el = document.getElementById('nj-wr-' + w); if (el) el.classList.toggle('open'); }
+function njWeekRowHtml(a, w) {
   const r = njReview(a.id, w), s = njStat(a.id, w), t = njTarget(w);
-  const tgt = [t.goal_messages ? `goal ${t.goal_messages}${t.min_messages ? ` / min ${t.min_messages}` : ''} msgs` : '', t.quality_target_pct ? `${t.quality_target_pct}% scored 3` : '', t.qa_mentions_max_pct ? `QA < ${t.qa_mentions_max_pct}%` : ''].filter(Boolean).join(' · ');
-  const m = s ? [
-    s.tickets_scored != null ? `${s.tickets_scored} scored (${s.score_3s ?? '–'} / ${s.score_2s ?? '–'} / ${s.score_1s ?? '–'})` : '',
-    s.quality_pct != null ? `${s.quality_pct}% 3s` : '', s.avg_score != null ? `avg ${s.avg_score}` : '',
-    s.messages_sent != null ? `${s.messages_sent} messages` : '', s.qa_pct != null ? `QA ${s.qa_mentions} (${s.qa_pct}%)` : '',
-    s.calls_done != null ? `${s.calls_done} calls` : ''].filter(Boolean).join(' · ') : 'No metrics entered';
-  return `<div class="marking-card">
-    <div class="marking-header"><div>
-        <div style="font-weight:700;font-size:14px">Week ${w} <span style="color:#a3a19e;font-weight:500">· ${njWeekRange(a.start_date, w)} · ${njEsc(njPhaseLabel(w))}</span></div>
-        <div class="marking-meta">${njEsc(m)}${tgt ? ` <span style="color:#c0bdba">|</span> Target: ${njEsc(tgt)}` : ''}</div></div>
-      <div style="display:flex;gap:8px;align-items:center">${s ? njRagChip(s.rag) : ''}<button class="btn btn-outline btn-sm" onclick="njOpenEntry(${w})">Edit</button></div></div>
-    ${r ? NJ_REVIEW_FIELDS.filter(([k]) => r[k]).map(([k, l]) => `<div class="nj-rv"><div class="reply-panel-title">${l}</div><div class="reply-panel-body">${njEsc(r[k])}</div></div>`).join('')
-        + (r.reviewer ? `<div class="marking-meta" style="margin-top:8px">Reviewed by ${njEsc(r.reviewer)}</div>` : '') : '<div class="marking-meta">No review written.</div>'}
-  </div>`;
+  const filled = r ? NJ_REVIEW_FIELDS.filter(([k]) => r[k]) : [];
+  return `<div class="nj-wr" id="nj-wr-${w}">
+    <div class="nj-wr-bar" onclick="njToggleWeek(${w})">
+      <div class="nj-wr-wk"><b>Week ${w}</b><div class="nj-muted">${njWeekRange(a.start_date, w)}</div></div>
+      <div class="nj-wr-ph"><span class="nj-phase nj-phase-${t.phase}">${njEsc(njPhaseLabel(w).replace(' · Probation', ''))}</span></div>
+      <div class="nj-wr-t"><div class="nj-lbl">Target</div>${njEsc(njTargetText(t))}</div>
+      <div class="nj-wr-a"><div class="nj-lbl">Actual</div>${njActualText(s)}</div>
+      <div class="nj-wr-r">${s && s.rag ? njRagChip(s.rag, { green: 'On target', amber: 'Close', red: 'Below' }[s.rag]) : `<span class="nj-muted">${njTargetText(t) === 'No KPI' ? 'No KPI' : s ? 'No KPI data' : 'Not entered'}</span>`}</div>
+      <div class="nj-wr-x">${filled.length ? '<span class="nj-muted">Review</span>' : ''}<span class="nj-caret">▾</span></div>
+    </div>
+    <div class="nj-wr-body">
+      ${filled.length ? `<div class="nj-rv-grid">${NJ_REVIEW_FIELDS.map(([k, l]) => `<div class="nj-rv-box nj-rv-${k}"><div class="nj-lbl">${l}</div><div class="nj-rv-text">${r[k] ? njEsc(r[k]) : '<span class="nj-muted">—</span>'}</div></div>`).join('')}</div>` : '<div class="nj-muted" style="padding:4px 0 8px">No review written for this week.</div>'}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <span class="nj-muted">${r && r.reviewer ? 'Reviewed by ' + njEsc(r.reviewer) : ''}</span>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();njOpenEntry(${w})">Edit week ${w}</button></div>
+    </div></div>`;
 }
 
 function njScoresHtml(a) {
@@ -252,29 +326,35 @@ async function njDeleteScore(id) {
 function renderJoinerAgent() {
   const a = njAgent(nj.agentId); if (!a) { njBack(); return; }
   const wq = [1, 2, 3, 4], wm = [4, 5, 6, 7, 8, 9, 10];
-  const qChart = njChartSvg('Quality % (tickets scored 3), weeks 1–4', wq, wq.map(w => (njStat(a.id, w) || {}).quality_pct ?? null),
+  const qChart = njChartSvg('Quality · % of scored tickets that are 3s', wq, wq.map(w => (njStat(a.id, w) || {}).quality_pct ?? null),
     wq.map(w => njTarget(w).quality_target_pct ?? null), wq.map(() => null), '%', 100);
-  const mChart = njChartSvg('Messages sent, weeks 4–10', wm, wm.map(w => (njStat(a.id, w) || {}).messages_sent ?? null),
+  const mChart = njChartSvg('Messages sent a week', wm, wm.map(w => (njStat(a.id, w) || {}).messages_sent ?? null),
     wm.map(w => njTarget(w).goal_messages ?? null), wm.map(w => njTarget(w).min_messages ?? null), '', 0);
-  const weeksWithAny = [...new Set([...nj.stats.filter(s => s.agent_id === a.id).map(s => s.week), ...nj.reviews.filter(r => r.agent_id === a.id).map(r => r.week)])].sort((x, y) => y - x);
+  const lastWeek = NJ_DONE(a) ? 10 : Math.min(Math.max(a.current_week, 1), 10);
+  const weeks = []; for (let w = lastWeek; w >= 1; w--) weeks.push(w);
+  const facts = [['Started', njFmt(njDate(a.start_date))], ['Now', NJ_DONE(a) ? (a.status === 'left' ? 'Left' : 'Passed probation') : a.current_week > 0 ? `Week ${a.current_week} · ${njPhaseLabel(a.current_week)}` : 'Starts soon'],
+    ['Cohort', a.cohort], ['Buddy', a.buddy], ['Team lead', a.team_lead], ['Learns best', a.learning_style]].filter(([, v]) => v);
   document.getElementById('nj-root').innerHTML = `
     <div style="margin-bottom:14px"><button class="btn btn-outline btn-sm" onclick="njBack()">← All new joiners</button></div>
-    <div class="section-header"><div>
-        <div class="section-title">${njEsc(a.name)} <span class="nj-status" style="vertical-align:3px">${njEsc(a.status)}</span></div>
-        <div class="section-sub">Started ${njFmt(njDate(a.start_date))} · ${a.current_week > 0 ? `Week ${a.current_week} (${njEsc(njPhaseLabel(a.current_week))})` : 'Starts soon'}${a.cohort ? ' · ' + njEsc(a.cohort) : ''}${a.buddy ? ' · Buddy ' + njEsc(a.buddy) : ''}${a.team_lead ? ' · TL ' + njEsc(a.team_lead) : ''}${a.learning_style ? ' · Learns best: ' + njEsc(a.learning_style) : ''}</div></div>
+    <div class="nj-head">
+      <div style="display:flex;gap:14px;align-items:center">${njAvatar(a, 48)}<div>
+        <div class="section-title">${njEsc(a.name)} <span class="nj-status nj-status-${a.status}" style="vertical-align:3px">${njEsc(a.status)}</span></div>
+        <div class="nj-facts">${facts.map(([k, v]) => `<span><span class="nj-muted">${k}</span> ${njEsc(v)}</span>`).join('')}</div></div></div>
       <div style="display:flex;gap:8px"><button class="btn btn-outline" onclick="njEditAgent()">Edit details</button>
         <button class="btn btn-outline" onclick="njExport()">Export report</button>
-        <button class="btn btn-primary" onclick="njOpenEntry(${Math.min(Math.max(a.current_week, 1), 10)})">+ Weekly entry</button></div>
+        <button class="btn btn-primary" onclick="njOpenEntry(${lastWeek})">+ Weekly entry</button></div>
     </div>
     <div id="nj-edit"></div>
-    ${a.probation_flag && !['passed', 'left'].includes(a.status) ? `<div class="nj-flag-banner">⚑ Tracking below the probation minimum: week ${a.latest_week} had ${a.latest_messages ?? '–'} messages (minimum ${a.latest_min ?? '–'})${a.latest_qa_pct != null ? `, QA ${a.latest_qa_pct}%` : ''}. Week 10 pass minimum is ${njTarget(10).min_messages} messages with QA under ${njTarget(10).qa_mentions_max_pct}%.</div>` : ''}
+    ${a.probation_flag && !NJ_DONE(a) ? `<div class="nj-flag-banner">⚑ <b>Below the probation minimum.</b> Week ${a.latest_week}: ${a.latest_messages ?? '–'} messages against a minimum of ${a.latest_min ?? '–'}${a.latest_qa_pct != null ? `, QA ${a.latest_qa_pct}%` : ''}. To pass at week 10: ${njTarget(10).min_messages} messages with QA under ${njTarget(10).qa_mentions_max_pct}%.</div>` : ''}
     <div class="card" style="padding:16px 18px">${njTimelineHtml(a)}</div>
     <div class="nj-charts">${qChart}${mChart}</div>
     <div id="nj-entry"></div>
-    <div class="cat-group-head">Weekly reviews · newest first</div>
-    ${weeksWithAny.length ? weeksWithAny.map(w => njReviewCardHtml(a, w)).join('') : '<div class="marking-card"><div class="marking-meta">Nothing entered yet. Click a week on the timeline to add its numbers and review.</div></div>'}
-    <div class="cat-group-head">Ticket scores</div>
+    <div class="nj-group-h">Week by week <span class="nj-muted">newest first · click a week to read the review</span></div>
+    <div class="card nj-weekrows">${weeks.map(w => njWeekRowHtml(a, w)).join('')}</div>
+    <div class="nj-group-h">Ticket scores</div>
     ${njScoresHtml(a)}`;
+  const latestRev = weeks.find(w => njReview(a.id, w));
+  if (latestRev) njToggleWeek(latestRev);
 }
 function njEditAgent() { document.getElementById('nj-edit').innerHTML = `<div class="card" style="margin-bottom:16px">${njAgentFormHtml(njAgent(nj.agentId), 'edit')}</div>`; }
 

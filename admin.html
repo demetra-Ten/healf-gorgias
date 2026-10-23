@@ -172,35 +172,87 @@ textarea { resize: vertical; min-height: 80px; }
 .loading { color: #a3a19e; font-size: 13px; padding: 24px; text-align: center; }
 
 /* NEW JOINERS */
-.nj-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:0; flex-shrink:0; }
-.nj-rag { display:inline-flex; align-items:center; font-size:12px; color:#474646; }
-.nj-flag { display:inline-block; background:#ffe9e9; color:#6c041f; font-size:11px; font-weight:600; padding:2px 8px; border-radius:8px; margin-right:6px; }
-.nj-status { display:inline-block; background:#f7f5f3; border:1px solid #e8e5e2; color:#706f6e; font-size:11px; font-weight:600; padding:1px 8px; border-radius:8px; text-transform:capitalize; }
-.nj-flag-banner { background:#ffe9e9; border:1px solid #fecaca; color:#6c041f; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-weight:500; }
+.nj-muted { color:#a3a19e; font-weight:400; }
+.nj-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#a3a19e; margin-bottom:3px; }
+.nj-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; flex-shrink:0; }
+.nj-rag { display:inline-flex; align-items:center; font-size:12px; font-weight:600; padding:3px 10px 3px 8px; border-radius:999px; }
+.nj-rag-green { background:#e4f7ec; color:#00834f; } .nj-rag-amber { background:#fdf3dc; color:#8a5a00; } .nj-rag-red { background:#ffe9ec; color:#c4003a; } .nj-rag-none { background:#f3f2f0; color:#706f6e; }
+.nj-flag { display:inline-block; background:#ffe9ec; color:#c4003a; font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; }
+.nj-status { display:inline-block; background:#f3f2f0; color:#706f6e; font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; text-transform:capitalize; }
+.nj-status-passed { background:#e4f7ec; color:#00834f; } .nj-status-left { background:#f3f2f0; color:#a3a19e; } .nj-status-probation { background:#eef7f1; color:#1d6b43; }
+.nj-status-buddying { background:#fdf3e3; color:#8a5a00; } .nj-status-onboarding { background:#eef2ff; color:#3b4aa3; }
+.nj-flag-banner { background:#fff5f6; border:1px solid #fcd3da; color:#8a0d2c; border-radius:10px; padding:12px 16px; margin-bottom:16px; }
+.nj-seg { display:inline-flex; background:#f0eeeb; border-radius:9px; padding:3px; }
+.nj-seg button { border:none; background:none; font-family:inherit; font-size:12.5px; font-weight:600; color:#706f6e; padding:6px 14px; border-radius:7px; cursor:pointer; }
+.nj-seg button.on { background:#fff; color:#1b1c1d; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+.nj-group-h { font-size:13px; font-weight:700; color:#1b1c1d; margin:22px 0 10px; display:flex; gap:8px; align-items:baseline; }
+.nj-legend-row { display:flex; flex-wrap:wrap; gap:14px; font-size:11.5px; color:#706f6e; margin:-4px 0 4px; align-items:center; }
+.nj-legend-row > span { display:inline-flex; align-items:center; gap:6px; }
+.nj-list { margin-bottom:0; }
+.nj-person { display:grid; grid-template-columns:34px minmax(150px,1.1fr) minmax(190px,1.2fr) minmax(180px,1.3fr) 150px; gap:16px; align-items:center; padding:13px 18px; border-bottom:1px solid #f3f1ee; cursor:pointer; transition:background .12s; }
+.nj-person:last-child { border-bottom:none; }
+.nj-person:hover { background:#faf9f7; }
+.nj-person.done { opacity:.78; }
+.nj-p-n { font-weight:700; font-size:13.5px; color:#1b1c1d; }
+.nj-p-latest { display:flex; align-items:center; font-size:12.5px; color:#474646; }
+.nj-p-flag { display:flex; align-items:center; gap:10px; justify-content:flex-end; }
+.nj-chev { color:#c0bdba; font-size:20px; line-height:1; }
+.nj-ava { display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-weight:700; color:#474646; flex-shrink:0; }
+.nj-strip { display:inline-flex; gap:3px; }
+.nj-pill { display:inline-block; width:16px; height:8px; border-radius:3px; background:#eceae7; }
+.nj-pill.cur { outline:2px solid #1b1c1d; outline-offset:1px; }
+.nj-pill-green { background:#21b26c; } .nj-pill-amber { background:#e9b23c; } .nj-pill-red { background:#e8436a; }
+.nj-pill-done { background:#b9b5b0; } .nj-pill-empty { background:#e4e1dd; } .nj-pill-future { background:#f5f4f2; box-shadow:inset 0 0 0 1px #e8e5e2; }
+.nj-empty { padding:22px; text-align:center; color:#a3a19e; }
+.nj-kpi td { vertical-align:middle; } .nj-kpi td:first-child, .nj-kpi td:nth-child(3) { white-space:nowrap; }
+.nj-phase { display:inline-block; font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+.nj-phase-onboarding { background:#eef2ff; color:#3b4aa3; } .nj-phase-buddying { background:#fdf3e3; color:#8a5a00; }
+.nj-phase-probation { background:#eef7f1; color:#1d6b43; } .nj-phase-passed { background:#f3f2f0; color:#474646; }
+.nj-rules > div { display:flex; align-items:baseline; gap:4px; margin:4px 0; color:#474646; flex-wrap:wrap; }
+.nj-head { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
+.nj-facts { display:flex; flex-wrap:wrap; gap:4px 16px; margin-top:5px; font-size:12.5px; color:#474646; }
 .nj-tl { overflow-x:auto; }
-.nj-bands, .nj-weeks { display:grid; grid-template-columns:repeat(10, minmax(92px, 1fr)); gap:6px; min-width:960px; }
-.nj-bands { margin-bottom:6px; grid-auto-flow:dense; }
-.nj-band { grid-row:1; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:5px 8px; border-radius:6px; }
-.nj-band-onboarding { background:#eef2ff; color:#3b4aa3; }
-.nj-band-buddying { background:#fdf3e3; color:#8a5a00; }
-.nj-band-probation { background:#eef7f1; color:#1d6b43; }
-.nj-tl-tag { display:inline-block; margin-left:5px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; background:#1b1c1d; color:#fff; padding:1px 5px; border-radius:4px; vertical-align:1px; }
-.nj-wk { border:1px solid #e8e5e2; border-radius:8px; padding:9px 10px; cursor:pointer; background:#fff; transition:border-color .15s; }
-.nj-wk:hover { border-color:#1b1c1d; }
-.nj-wk.cur { border:2px solid #1b1c1d; padding:8px 9px; }
-.nj-wk-n { font-weight:700; font-size:12px; }
-.nj-wk-d { font-size:11px; color:#a3a19e; margin:1px 0 7px; }
-.nj-wk-r { font-size:11.5px; color:#474646; display:flex; align-items:baseline; }
-.nj-wk-rev { font-size:10.5px; color:#00834f; margin-top:5px; font-weight:600; }
-.nj-charts { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.nj-bands, .nj-weeks { display:grid; grid-template-columns:repeat(10, minmax(88px, 1fr)); gap:6px; min-width:920px; }
+.nj-bands { margin-bottom:6px; }
+.nj-band { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:5px 9px; border-radius:6px; }
+.nj-band-onboarding { background:#eef2ff; color:#3b4aa3; } .nj-band-buddying { background:#fdf3e3; color:#8a5a00; } .nj-band-probation { background:#eef7f1; color:#1d6b43; }
+.nj-tl-tag { display:inline-block; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; background:#1b1c1d; color:#fff; padding:1px 6px; border-radius:4px; vertical-align:1px; }
+.nj-wk { border:1px solid #e8e5e2; border-top:3px solid #e8e5e2; border-radius:8px; padding:8px 10px 9px; cursor:pointer; background:#fff; transition:box-shadow .15s; }
+.nj-wk:hover { box-shadow:0 2px 8px rgba(0,0,0,.07); }
+.nj-wk.future { background:#fbfaf9; }
+.nj-wk-green { border-top-color:#21b26c; } .nj-wk-amber { border-top-color:#e9b23c; } .nj-wk-red { border-top-color:#e8436a; }
+.nj-wk.cur { box-shadow:0 0 0 2px #1b1c1d; }
+.nj-wk-n { font-weight:700; font-size:12px; display:flex; justify-content:space-between; align-items:center; }
+.nj-now { font-size:9px; font-weight:700; text-transform:uppercase; background:#1b1c1d; color:#fff; padding:1px 6px; border-radius:4px; }
+.nj-wk-d { font-size:10.5px; color:#a3a19e; margin:1px 0 8px; }
+.nj-wk-v { font-size:13px; color:#1b1c1d; white-space:nowrap; }
+.nj-wk-s { font-size:10.5px; color:#a3a19e; margin-top:1px; min-height:13px; }
+.nj-charts { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:6px; }
 .nj-chart { background:#fff; border:1px solid #e8e5e2; border-radius:10px; padding:12px 14px 4px; }
 .nj-chart-h { font-weight:700; font-size:12.5px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
 .nj-legend { font-weight:500; font-size:11px; color:#706f6e; display:flex; align-items:center; gap:5px; }
 .nj-legend i { display:inline-block; width:14px; height:3px; border-radius:2px; margin-left:6px; }
 .nj-legend i.dash { background:repeating-linear-gradient(90deg,#e0a100 0 4px,transparent 4px 7px); }
-.nj-rv { margin-top:10px; }
+.nj-weekrows { margin-bottom:0; }
+.nj-wr { border-bottom:1px solid #f3f1ee; }
+.nj-wr:last-child { border-bottom:none; }
+.nj-wr-bar { display:grid; grid-template-columns:110px 110px 1fr 1.4fr 110px 70px; gap:14px; align-items:center; padding:12px 18px; cursor:pointer; font-size:12.5px; color:#474646; }
+.nj-wr-bar:hover { background:#faf9f7; }
+.nj-wr-x { display:flex; gap:8px; justify-content:flex-end; align-items:center; font-size:11.5px; }
+.nj-caret { color:#a3a19e; transition:transform .15s; }
+.nj-wr.open .nj-caret { transform:rotate(180deg); }
+.nj-wr-body { display:none; padding:2px 18px 16px; }
+.nj-wr.open .nj-wr-body { display:block; }
+.nj-rv-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.nj-rv-box { border-radius:8px; padding:11px 13px; border:1px solid #eeebe6; background:#fbfaf9; }
+.nj-rv-strengths { background:#f3fbf6; border-color:#dcf0e3; } .nj-rv-areas_to_improve { background:#fff8ee; border-color:#f6e6c8; }
+.nj-rv-next_steps { background:#f4f6fd; border-color:#e0e6f7; }
+.nj-rv-text { font-size:12.5px; line-height:1.55; color:#474646; }
 .nj-metric-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:0 12px; }
-@media (max-width: 760px) { .nj-charts { grid-template-columns:1fr; } .nj-metric-grid { grid-template-columns:1fr 1fr; } }
+@media (max-width: 900px) {
+  .nj-person { grid-template-columns:34px 1fr auto; } .nj-p-strip, .nj-p-latest { grid-column:2 / -1; }
+  .nj-wr-bar { grid-template-columns:1fr 1fr; } .nj-charts, .nj-rv-grid { grid-template-columns:1fr; } .nj-metric-grid { grid-template-columns:1fr 1fr; }
+}
 
 body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Arial, Helvetica, sans-serif; }
 </style>

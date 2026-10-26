@@ -15,7 +15,7 @@
 <script>window.SUPABASE_STORAGE_KEY = 'healf-admin-auth';</script>
 <script src="supabase.js"></script>
 <!-- New Joiners tab. Loaded before the main script, which can call loadJoiners() as soon as a saved admin session resumes. -->
-<script src="admin-joiners.js?v=2026-10-26c"></script>
+<script src="admin-joiners.js?v=2026-10-26d"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; background: #f7f7f8; min-height: 100vh; color: #1b1c1d; -webkit-font-smoothing: antialiased; }
@@ -279,7 +279,7 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
       <div class="admin-logomark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1-8.5 15a12 12 0 0 1-8.5-15a12 12 0 0 0 8.5-3"/><path d="m9 12 2 2 4-4"/></svg></div>
       <div class="admin-logo-text">Admin <span class="sub">· Healf Learning</span></div>
     </div>
-    <button class="tab-btn active" onclick="switchTab('trainees', this)">Trainees</button>
+    <button class="tab-btn active" onclick="switchTab('trainees', this)">Users</button>
     <button class="tab-btn" onclick="switchTab('tickets', this)">Tickets</button>
     <button class="tab-btn" onclick="switchTab('marking', this)">
       Results
@@ -294,15 +294,15 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
     <div id="tab-trainees">
       <div class="section-header">
         <div>
-          <div class="section-title">Trainees</div>
-          <div class="section-sub">Manage trainees and their assigned category.</div>
+          <div class="section-title">Users</div>
+          <div class="section-sub">Manage users and their assigned category.</div>
         </div>
-        <button class="btn btn-primary" onclick="showAddTrainee()">+ Add trainee</button>
+        <button class="btn btn-primary" onclick="showAddTrainee()">+ Add user</button>
       </div>
 
       <!-- Add trainee form -->
       <div class="card" id="add-trainee-form" style="display:none;margin-bottom:20px">
-        <div class="card-header"><span class="card-title">New Trainee</span><button class="btn btn-outline btn-sm" onclick="hideAddTrainee()">Cancel</button></div>
+        <div class="card-header"><span class="card-title">New User</span><button class="btn btn-outline btn-sm" onclick="hideAddTrainee()">Cancel</button></div>
         <div style="padding:18px">
           <div class="form-grid">
             <div><label>Full name</label><input type="text" id="nt-name" placeholder="Ceyda Smith" /></div>
@@ -314,7 +314,7 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
               </select>
             </div>
           </div>
-          <button class="btn btn-primary" onclick="addTrainee()">Create trainee</button>
+          <button class="btn btn-primary" onclick="addTrainee()">Create user</button>
         </div>
       </div>
 
@@ -344,7 +344,7 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
       <div class="section-header">
         <div>
           <div class="section-title">Results</div>
-          <div class="section-sub">Auto-scored trainee performance, marked against the ideal handling.</div>
+          <div class="section-sub">Auto-scored user performance, marked against the ideal handling.</div>
         </div>
       </div>
       <div id="marking-list"><div class="loading">Loading submissions…</div></div>
@@ -462,7 +462,7 @@ function populateCategorySelects() {
 function renderTrainees() {
   const tbody = document.getElementById('trainees-tbody');
   if (!trainees.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No trainees yet. Add one above.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No users yet. Add one above.</td></tr>';
     return;
   }
   tbody.innerHTML = trainees.map(t => {
@@ -486,7 +486,7 @@ async function updateTraineeCategory(traineeId, categoryId) {
   const { error } = await db.from('trainees').update({ current_category_id: val }).eq('id', traineeId);
   if (error) { toast('Error updating category.'); return; }
   trainees = trainees.map(t => t.id === traineeId ? { ...t, current_category_id: val } : t);
-  toast(val ? 'Category updated — trainee now sees this category in the sim.' : 'Set to all categories.');
+  toast(val ? 'Category updated — user now sees this category in the sim.' : 'Set to all categories.');
 }
 
 function showAddTrainee() { document.getElementById('add-trainee-form').style.display = 'block'; }
@@ -504,12 +504,12 @@ async function addTrainee() {
     current_category_id: catId ? parseInt(catId) : null,   // null = all categories
   }).select().single();
 
-  if (error) { toast('Error: ' + (error.message || 'Could not create trainee.')); return; }
+  if (error) { toast('Error: ' + (error.message || 'Could not create user.')); return; }
   trainees.push(data);
   renderTrainees();
   hideAddTrainee();
   ['nt-name','nt-email','nt-pin'].forEach(id => document.getElementById(id).value = '');
-  toast('Trainee created.');
+  toast('User created.');
 }
 
 // ── TICKETS ──
@@ -612,7 +612,7 @@ function renderMarking() {
           <div style="margin:14px 0"><a href="practice.html?preview=${s.ticket_id}" target="_blank" rel="noopener" style="color:#644b9e;font-weight:600;text-decoration:none;font-size:12px">↗ View ticket</a></div>
           <div class="reply-compare">
             <div class="reply-panel">
-              <div class="reply-panel-title">Trainee's reply</div>
+              <div class="reply-panel-title">User's reply</div>
               <div class="reply-panel-body">${escHtml(s.reply_text)}</div>
             </div>
           </div>
@@ -631,7 +631,7 @@ function renderMarking() {
             </div>
           </div>
           ${s.internal_note ? `<div class="sub-note"><strong>Their internal note:</strong> ${escHtml(s.internal_note)}</div>` : ''}
-          ${s.actions_text ? `<div style="background:#f6f9ff;border:1px solid #e8e5e2;border-radius:8px;padding:10px 14px;font-size:12px;color:#474646;margin-bottom:12px"><strong>Trainee's actions note:</strong> ${escHtml(s.actions_text)}</div>` : ''}
+          ${s.actions_text ? `<div style="background:#f6f9ff;border:1px solid #e8e5e2;border-radius:8px;padding:10px 14px;font-size:12px;color:#474646;margin-bottom:12px"><strong>User's actions note:</strong> ${escHtml(s.actions_text)}</div>` : ''}
           ${s.shopify_actions ? `<div style="background:#f3f9ec;border:1px solid #dbe9c8;border-radius:8px;padding:10px 14px;font-size:12px;color:#474646;margin-bottom:12px;white-space:pre-wrap"><strong>Done in the Shopify sim:</strong>\n${escHtml(s.shopify_actions)}</div>` : ''}
           ${isScored && s.feedback ? `<div style="background:#f0fdf4;border:1px solid #d3f1e0;border-radius:8px;padding:10px 14px;font-size:12px;color:#474646;margin-bottom:4px;white-space:pre-wrap"><strong>Auto feedback:</strong>\n${escHtml(s.feedback)}</div>` : ''}
           ${isScored && s.feedback ? trainerFeedbackHtml(s) : ''}
@@ -644,7 +644,7 @@ function renderMarking() {
               </div>
             </div>
             <div class="feedback-input" style="flex:1">
-              <label style="margin-bottom:5px">Feedback for trainee</label>
+              <label style="margin-bottom:5px">Feedback for user</label>
               <input type="text" id="feedback-${s.id}" placeholder="e.g. Great empathy, but missed the refund timeline." style="margin-bottom:0" />
             </div>
             <div style="padding-top:18px">
@@ -661,7 +661,7 @@ function renderMarking() {
     const st = statsFor(t.subs);
     const unscored = t.subs.filter(s => effScore(s) == null);
     const scored   = t.subs.filter(s => effScore(s) != null);
-    let html = `<button class="btn btn-outline" onclick="backToAllResults()" style="margin-bottom:16px">← All trainees</button>
+    let html = `<button class="btn btn-outline" onclick="backToAllResults()" style="margin-bottom:16px">← All users</button>
       <div class="card" style="margin-bottom:18px">
         <div class="card-header"><span class="card-title">${t.name}</span><span class="marking-meta">${t.email}</span></div>
         <div class="stat-tiles">
@@ -721,7 +721,7 @@ function renderMarking() {
   const overallAvg = scoredAll.length ? (scoredAll.reduce((a,s)=>a+effScore(s),0)/scoredAll.length).toFixed(2) : '—';
   const overallQ = scoredAll.length ? (Math.round(allN3/scoredAll.length*1000)/10) + '%' : '—';
   const tiles = `<div class="stat-tiles">
-    <div class="stat-tile"><div class="v">${Object.keys(byT).length}</div><div class="l">Trainees</div></div>
+    <div class="stat-tile"><div class="v">${Object.keys(byT).length}</div><div class="l">Users</div></div>
     <div class="stat-tile"><div class="v">${submissions.length}</div><div class="l">Tickets attempted</div></div>
     <div class="stat-tile"><div class="v">${overallAvg}</div><div class="l">Average score</div></div>
     <div class="stat-tile"><div class="v">${overallQ}</div><div class="l">Quality score</div></div>
@@ -738,8 +738,8 @@ function renderMarking() {
       <td style="color:#644b9e;font-weight:600;white-space:nowrap">View →</td>
     </tr>`;
   }).join('');
-  const summary = `<div class="card"><div class="card-header"><span class="card-title">By trainee</span><span class="marking-meta">Click a trainee to see their results · Quality = % marked 3/3</span></div>
-    <table><thead><tr><th>Trainee</th><th>Attempted</th><th>Scored</th><th>Avg</th><th>Quality</th><th>3s</th><th>2s</th><th>1s</th><th></th></tr></thead>
+  const summary = `<div class="card"><div class="card-header"><span class="card-title">By user</span><span class="marking-meta">Click a user to see their results · Quality = % marked 3/3</span></div>
+    <table><thead><tr><th>User</th><th>Attempted</th><th>Scored</th><th>Avg</th><th>Quality</th><th>3s</th><th>2s</th><th>1s</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
   list.innerHTML = tiles + summary;
 }

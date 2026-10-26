@@ -15,7 +15,7 @@
 <script>window.SUPABASE_STORAGE_KEY = 'healf-admin-auth';</script>
 <script src="supabase.js"></script>
 <!-- New Joiners tab. Loaded before the main script, which can call loadJoiners() as soon as a saved admin session resumes. -->
-<script src="admin-joiners.js?v=2026-10-26b"></script>
+<script src="admin-joiners.js?v=2026-10-26c"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; background: #f7f7f8; min-height: 100vh; color: #1b1c1d; -webkit-font-smoothing: antialiased; }
@@ -285,7 +285,7 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
       Results
       <span id="marking-badge" style="background:#e9004a;color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px;display:none">0</span>
     </button>
-    <button class="tab-btn" onclick="switchTab('joiners', this)">New Joiners</button>
+    <button class="tab-btn" onclick="switchTab('joiners', this)">Onboarding Reports</button>
     <div class="admin-right"><span class="admin-badge">Admin</span><button class="signout-btn" onclick="adminSignOut()">Sign out</button></div>
   </nav>
 
@@ -352,7 +352,7 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
 
     <!-- NEW JOINERS TAB (admin-joiners.js) -->
     <div id="tab-joiners" style="display:none">
-      <div id="nj-root"><div class="loading">Loading new joiners…</div></div>
+      <div id="nj-root"><div class="loading">Loading onboarding reports…</div></div>
     </div>
   </div>
 </div>

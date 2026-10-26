@@ -140,7 +140,7 @@ function renderJoinerList() {
     <div class="card nj-list">${done.map(njPersonRow).join('') || '<div class="nj-empty">Nobody has completed yet.</div>'}</div>`;
   document.getElementById('nj-root').innerHTML = `
     <div class="section-header">
-      <div><div class="section-title">New Joiners</div>
+      <div><div class="section-title">Onboarding Reports</div>
         <div class="section-sub">Each new joiner's 10-week journey against the KPI expectations. Admin login only.</div></div>
       <div style="display:flex;gap:10px;align-items:center">
         <div class="nj-seg"><button class="${page === 'people' ? 'on' : ''}" onclick="njSetPage('people')">People</button><button class="${page === 'kpi' ? 'on' : ''}" onclick="njSetPage('kpi')">KPI expectations</button></div>
@@ -316,7 +316,7 @@ function renderJoinerAgent() {
   const facts = [['Started', njFmt(njDate(a.start_date))], ['Now', NJ_DONE(a) ? (a.status === 'left' ? 'Left' : 'Passed probation') : a.current_week > 0 ? `Week ${a.current_week} · ${njPhaseLabel(a.current_week)}` : 'Starts soon'],
     ['Cohort', a.cohort], ['Buddy', a.buddy], ['Team lead', a.team_lead], ['Learns best', a.learning_style]].filter(([, v]) => v);
   document.getElementById('nj-root').innerHTML = `
-    <div style="margin-bottom:14px"><button class="btn btn-outline btn-sm" onclick="njBack()">← All new joiners</button></div>
+    <div style="margin-bottom:14px"><button class="btn btn-outline btn-sm" onclick="njBack()">← All onboarding reports</button></div>
     <div class="nj-head">
       <div style="display:flex;gap:14px;align-items:center">${njAvatar(a, 48)}<div>
         <div class="section-title">${njEsc(a.name)} <span class="nj-status nj-status-${a.status}" style="vertical-align:3px">${njEsc(a.status)}</span></div>
@@ -452,14 +452,14 @@ function njExport() {
   }).join('');
   const w = window.open('', '_blank');
   if (!w) { toast('Allow pop-ups to export'); return; }
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${e(a.name)} · New joiner report</title><style>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${e(a.name)} · Onboarding report</title><style>
     body{font-family:Inter,Arial,sans-serif;font-size:12px;color:#1b1c1d;margin:28px;} h1{font-size:20px;margin:0 0 4px} h2{font-size:14px;margin:22px 0 8px}
     h3{font-size:13px;margin:16px 0 6px;border-top:1px solid #eee;padding-top:10px} .sub{color:#706f6e;margin-bottom:6px}
     table{border-collapse:collapse;width:100%} th,td{border:1px solid #e8e5e2;padding:5px 7px;text-align:left;vertical-align:top} th{background:#fafafa;font-size:11px}
     small{color:#a3a19e} p{margin:4px 0 8px;line-height:1.5} .by{color:#a3a19e} .flag{background:#ffe9e9;color:#6c041f;padding:8px 10px;border-radius:6px;margin:10px 0}
     .rag-green{color:#00834f;font-weight:600}.rag-amber{color:#854d0e;font-weight:600}.rag-red{color:#d9003e;font-weight:600}
     @media print{body{margin:12mm}}</style></head><body>
-    <h1>${e(a.name)}</h1><div class="sub">New joiner report · started ${njFmt(njDate(a.start_date))} · ${a.current_week > 0 ? 'week ' + a.current_week : 'not started'} · status ${e(a.status)}${a.cohort ? ' · ' + e(a.cohort) : ''}${a.buddy ? ' · buddy ' + e(a.buddy) : ''}${a.team_lead ? ' · TL ' + e(a.team_lead) : ''}</div>
+    <h1>${e(a.name)}</h1><div class="sub">Onboarding report · started ${njFmt(njDate(a.start_date))} · ${a.current_week > 0 ? 'week ' + a.current_week : 'not started'} · status ${e(a.status)}${a.cohort ? ' · ' + e(a.cohort) : ''}${a.buddy ? ' · buddy ' + e(a.buddy) : ''}${a.team_lead ? ' · TL ' + e(a.team_lead) : ''}</div>
     ${a.probation_flag ? '<div class="flag">⚑ Tracking below the probation minimum in week ' + a.latest_week + '.</div>' : ''}
     <h2>Metrics by week</h2><table><tr><th>Wk</th><th>Dates</th><th>Phase</th><th>Scored (3/2/1)</th><th>Quality / target</th><th>Messages / goal</th><th>QA</th><th>Calls</th><th>RAG</th></tr>${rows || '<tr><td colspan="9">No metrics yet</td></tr>'}</table>
     <h2>Weekly reviews</h2>${revs || '<p>No reviews yet.</p>'}

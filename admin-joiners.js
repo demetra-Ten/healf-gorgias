@@ -249,28 +249,32 @@ function njActualText(s) {
   if (!s) return '<span class="nj-muted">—</span>';
   return [s.messages_sent != null ? `<b>${s.messages_sent}</b> msgs` : '',
           s.tickets_scored != null ? `<b>${s.quality_pct ?? '–'}%</b> 3s <span class="nj-muted">(${s.score_3s ?? '–'}/${s.score_2s ?? '–'}/${s.score_1s ?? '–'} of ${s.tickets_scored})</span>` : '',
-          s.qa_pct != null ? `QA <b>${s.qa_pct}%</b> <span class="nj-muted">(${s.qa_mentions})</span>` : '',
+          s.qa_pct != null && s.qa_mentions != null ? `QA <b>${s.qa_pct}%</b> <span class="nj-muted">(${s.qa_mentions})</span>` : '',
           s.calls_done != null ? `<b>${s.calls_done}</b> calls` : ''].filter(Boolean).join(' · ') || '<span class="nj-muted">—</span>';
 }
-function njToggleWeek(w) { const el = document.getElementById('nj-wr-' + w); if (el) el.classList.toggle('open'); }
+// Written reviews (strengths, areas to improve…) are only kept for onboarding and buddying, weeks 1–4.
+// Probation weeks (5–10) are numbers only.
+const NJ_HAS_REVIEW = w => w <= 4;
+function njToggleWeek(w) { if (!NJ_HAS_REVIEW(w)) return;
+  const el = document.getElementById('nj-wr-' + w); if (el) el.classList.toggle('open'); }
 function njWeekRowHtml(a, w) {
   const r = njReview(a.id, w), s = njStat(a.id, w), t = njTarget(w);
-  const filled = r ? NJ_REVIEW_FIELDS.filter(([k]) => r[k]) : [];
-  return `<div class="nj-wr" id="nj-wr-${w}">
-    <div class="nj-wr-bar" onclick="njToggleWeek(${w})">
+  const filled = r && NJ_HAS_REVIEW(w) ? NJ_REVIEW_FIELDS.filter(([k]) => r[k]) : [];
+  return `<div class="nj-wr ${NJ_HAS_REVIEW(w) ? '' : 'nj-wr-flat'}" id="nj-wr-${w}">
+    <div class="nj-wr-bar" onclick="${NJ_HAS_REVIEW(w) ? `njToggleWeek(${w})` : `njOpenEntry(${w})`}">
       <div class="nj-wr-wk"><b>Week ${w}</b><div class="nj-muted">${njWeekRange(a.start_date, w)}</div></div>
       <div class="nj-wr-ph"><span class="nj-phase nj-phase-${t.phase}">${njEsc(njPhaseLabel(w).replace(' · Probation', ''))}</span></div>
       <div class="nj-wr-t"><div class="nj-lbl">Target</div>${njEsc(njTargetText(t))}</div>
       <div class="nj-wr-a"><div class="nj-lbl">Actual</div>${njActualText(s)}</div>
       <div class="nj-wr-r">${s && s.rag ? njRagChip(s.rag, { green: 'On target', amber: 'Close', red: 'Below' }[s.rag]) : `<span class="nj-muted">${njTargetText(t) === 'No KPI' ? 'No KPI' : s ? 'No KPI data' : 'Not entered'}</span>`}</div>
-      <div class="nj-wr-x">${filled.length ? '<span class="nj-muted">Review</span>' : ''}<span class="nj-caret">▾</span></div>
+      <div class="nj-wr-x">${NJ_HAS_REVIEW(w) ? `${filled.length ? '<span class="nj-muted">Review</span>' : ''}<span class="nj-caret">▾</span>` : '<span class="nj-muted">Edit</span>'}</div>
     </div>
-    <div class="nj-wr-body">
+    ${NJ_HAS_REVIEW(w) ? `<div class="nj-wr-body">
       ${filled.length ? `<div class="nj-rv-grid">${NJ_REVIEW_FIELDS.map(([k, l]) => `<div class="nj-rv-box nj-rv-${k}"><div class="nj-lbl">${l}</div><div class="nj-rv-text">${r[k] ? njEsc(r[k]) : '<span class="nj-muted">—</span>'}</div></div>`).join('')}</div>` : '<div class="nj-muted" style="padding:4px 0 8px">No review written for this week.</div>'}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
         <span class="nj-muted">${r && r.reviewer ? 'Reviewed by ' + njEsc(r.reviewer) : ''}</span>
         <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();njOpenEntry(${w})">Edit week ${w}</button></div>
-    </div></div>`;
+    </div>` : ''}</div>`;
 }
 
 function njScoresHtml(a) {
@@ -325,7 +329,7 @@ function renderJoinerAgent() {
     ${a.probation_flag && !NJ_DONE(a) ? `<div class="nj-flag-banner">⚑ <b>Below the probation minimum.</b> Week ${a.latest_week}: ${a.latest_messages ?? '–'} messages against a minimum of ${a.latest_min ?? '–'}${a.latest_qa_pct != null ? `, QA ${a.latest_qa_pct}%` : ''}. To pass at week 10: ${njTarget(10).min_messages} messages with QA under ${njTarget(10).qa_mentions_max_pct}%.</div>` : ''}
     <div class="card" style="padding:16px 18px">${njTimelineHtml(a)}</div>
     <div id="nj-entry"></div>
-    <div class="nj-group-h">Week by week <span class="nj-muted">newest first · click a week to read the review</span></div>
+    <div class="nj-group-h">Week by week <span class="nj-muted">newest first · weeks 1–4 have a written review, click to read it</span></div>
     <div class="card nj-weekrows">${weeks.map(w => njWeekRowHtml(a, w)).join('')}</div>
     <div class="nj-group-h">Ticket scores</div>
     ${njScoresHtml(a)}`;
@@ -355,11 +359,11 @@ function njOpenEntry(w) {
       ${w <= 4 ? `<div class="sub-note" style="margin-bottom:12px">${pre ? `Counts pre-filled from ${pre.n} ticket score${pre.n === 1 ? '' : 's'} logged this week. ` : ''}<a href="#" onclick="njRefill(${w});return false">Fill counts from ticket scores</a></div>` : ''}
       <div class="nj-metric-grid">${NJ_METRIC_FIELDS.map(([k, l]) => `<div><label>${l}</label><input type="number" min="0" id="njm-${k}" value="${val(k)}" oninput="njLiveCalc()" /></div>`).join('')}</div>
       <div id="nj-live" class="marking-meta" style="margin:-2px 0 14px"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      ${NJ_HAS_REVIEW(w) ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div class="card-title">Review</div>
         <button class="btn btn-outline btn-sm" id="nj-draft-btn" onclick="njDraftSummary(${w})">✨ Draft summary from ticket feedback</button></div>
-      ${NJ_REVIEW_FIELDS.map(([k, l]) => `<label>${l}</label><textarea id="njr-${k}" rows="3">${njEsc(r[k]).replace(/<br>/g, '\n')}</textarea>`).join('')}
-      <div style="display:flex;gap:10px;align-items:end"><div style="flex:0 0 240px"><label>Reviewer</label><input type="text" id="njr-reviewer" value="${njEsc(r.reviewer)}" placeholder="Demetra" /></div>
+      ${NJ_REVIEW_FIELDS.map(([k, l]) => `<label>${l}</label><textarea id="njr-${k}" rows="3">${njEsc(r[k]).replace(/<br>/g, '\n')}</textarea>`).join('')}` : ''}
+      <div style="display:flex;gap:10px;align-items:end">${NJ_HAS_REVIEW(w) ? `<div style="flex:0 0 240px"><label>Reviewer</label><input type="text" id="njr-reviewer" value="${njEsc(r.reviewer)}" placeholder="Demetra" /></div>` : ''}
         <button class="btn btn-primary" style="margin-bottom:12px" onclick="njSaveEntry(${w})">Save week ${w}</button></div>
     </div></div>`;
   njLiveCalc();
@@ -391,9 +395,12 @@ async function njSaveEntry(w) {
   const a = njAgent(nj.agentId);
   const m = { agent_id: a.id, week: w, week_start_date: njIso(njWeekStart(a.start_date, w)), updated_at: new Date().toISOString() };
   NJ_METRIC_FIELDS.forEach(([k]) => { const v = document.getElementById('njm-' + k).value; m[k] = v === '' ? null : Math.max(0, Math.round(Number(v))); });
-  const r = { agent_id: a.id, week: w, reviewer: document.getElementById('njr-reviewer').value.trim() || null, updated_at: new Date().toISOString() };
-  NJ_REVIEW_FIELDS.forEach(([k]) => { r[k] = document.getElementById('njr-' + k).value.trim() || null; });
-  const hasM = NJ_METRIC_FIELDS.some(([k]) => m[k] != null), hasR = NJ_REVIEW_FIELDS.some(([k]) => r[k]);
+  const r = { agent_id: a.id, week: w, updated_at: new Date().toISOString() };
+  if (NJ_HAS_REVIEW(w)) {
+    r.reviewer = document.getElementById('njr-reviewer').value.trim() || null;
+    NJ_REVIEW_FIELDS.forEach(([k]) => { r[k] = document.getElementById('njr-' + k).value.trim() || null; });
+  }
+  const hasM = NJ_METRIC_FIELDS.some(([k]) => m[k] != null), hasR = NJ_HAS_REVIEW(w) && NJ_REVIEW_FIELDS.some(([k]) => r[k]);
   const ops = [];
   if (hasM) ops.push(db.from('weekly_metrics').upsert(m, { onConflict: 'agent_id,week' }).select('id'));
   if (hasR) ops.push(db.from('weekly_reviews').upsert(r, { onConflict: 'agent_id,week' }).select('id'));
@@ -439,7 +446,7 @@ function njExport() {
       <td>${s && s.qa_pct != null ? `${s.qa_mentions} (${s.qa_pct}%)` : ''}</td><td>${s && s.calls_done != null ? s.calls_done : ''}</td>
       <td class="rag-${(s && s.rag) || 'none'}">${(s && s.rag) || ''}</td></tr>`;
   }).join('');
-  const revs = Array.from({ length: 11 }, (_, i) => i + 1).map(w => {
+  const revs = [1, 2, 3, 4].map(w => {
     const r = njReview(a.id, w); if (!r) return '';
     return `<h3>Week ${w} · ${njWeekRange(a.start_date, w)}</h3>` + NJ_REVIEW_FIELDS.filter(([k]) => r[k]).map(([k, l]) => `<p><b>${l}</b><br>${e(r[k])}</p>`).join('') + (r.reviewer ? `<p class="by">Reviewed by ${e(r.reviewer)}</p>` : '');
   }).join('');

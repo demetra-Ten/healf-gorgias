@@ -184,6 +184,7 @@ function njAgentFormHtml(a, mode) {
       <div><label>Buddy</label><input type="text" id="nja-buddy" value="${njEsc(a.buddy)}" placeholder="Denise" /></div>
       <div><label>Team lead</label><input type="text" id="nja-tl" value="${njEsc(a.team_lead)}" /></div>
       <div><label>Learning style</label><input type="text" id="nja-ls" value="${njEsc(a.learning_style)}" /></div>
+      <div><label>Gorgias user ID <span style="font-weight:400;color:#a3a19e">(for the weekly auto-fill)</span></label><input type="text" id="nja-gid" value="${njEsc(a.gorgias_user_id)}" placeholder="e.g. 753709540 (the number in their Gorgias profile link)" /></div>
       <div><label>Status</label><select id="nja-status">${NJ_STATUSES.map(s => `<option ${s === (a.status || 'onboarding') ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
     </div><button class="btn btn-primary" onclick="njSaveAgent(${mode === 'edit' ? a.id : 'null'})">${mode === 'edit' ? 'Save details' : 'Add new joiner'}</button></div>`;
 }
@@ -192,6 +193,9 @@ async function njSaveAgent(id) {
   const v = f => document.getElementById(f).value.trim() || null;
   const row = { name: v('nja-name'), start_date: v('nja-start'), cohort: v('nja-cohort'), buddy: v('nja-buddy'),
                 team_lead: v('nja-tl'), learning_style: v('nja-ls'), status: v('nja-status') };
+  const gid = v('nja-gid');
+  if (gid && !/^\d+$/.test(gid)) { toast('Gorgias user ID should be a number'); return; }
+  row.gorgias_user_id = gid ? Number(gid) : null;
   if (!row.name || !row.start_date) { toast('Name and start date are needed'); return; }
   const res = id ? await db.from('agents').update(row).eq('id', id).select('id') : await db.from('agents').insert(row).select('id');
   if (res.error || !(res.data || []).length) { toast('Could not save: ' + ((res.error && res.error.message) || 'no permission')); return; }
@@ -328,7 +332,12 @@ function renderJoinerAgent() {
   const latestRev = weeks.find(w => njReview(a.id, w));
   if (latestRev) njToggleWeek(latestRev);
 }
-function njEditAgent() { document.getElementById('nj-edit').innerHTML = `<div class="card" style="margin-bottom:16px">${njAgentFormHtml(njAgent(nj.agentId), 'edit')}</div>`; }
+async function njEditAgent() {
+  // gorgias_user_id lives on agents (not in the overview view), so read it fresh.
+  const { data } = await db.from('agents').select('gorgias_user_id').eq('id', nj.agentId).single();
+  const a = Object.assign({}, njAgent(nj.agentId), { gorgias_user_id: data && data.gorgias_user_id });
+  document.getElementById('nj-edit').innerHTML = `<div class="card" style="margin-bottom:16px">${njAgentFormHtml(a, 'edit')}</div>`;
+}
 
 // ── Weekly entry form ───────────────────────────────────────────────────────
 function njOpenEntry(w) {

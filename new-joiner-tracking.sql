@@ -192,3 +192,8 @@ create table if not exists staging.weekly_reviews (
   progress_summary text, next_steps text, reviewer text,
   primary key (agent_name, week)
 );
+
+-- ── 6. (2026-10-26) Link each joiner to their Gorgias account for the weekly auto-fill ──
+alter table agents add column if not exists gorgias_user_id bigint;
+update agents set gorgias_user_id = 753709156 where name = 'Kimmy' and gorgias_user_id is null;
+update agents set gorgias_user_id = 753709540 where name = 'Glen'  and gorgias_user_id is null;

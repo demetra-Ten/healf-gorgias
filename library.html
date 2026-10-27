@@ -32,7 +32,7 @@ a { color: inherit; text-decoration: none; }
 html[data-theme="dark"] .who button { color: #b8a3e3; }
 h1 { font-size: 28px; font-weight: 700; letter-spacing: -.4px; margin-bottom: 8px; }
 .lead { color: var(--ink-2); font-size: 15px; max-width: 560px; margin-bottom: 32px; line-height: 1.5; }
-.section { margin-bottom: 36px; }
+.back { display: inline-block; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 18px; } .back:hover { color: var(--ink); }
 .section-h { display: flex; align-items: baseline; gap: 4px 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .section-h h3 { white-space: nowrap; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-2); }
 .section-h span { font-size: 12.5px; color: var(--ink-3); }
@@ -97,9 +97,12 @@ const G = {
   book: '<path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6.5A2.5 2.5 0 0 0 4 21.5"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H19"/><path d="M9 7h6"/>'
 };
 // The library is split into sections; each tool says which one it belongs to.
+// The front page shows one box per section; clicking a box opens that section's tools (#sim / #res).
 const SECTIONS = [
-  { key: 'sim', title: 'Simulators', sub: 'Practise safely on copies of the real tools' },
-  { key: 'res', title: 'Onboarding Resources', sub: 'The documents and courses you use during training' },
+  { key: 'sim', title: 'Simulators', glyph: 'headset', sub: 'Practise safely on copies of the real tools',
+    blurb: 'Safe copies of Gorgias and Shopify, filled with real (anonymised) tickets and orders. Nothing you do touches live customers.' },
+  { key: 'res', title: 'Onboarding Resources', glyph: 'book', sub: 'The documents and courses you use during training',
+    blurb: 'Trainual and the Ticket Training Document, the places you learn the SOPs and log your practice tickets.' },
 ];
 const TOOLS = [
   { section: 'sim', name: 'Gorgias Simulator', glyph: 'headset', live: true, href: 'practice.html', tab: 'healf-gorgias',
@@ -126,9 +129,24 @@ const card = t => t.live ? `
   <div class="card soon">
     <div class="card-head"><div class="tile lg">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="status">Coming soon</span></div></div>
     <p>${t.blurb}</p></div>`;
-document.getElementById('grid').innerHTML = SECTIONS.map(sec => `<section class="section">
-  <div class="section-h"><h3>${sec.title}</h3><span>${sec.sub}</span></div>
-  <div class="grid">${TOOLS.filter(t => t.section === sec.key).map(card).join('')}</div></section>`).join('');
+function renderLibrary() {
+  const sec = SECTIONS.find(x => '#' + x.key === location.hash);
+  if (!sec) {
+    document.getElementById('grid').innerHTML = `<div class="grid">${SECTIONS.map(x => {
+      const n = TOOLS.filter(t => t.section === x.key && t.live).length;
+      return `<a class="card" href="#${x.key}">
+        <div class="card-head"><div class="tile lg">${svg(x.glyph)}</div><div><h2>${x.title}</h2><span class="status">${n} ${n === 1 ? 'item' : 'items'}</span></div></div>
+        <p>${x.blurb}</p><span class="open">View ${x.title.toLowerCase()} →</span></a>`;
+    }).join('')}</div>`;
+  } else {
+    document.getElementById('grid').innerHTML = `<a class="back" href="#">← Back to the library</a>
+      <div class="section-h"><h3>${sec.title}</h3><span>${sec.sub}</span></div>
+      <div class="grid">${TOOLS.filter(t => t.section === sec.key).map(card).join('')}</div>`;
+  }
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', renderLibrary);
+renderLibrary();
 
 // ── The one sign-in for every simulator ─────────────────────────────────────
 // Every trainee authenticates through one shared account and is identified by their own

@@ -88,13 +88,19 @@ a.card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.0
 const G = {
   headset: '<path d="M4 14v-3a8 8 0 1 1 16 0v3"/><path d="M18 19c0 1.657-.895 3-2 3h-3"/><path d="M4 14a2 2 0 0 1 2-2h1a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-2-2v-2z"/><path d="M20 14a2 2 0 0 0-2-2h-1a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1a2 2 0 0 0 2-2v-2z"/>',
   store: '<path d="M3 21h18"/><path d="M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4"/><path d="M5 21V10.85M19 21V10.85"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>'
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  sheet: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/>'
 };
 const TOOLS = [
   { name: 'Gorgias Simulator', glyph: 'headset', live: true, href: 'practice.html', tab: 'healf-gorgias',
     blurb: 'Work real customer tickets: read the thread, choose the macro, write the reply and log your actions. Every ticket is marked with feedback.' },
   { name: 'Shopify Simulator', glyph: 'store', live: true, href: 'shopify.html', tab: 'healf-shopify',
     blurb: 'Look up orders, customers, stock and ETAs as they were on the day, then cancel, refund, edit or raise Manual Orders. Opens from any Gorgias ticket too.' },
+  // Not a simulator: the shared Google Sheet new joiners and buddies log and score practice
+  // tickets in. Kept here so it's one click away during training.
+  { name: 'Ticket Training Document', glyph: 'sheet', live: true, tag: 'Google Sheet', open: 'Open the document',
+    href: 'https://docs.google.com/spreadsheets/d/1e7OSPyfEROS5pQTg3OrSkemazH2rxMAxeVnGM2AO2Jg/edit', tab: 'healf-ticket-doc',
+    blurb: 'Log each ticket you work on your own tab: the link, contact reason and your process. Your buddy scores it and leaves feedback there.' },
   { name: 'More simulators', glyph: 'plus', live: false,
     blurb: 'More CW tools are on the way, so you can practise the whole journey in one place.' }
 ];
@@ -102,8 +108,8 @@ window.name = 'healf-library';   // the tools' "All training tools" links come b
 const svg = g => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${G[g]}</svg>`;
 document.getElementById('grid').innerHTML = TOOLS.map(t => t.live ? `
   <a class="card" href="${t.href}" target="${t.tab}">
-    <div class="card-head"><div class="tile lg">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="status live">Live</span></div></div>
-    <p>${t.blurb}</p><span class="open">Open ${t.name.replace(' Simulator', '')} →</span></a>` : `
+    <div class="card-head"><div class="tile lg">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="status live">${t.tag || 'Live'}</span></div></div>
+    <p>${t.blurb}</p><span class="open">${t.open || 'Open ' + t.name.replace(' Simulator', '')} →</span></a>` : `
   <div class="card soon">
     <div class="card-head"><div class="tile lg">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="status">Coming soon</span></div></div>
     <p>${t.blurb}</p></div>`).join('');

@@ -13,21 +13,21 @@
 <script src="supabase.js"></script>
 <script>document.documentElement.setAttribute('data-theme', (function () { try { return localStorage.getItem('healf_theme') || 'light'; } catch (e) { return 'light'; } })());</script>
 <!-- The shared Healf Learning design (sidebar shell, type, colours). The simulators never load it. -->
-<link rel="stylesheet" href="healf-learning.css?v=2026-10-28a">
+<link rel="stylesheet" href="healf-learning.css?v=2026-10-28b">
 <style>
 /* Library-only pieces on top of healf-learning.css: tool cards, section boxes and the sign-in card. */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--hl-bg); color: var(--hl-ink); font-family: var(--hl-font); font-size: 14px; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
 .hidden { display: none !important; }
-.tile { width: 40px; height: 40px; border-radius: 9px; background: var(--hl-ink); color: var(--hl-surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.tile svg { width: 22px; height: 22px; }
+.tile { width: 32px; height: 32px; border-radius: 8px; background: var(--hl-ink); color: var(--hl-surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tile svg { width: 18px; height: 18px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-.tool { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.tool { padding: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .tool-head { display: flex; align-items: center; gap: 12px; }
-.tool h2 { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.tool h2 { font-size: 15px; font-weight: 600; line-height: 1.3; margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tool p { color: var(--hl-ink-2); line-height: 1.55; flex: 1; font-size: 13.5px; }
-.tool .open { font-weight: 600; font-size: 13px; color: var(--hl-ink); }
+.tool .open { font-weight: 600; font-size: 13px; color: var(--hl-ink); margin-top: 4px; }
 .tool.soon { border-style: dashed; box-shadow: none; }
 .tool.soon .tile { opacity: .35; }
 .signin-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 16px; background: var(--hl-bg); }
@@ -51,7 +51,7 @@ a { color: inherit; text-decoration: none; }
 <!-- Signed out: one centred sign-in card. -->
 <div class="signin-wrap hidden" id="signin">
   <div class="signin hl-card">
-    <div class="hl-brand"><span class="hl-mark" id="mark1"></span><span><b>Healf Learning</b><small>Customer Wellbeing training</small></span></div>
+    <div class="hl-brand"><b>Healf Learning</b></div>
     <h1 class="hl-title">Sign in</h1>
     <p class="hl-sub">Sign in once and every simulator and resource opens straight away.</p>
     <div class="err" id="err"></div>
@@ -65,9 +65,9 @@ a { color: inherit; text-decoration: none; }
 <!-- Signed in: the shared sidebar shell. -->
 <div class="hl-shell hidden" id="app">
   <nav class="hl-side" aria-label="Healf Learning">
-    <a class="hl-brand" href="#"><span class="hl-mark" id="mark2"></span><span><b>Healf Learning</b><small>Customer Wellbeing training</small></span></a>
+    <a class="hl-brand" href="#"><b>Healf Learning</b></a>
     <a class="hl-nav" href="#" data-page="">Home</a>
-    <div class="hl-grp">Learn</div>
+    <div class="hl-grp">Practise</div>
     <a class="hl-nav" href="#sim" data-page="sim">Simulators <span class="hl-count" id="c-sim"></span></a>
     <a class="hl-nav" href="#res" data-page="res">Onboarding Resources <span class="hl-count" id="c-res"></span></a>
     <div class="hl-side-foot"><div class="who" id="who"></div><a href="admin.html" target="healf-admin">Admin panel →</a></div>
@@ -79,25 +79,27 @@ a { color: inherit; text-decoration: none; }
 // tools send a signed-out visitor here (?next=<tool page>) and come straight back after.
 // `tab` opens each tool in its own named tab (the name the tool gives itself), so a second
 // click goes back to that tool's tab and Gorgias -> Shopify links keep landing in it.
+// Simple line glyphs, drawn on a 24px grid and shown at 18px inside a 32px tile.
 const G = {
-  headset: '<path d="M4 14v-3a8 8 0 1 1 16 0v3"/><path d="M18 19c0 1.657-.895 3-2 3h-3"/><path d="M4 14a2 2 0 0 1 2-2h1a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-2-2v-2z"/><path d="M20 14a2 2 0 0 0-2-2h-1a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1a2 2 0 0 0 2-2v-2z"/>',
-  store: '<path d="M3 21h18"/><path d="M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4"/><path d="M5 21V10.85M19 21V10.85"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>',
-  sheet: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/>',
-  book: '<path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6.5A2.5 2.5 0 0 0 4 21.5"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H19"/><path d="M9 7h6"/>'
+  chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+  bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+  book: '<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M5 18a2 2 0 0 1 2-2h11"/>',
+  sheet: '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M5 10h14M10 10v10"/>',
+  screen: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6M12 17v4"/>',
+  plus: '<path d="M12 6v12M6 12h12"/>'
 };
 // The library is split into sections; each tool says which one it belongs to.
 // The front page shows one box per section; clicking a box opens that section's tools (#sim / #res).
 const SECTIONS = [
-  { key: 'sim', title: 'Simulators', glyph: 'headset', sub: 'Practise safely on copies of the real tools',
+  { key: 'sim', title: 'Simulators', glyph: 'screen', sub: 'Practise safely on copies of the real tools',
     blurb: 'Safe copies of Gorgias and Shopify, filled with real (anonymised) tickets and orders. Nothing you do touches live customers.' },
   { key: 'res', title: 'Onboarding Resources', glyph: 'book', sub: 'The documents and courses you use during training',
     blurb: 'Trainual and the Ticket Training Document, the places you learn the SOPs and log your practice tickets.' },
 ];
 const TOOLS = [
-  { section: 'sim', name: 'Gorgias Simulator', glyph: 'headset', live: true, href: 'practice.html', tab: 'healf-gorgias',
+  { section: 'sim', name: 'Gorgias Simulator', glyph: 'chat', live: true, href: 'practice.html', tab: 'healf-gorgias',
     blurb: 'Work real customer tickets: read the thread, choose the macro, write the reply and log your actions. Every ticket is marked with feedback.' },
-  { section: 'sim', name: 'Shopify Simulator', glyph: 'store', live: true, href: 'shopify.html', tab: 'healf-shopify',
+  { section: 'sim', name: 'Shopify Simulator', glyph: 'bag', live: true, href: 'shopify.html', tab: 'healf-shopify',
     blurb: 'Look up orders, customers, stock and ETAs as they were on the day, then cancel, refund, edit or raise Manual Orders. Opens from any Gorgias ticket too.' },
   // Not a simulator: the shared Google Sheet new joiners and buddies log and score practice
   // tickets in. Kept here so it's one click away during training.
@@ -114,13 +116,11 @@ window.name = 'healf-library';   // the tools' "All training tools" links come b
 const svg = g => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${G[g]}</svg>`;
 const card = t => t.live ? `
   <a class="hl-card tool" href="${t.href}" target="${t.tab}">
-    <div class="tool-head"><div class="tile">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="hl-pill good">${t.tag || 'Live'}</span></div></div>
-    <p>${t.blurb}</p><span class="open">${t.open || 'Open ' + t.name.replace(' Simulator', '')} →</span></a>` : `
+    <div class="tile">${svg(t.glyph)}</div><h2>${t.name}</h2>
+    <p>${t.blurb}</p><span class="open">${t.open || 'Open'} →</span></a>` : `
   <div class="hl-card tool soon">
-    <div class="tool-head"><div class="tile">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="hl-pill muted">Coming soon</span></div></div>
+    <div class="tile">${svg(t.glyph)}</div><h2>${t.name} <span class="hl-pill muted">Coming soon</span></h2>
     <p>${t.blurb}</p></div>`;
-const LOGO = '<rect x="5" y="4" width="4" height="16" rx="1"/><rect x="9" y="4" width="4" height="16" rx="1"/><path d="M5 8h4M9 16h4"/><path d="m13.8 4.6 2.2-.6c.6-.1 1.1.2 1.3.8l3.7 13.4c.1.5-.2 1.1-.8 1.3l-2.2.5c-.6.1-1.1-.2-1.3-.7L13 5.8c-.1-.5.2-1.1.8-1.2z"/><path d="m14 9 4-1M16 16l3.9-1"/>';
-['mark1', 'mark2'].forEach(id => { document.getElementById(id).innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${LOGO}</svg>`; });
 SECTIONS.forEach(x => { const n = TOOLS.filter(t => t.section === x.key && t.live).length; const el = document.getElementById('c-' + x.key); if (el) el.textContent = n; });
 let whoName = '';
 function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
@@ -135,8 +135,8 @@ function renderLibrary() {
       <div class="grid">${SECTIONS.map(x => {
         const n = TOOLS.filter(t => t.section === x.key && t.live).length;
         return `<a class="hl-card tool" href="#${x.key}">
-          <div class="tool-head"><div class="tile">${svg(x.glyph)}</div><div><h2>${x.title}</h2><span class="hl-pill">${n} ${n === 1 ? 'item' : 'items'}</span></div></div>
-          <p>${x.blurb}</p><span class="open">View ${x.title.toLowerCase()} →</span></a>`;
+          <div class="tile">${svg(x.glyph)}</div><h2>${x.title}</h2>
+          <p>${x.blurb}</p><span class="open">View ${n} ${n === 1 ? 'item' : 'items'} →</span></a>`;
       }).join('')}</div>`;
   } else {
     document.getElementById('grid').innerHTML = `<div class="hl-head"><div><h1 class="hl-title">${sec.title}</h1><p class="hl-sub">${sec.sub}</p></div></div>

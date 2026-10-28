@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400&display=swap" rel="stylesheet">
 <!-- The shared Healf Learning design (sidebar shell, type, colours). The simulators never load it. -->
-<link rel="stylesheet" href="healf-learning.css?v=2026-10-28a">
+<link rel="stylesheet" href="healf-learning.css?v=2026-10-28b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>window.SUPABASE_STORAGE_KEY = 'healf-admin-auth';</script>
 <script src="supabase.js"></script>
@@ -297,10 +297,9 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
 <!-- ADMIN SHELL -->
 <div class="admin-shell hl-shell" id="admin-shell">
   <nav class="hl-side" aria-label="Admin">
-    <div class="hl-brand"><span class="hl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1-8.5 15a12 12 0 0 1-8.5-15a12 12 0 0 0 8.5-3"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>Admin</b><small>Healf Learning</small></span></div>
-    <div class="hl-grp">Training</div>
+    <div class="hl-brand"><b>Healf Learning</b></div>
+    <div class="hl-grp">Admin</div>
     <button class="hl-nav" data-tab="joiners" onclick="switchTab('joiners', this)">Onboarding Reports</button>
-    <div class="hl-grp">Simulators</div>
     <button class="hl-nav on" data-tab="trainees" onclick="switchTab('trainees', this)">Users</button>
     <button class="hl-nav" data-tab="tickets" onclick="switchTab('tickets', this)">Tickets</button>
     <button class="hl-nav" data-tab="marking" onclick="switchTab('marking', this)">Results <span id="marking-badge" class="hl-dot" style="display:none">0</span></button>

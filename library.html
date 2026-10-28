@@ -165,7 +165,7 @@ async function loadProgress() {
   // Next up: their assigned topic if Demetra set one, else the weakest topic practised, else the first not started.
   let next = categories.find(c => c.id === me.current_category_id);
   if (!next) { const tried = byCat.filter(c => c.scored).sort((a, b) => a.avg - b.avg); next = (tried[0] && tried[0].avg < 2.5) ? tried[0] : byCat.find(c => !c.done) || tried[0]; }
-  prog = { latest, byCat, week: w && w.week, phase: w && w.phase, next };
+  prog = { latest, byCat, week: w && w.week, phase: w && w.phase, next, goal: w || {} };
   renderLibrary();
 }
 const phaseName = p => ({ onboarding: 'Onboarding', buddying: 'Buddying', probation: 'Probation', passed: 'Probation ended' })[p] || '';
@@ -173,9 +173,18 @@ const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&am
 function homeLine() {
   if (!prog) return 'Practise on safe copies of the tools you\'ll use every day, and find the training documents you need along the way. Nothing in the simulators touches live customers.';
   const bits = [];
-  if (prog.week >= 1 && prog.week <= 10) bits.push(`Week ${prog.week} of 10`);
-  if (prog.week >= 1 && prog.phase) bits.push(phaseName(prog.phase));
-  if (prog.next) bits.push(`next up: ${esc(prog.next.name)} practice`);
+  const w = prog.week, g = prog.goal;
+  if (w >= 1 && w <= 10) bits.push(`Week ${w} of 10`);
+  if (w >= 1 && prog.phase) bits.push(phaseName(prog.phase));
+  // Weeks 1-2 (onboarding): what to practise next. Weeks 3-10: that week's KPI goal instead,
+  // since every topic has been covered by the end of onboarding.
+  if (w >= 3 && w <= 10) {
+    const goal = [];
+    if (g.goal_messages) goal.push(`${g.goal_messages} messages${g.min_messages && g.min_messages !== g.goal_messages ? ` (min ${g.min_messages})` : ''}`);
+    if (g.quality_target_pct) goal.push(`${g.quality_target_pct}% of tickets scored 3`);
+    if (g.qa_mentions_max_pct) goal.push(`QA mentions under ${g.qa_mentions_max_pct}%`);
+    if (goal.length) bits.push(`this week's goal: ${goal.join(', ')}`);
+  } else if (prog.next) bits.push(`next up: ${esc(prog.next.name)} practice`);
   return bits.length ? bits.join(' · ') : 'Pick a simulator below to start practising.';
 }
 function progressHtml() {
@@ -186,7 +195,7 @@ function progressHtml() {
   const topics = prog.byCat.filter(c => c.done).length;
   const lvl = a => a == null ? '' : a >= 2.5 ? '' : a >= 2 ? 'mid' : 'low';
   const rows = prog.byCat.map(c => `<tr>
-      <td><b>${esc(c.name)}</b>${prog.next && prog.next.id === c.id ? ' <span class="hl-pill">Practise next</span>' : ''}</td>
+      <td><b>${esc(c.name)}</b>${prog.next && prog.next.id === c.id && !(prog.week >= 3) ? ' <span class="hl-pill">Practise next</span>' : ''}</td>
       <td>${c.done || '<span class="muted">Not started</span>'}</td>
       <td>${c.avg == null ? '<span class="muted">–</span>' : c.avg.toFixed(2) + ' / 3'}</td>
       <td>${c.scored ? `<div class="bar"><i class="${lvl(c.avg)}" style="width:${Math.round(100 * c.threes / c.scored)}%"></i></div>` : ''}</td>

@@ -8,81 +8,71 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231b1c1d'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' transform='translate(4 4)'%3E%3Crect x='5' y='4' width='4' height='16' rx='1'/%3E%3Crect x='9' y='4' width='4' height='16' rx='1'/%3E%3Cpath d='m14 4.5 3-.7 3.7 13.4-3 .8z'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script>document.documentElement.setAttribute('data-theme', (function () { try { return localStorage.getItem('healf_theme') || 'light'; } catch (e) { return 'light'; } })());</script>
+<!-- The shared Healf Learning design (sidebar shell, type, colours). The simulators never load it. -->
+<link rel="stylesheet" href="healf-learning.css?v=2026-10-28a">
 <style>
-/* The "Healf Learning" umbrella: every tool is the same black tile with its own white
-   glyph (projects/gorgias-simulation/logo-system.md). New simulators slot into TOOLS below. */
+/* Library-only pieces on top of healf-learning.css: tool cards, section boxes and the sign-in card. */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-:root { --bg: #f7f5f3; --card: #fff; --ink: #1b1c1d; --ink-2: #706f6e; --ink-3: #a3a19e; --line: rgba(31,23,12,.12); --tile: #1b1c1d; --glyph: #fff; --chip: #eeebe6; --live: #e4f7ec; --live-ink: #00834f; }
-html[data-theme="dark"] { --bg: #121212; --card: #1c1c1c; --ink: #eeebe6; --ink-2: #a3a19e; --ink-3: #807d7c; --line: rgba(255,255,255,.10); --tile: #fff; --glyph: #1b1c1d; --chip: #2a2a2a; --live: #14311f; --live-ink: #4fba8a; }
-body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; color: var(--ink); background: var(--bg); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+body { background: var(--hl-bg); color: var(--hl-ink); font-family: var(--hl-font); font-size: 14px; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
-.wrap { max-width: 960px; margin: 0 auto; padding: 48px 24px 64px; }
-.top { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
-.tile { width: 40px; height: 40px; border-radius: 9px; background: var(--tile); color: var(--glyph); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.tile svg { width: 22px; height: 22px; }
-.tile.lg { width: 48px; height: 48px; border-radius: 11px; } .tile.lg svg { width: 26px; height: 26px; }
-.brand-name { font-weight: 700; font-size: 17px; }
-.brand-sub { color: var(--ink-3); font-size: 12.5px; }
-.who { margin-left: auto; font-size: 12.5px; color: var(--ink-2); text-align: right; }
-.who button { font: inherit; color: #644b9e; background: none; border: none; cursor: pointer; padding: 0; }
-html[data-theme="dark"] .who button { color: #b8a3e3; }
-h1 { font-size: 28px; font-weight: 700; letter-spacing: -.4px; margin-bottom: 8px; }
-.lead { color: var(--ink-2); font-size: 15px; max-width: 560px; margin-bottom: 32px; line-height: 1.5; }
-.back { display: inline-block; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 18px; } .back:hover { color: var(--ink); }
-.section-h { display: flex; align-items: baseline; gap: 4px 10px; margin-bottom: 14px; flex-wrap: wrap; }
-.section-h h3 { white-space: nowrap; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-2); }
-.section-h span { font-size: 12.5px; color: var(--ink-3); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.04); transition: transform .12s, box-shadow .12s; }
-a.card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
-.card-head { display: flex; align-items: center; gap: 12px; }
-.card h2 { font-size: 16px; font-weight: 600; }
-.status { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; margin-top: 3px; background: var(--chip); color: var(--ink-2); }
-.status.live { background: var(--live); color: var(--live-ink); }
-.card p { color: var(--ink-2); line-height: 1.5; flex: 1; }
-.open { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
-.card.soon { border-style: dashed; box-shadow: none; }
-.card.soon .tile { opacity: .35; }
-.foot { margin-top: 40px; display: flex; gap: 18px; font-size: 12.5px; color: var(--ink-3); flex-wrap: wrap; }
-.foot a { color: #644b9e; } html[data-theme="dark"] .foot a { color: #b8a3e3; }
-.signin { max-width: 400px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
-.signin h2 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
-.signin .sub { color: var(--ink-2); margin-bottom: 18px; font-size: 13px; }
-.signin label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px; }
-.signin input { width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 9px; padding: 0 12px; font: inherit; font-size: 14px; color: var(--ink); background: var(--card); outline: none; margin-bottom: 14px; }
-.signin input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(27,28,29,.1); }
-.signin button { width: 100%; height: 40px; border: none; border-radius: 9px; background: var(--tile); color: var(--glyph); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-.signin button:disabled { opacity: .6; cursor: default; }
-.signin .err { display: none; background: #fef2f2; border: 1px solid #fecaca; color: #d9003e; border-radius: 9px; padding: 9px 12px; font-size: 12.5px; margin-bottom: 14px; }
 .hidden { display: none !important; }
-@media (max-width: 560px) { .wrap { padding: 28px 16px 48px; } h1 { font-size: 23px; } .who { display: none; } }
+.tile { width: 40px; height: 40px; border-radius: 9px; background: var(--hl-ink); color: var(--hl-surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tile svg { width: 22px; height: 22px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.tool { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.tool-head { display: flex; align-items: center; gap: 12px; }
+.tool h2 { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.tool p { color: var(--hl-ink-2); line-height: 1.55; flex: 1; font-size: 13.5px; }
+.tool .open { font-weight: 600; font-size: 13px; color: var(--hl-ink); }
+.tool.soon { border-style: dashed; box-shadow: none; }
+.tool.soon .tile { opacity: .35; }
+.signin-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 16px; background: var(--hl-bg); }
+.signin { width: 100%; max-width: 400px; padding: 28px; }
+.signin .hl-brand { padding: 0 0 22px; }
+.signin .hl-title { font-size: 30px; }
+.signin .hl-sub { margin-bottom: 20px; }
+.signin label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px; }
+.signin input { width: 100%; height: 40px; border: 1px solid var(--hl-line); border-radius: 9px; padding: 0 12px; font: inherit; font-size: 14px; color: var(--hl-ink); background: var(--hl-surface); outline: none; margin-bottom: 14px; }
+.signin input:focus { border-color: var(--hl-accent); box-shadow: 0 0 0 3px var(--hl-accent-soft); }
+.signin .hl-btn { width: 100%; justify-content: center; height: 40px; }
+.signin .hl-btn:disabled { opacity: .6; cursor: default; }
+.signin .err { display: none; background: var(--hl-bad-bg); color: var(--hl-bad); border-radius: 9px; padding: 9px 12px; font-size: 12.5px; margin-bottom: 14px; }
+.signin-foot { margin-top: 16px; font-size: 12px; color: var(--hl-ink-3); text-align: center; }
+.signin-foot a { color: var(--hl-accent); }
+.who { font-size: 12px; color: var(--hl-ink-2); }
+.who b { color: var(--hl-ink); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="4" height="16" rx="1"/><rect x="9" y="4" width="4" height="16" rx="1"/><path d="M5 8h4M9 16h4"/><path d="m13.8 4.6 2.2-.6c.6-.1 1.1.2 1.3.8l3.7 13.4c.1.5-.2 1.1-.8 1.3l-2.2.5c-.6.1-1.1-.2-1.3-.7L13 5.8c-.1-.5.2-1.1.8-1.2z"/><path d="m14 9 4-1M16 16l3.9-1"/></svg></div>
-    <div><div class="brand-name">Healf Learning</div><div class="brand-sub">Customer Wellbeing training library</div></div>
-    <div class="who" id="who"></div>
-  </div>
-  <h1>Everything you need to learn CW, in one place</h1>
-  <p class="lead">Practise on safe copies of the tools you'll use every day, and find the training documents you'll need along the way. Nothing in the simulators touches live customers. One login works across all of them.</p>
-  <div class="signin hidden" id="signin">
-    <h2>Sign in</h2>
-    <p class="sub">Sign in once and every simulator opens straight away.</p>
+<!-- Signed out: one centred sign-in card. -->
+<div class="signin-wrap hidden" id="signin">
+  <div class="signin hl-card">
+    <div class="hl-brand"><span class="hl-mark" id="mark1"></span><span><b>Healf Learning</b><small>Customer Wellbeing training</small></span></div>
+    <h1 class="hl-title">Sign in</h1>
+    <p class="hl-sub">Sign in once and every simulator and resource opens straight away.</p>
     <div class="err" id="err"></div>
     <label for="email">Email address</label>
     <input type="email" id="email" placeholder="you@healf.com" autocomplete="username">
     <label for="pin">Password</label>
     <input type="password" id="pin" placeholder="Training password" autocomplete="current-password">
-    <button id="go" onclick="login()">Sign in</button>
+    <button class="hl-btn" id="go" onclick="login()">Sign in</button>
   </div>
-  <div class="hidden" id="grid"></div>
-  <div class="foot"><a href="admin.html" target="healf-admin">Admin panel →</a><span>Built and run by CW Onboarding &amp; Enablement</span></div>
+</div>
+<!-- Signed in: the shared sidebar shell. -->
+<div class="hl-shell hidden" id="app">
+  <nav class="hl-side" aria-label="Healf Learning">
+    <a class="hl-brand" href="#"><span class="hl-mark" id="mark2"></span><span><b>Healf Learning</b><small>Customer Wellbeing training</small></span></a>
+    <a class="hl-nav" href="#" data-page="">Home</a>
+    <div class="hl-grp">Learn</div>
+    <a class="hl-nav" href="#sim" data-page="sim">Simulators <span class="hl-count" id="c-sim"></span></a>
+    <a class="hl-nav" href="#res" data-page="res">Onboarding Resources <span class="hl-count" id="c-res"></span></a>
+    <div class="hl-side-foot"><div class="who" id="who"></div><a href="admin.html" target="healf-admin">Admin panel →</a></div>
+  </nav>
+  <main class="hl-main"><div class="hl-main-in" id="grid"></div></main>
 </div>
 <script>
 // Add a simulator here and it appears in the library. This page is the ONLY sign-in: the
@@ -123,24 +113,33 @@ const TOOLS = [
 window.name = 'healf-library';   // the tools' "All training tools" links come back to this tab
 const svg = g => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${G[g]}</svg>`;
 const card = t => t.live ? `
-  <a class="card" href="${t.href}" target="${t.tab}">
-    <div class="card-head"><div class="tile lg">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="status live">${t.tag || 'Live'}</span></div></div>
+  <a class="hl-card tool" href="${t.href}" target="${t.tab}">
+    <div class="tool-head"><div class="tile">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="hl-pill good">${t.tag || 'Live'}</span></div></div>
     <p>${t.blurb}</p><span class="open">${t.open || 'Open ' + t.name.replace(' Simulator', '')} →</span></a>` : `
-  <div class="card soon">
-    <div class="card-head"><div class="tile lg">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="status">Coming soon</span></div></div>
+  <div class="hl-card tool soon">
+    <div class="tool-head"><div class="tile">${svg(t.glyph)}</div><div><h2>${t.name}</h2><span class="hl-pill muted">Coming soon</span></div></div>
     <p>${t.blurb}</p></div>`;
+const LOGO = '<rect x="5" y="4" width="4" height="16" rx="1"/><rect x="9" y="4" width="4" height="16" rx="1"/><path d="M5 8h4M9 16h4"/><path d="m13.8 4.6 2.2-.6c.6-.1 1.1.2 1.3.8l3.7 13.4c.1.5-.2 1.1-.8 1.3l-2.2.5c-.6.1-1.1-.2-1.3-.7L13 5.8c-.1-.5.2-1.1.8-1.2z"/><path d="m14 9 4-1M16 16l3.9-1"/>';
+['mark1', 'mark2'].forEach(id => { document.getElementById(id).innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${LOGO}</svg>`; });
+SECTIONS.forEach(x => { const n = TOOLS.filter(t => t.section === x.key && t.live).length; const el = document.getElementById('c-' + x.key); if (el) el.textContent = n; });
+let whoName = '';
+function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 function renderLibrary() {
   const sec = SECTIONS.find(x => '#' + x.key === location.hash);
+  document.querySelectorAll('.hl-nav[data-page]').forEach(n => n.classList.toggle('on', n.dataset.page === (sec ? sec.key : '')));
   if (!sec) {
-    document.getElementById('grid').innerHTML = `<div class="grid">${SECTIONS.map(x => {
-      const n = TOOLS.filter(t => t.section === x.key && t.live).length;
-      return `<a class="card" href="#${x.key}">
-        <div class="card-head"><div class="tile lg">${svg(x.glyph)}</div><div><h2>${x.title}</h2><span class="status">${n} ${n === 1 ? 'item' : 'items'}</span></div></div>
-        <p>${x.blurb}</p><span class="open">View ${x.title.toLowerCase()} →</span></a>`;
-    }).join('')}</div>`;
+    const first = (whoName || '').split(' ')[0];
+    document.getElementById('grid').innerHTML = `<div class="hl-head"><div>
+        <h1 class="hl-title">${greeting()}${first ? ', ' + first.replace(/[<>&]/g, '') : ''}</h1>
+        <p class="hl-sub">Practise on safe copies of the tools you'll use every day, and find the training documents you need along the way. Nothing in the simulators touches live customers.</p></div></div>
+      <div class="grid">${SECTIONS.map(x => {
+        const n = TOOLS.filter(t => t.section === x.key && t.live).length;
+        return `<a class="hl-card tool" href="#${x.key}">
+          <div class="tool-head"><div class="tile">${svg(x.glyph)}</div><div><h2>${x.title}</h2><span class="hl-pill">${n} ${n === 1 ? 'item' : 'items'}</span></div></div>
+          <p>${x.blurb}</p><span class="open">View ${x.title.toLowerCase()} →</span></a>`;
+      }).join('')}</div>`;
   } else {
-    document.getElementById('grid').innerHTML = `<a class="back" href="#">← Back to the library</a>
-      <div class="section-h"><h3>${sec.title}</h3><span>${sec.sub}</span></div>
+    document.getElementById('grid').innerHTML = `<div class="hl-head"><div><h1 class="hl-title">${sec.title}</h1><p class="hl-sub">${sec.sub}</p></div></div>
       <div class="grid">${TOOLS.filter(t => t.section === sec.key).map(card).join('')}</div>`;
   }
   window.scrollTo(0, 0);
@@ -159,11 +158,13 @@ function nextUrl() {
   return /^(practice|shopify|tracking)\.html([?#].*)?$/.test(n) ? n : '';
 }
 function showTiles(who) {
-  $id('signin').classList.add('hidden'); $id('grid').classList.remove('hidden');
-  $id('who').innerHTML = `Signed in as <b>${String(who.name).replace(/[<>&]/g, '')}</b><br><button onclick="signOut()">Sign out of all tools</button>`;
+  $id('signin').classList.add('hidden'); $id('app').classList.remove('hidden');
+  whoName = String(who.name || '');
+  $id('who').innerHTML = `Signed in as <b>${whoName.replace(/[<>&]/g, '')}</b><br><button onclick="signOut()">Sign out of all tools</button>`;
+  renderLibrary();
 }
 function showSignIn() {
-  $id('grid').classList.add('hidden'); $id('signin').classList.remove('hidden'); $id('who').innerHTML = '';
+  $id('app').classList.add('hidden'); $id('signin').classList.remove('hidden'); $id('who').innerHTML = '';
   setTimeout(() => $id('email').focus(), 30);
 }
 function showError(m) { const e = $id('err'); e.textContent = m; e.style.display = 'block'; }

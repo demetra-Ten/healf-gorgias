@@ -10,12 +10,14 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzExMTExMSIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQgNCkiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIxLjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDNhMTIgMTIgMCAwIDAgOC41IDNhMTIgMTIgMCAwIDEtOC41IDE1YTEyIDEyIDAgMCAxLTguNS0xNWExMiAxMiAwIDAgMCA4LjUtMyIvPjxwYXRoIGQ9Im05IDEyIDIgMiA0LTQiLz48L2c+PC9zdmc+">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400&display=swap" rel="stylesheet">
+<!-- The shared Healf Learning design (sidebar shell, type, colours). The simulators never load it. -->
+<link rel="stylesheet" href="healf-learning.css?v=2026-10-28a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>window.SUPABASE_STORAGE_KEY = 'healf-admin-auth';</script>
 <script src="supabase.js"></script>
 <!-- New Joiners tab. Loaded before the main script, which can call loadJoiners() as soon as a saved admin session resumes. -->
-<script src="admin-joiners.js?v=2026-10-26d"></script>
+<script src="admin-joiners.js?v=2026-10-28a"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; background: #f7f7f8; min-height: 100vh; color: #1b1c1d; -webkit-font-smoothing: antialiased; }
@@ -249,6 +251,26 @@ textarea { resize: vertical; min-height: 80px; }
   .nj-wr-bar { grid-template-columns:1fr 1fr; } .nj-rv-grid { grid-template-columns:1fr; } .nj-metric-grid { grid-template-columns:1fr 1fr; }
 }
 
+/* ── Healf Learning shared look (healf-learning.css), applied to the admin's own components ── */
+body { background: var(--hl-bg); color: var(--hl-ink); }
+.admin-body { padding: 0; max-width: 1080px; margin: 0; }
+.section-header { margin-bottom: 22px; align-items: flex-start; }
+.section-title { font-family: var(--hl-serif); font-weight: 300; font-size: 34px; line-height: 1.08; letter-spacing: -0.01em; color: var(--hl-ink); }
+.section-sub { font-size: 14px; color: var(--hl-ink-2); margin-top: 6px; }
+.card, .marking-card, .sub-acc, .stat-tile { border-color: var(--hl-line); box-shadow: var(--hl-shadow); }
+.card, .marking-card, .stat-tile { border-radius: var(--hl-r); }
+.btn { border-radius: 999px; white-space: nowrap; }
+.nj-seg button { white-space: nowrap; }
+.btn-primary { background: var(--hl-ink); }
+.btn-primary:hover { background: var(--hl-accent); }
+.btn-outline { border-color: var(--hl-line); }
+.filter-chip.active { background: var(--hl-ink); border-color: var(--hl-ink); }
+.stat-tile .v { font-family: var(--hl-serif); font-weight: 400; font-size: 28px; }
+.login-wrap { background: var(--hl-bg); }
+.login-card { border: 1px solid var(--hl-line); box-shadow: var(--hl-shadow); border-radius: var(--hl-r); }
+.login-card h1 { font-family: var(--hl-serif); font-weight: 300; font-size: 30px; }
+input:focus, select:focus, textarea:focus { border-color: var(--hl-accent); box-shadow: 0 0 0 3px var(--hl-accent-soft); }
+
 body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Arial, Helvetica, sans-serif; }
 </style>
 </head>
@@ -273,22 +295,18 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
 </div>
 
 <!-- ADMIN SHELL -->
-<div class="admin-shell" id="admin-shell">
-  <nav class="admin-nav">
-    <div class="admin-logo">
-      <div class="admin-logomark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1-8.5 15a12 12 0 0 1-8.5-15a12 12 0 0 0 8.5-3"/><path d="m9 12 2 2 4-4"/></svg></div>
-      <div class="admin-logo-text">Admin <span class="sub">· Healf Learning</span></div>
-    </div>
-    <button class="tab-btn active" onclick="switchTab('trainees', this)">Users</button>
-    <button class="tab-btn" onclick="switchTab('tickets', this)">Tickets</button>
-    <button class="tab-btn" onclick="switchTab('marking', this)">
-      Results
-      <span id="marking-badge" style="background:#e9004a;color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px;display:none">0</span>
-    </button>
-    <button class="tab-btn" onclick="switchTab('joiners', this)">Onboarding Reports</button>
-    <div class="admin-right"><span class="admin-badge">Admin</span><button class="signout-btn" onclick="adminSignOut()">Sign out</button></div>
+<div class="admin-shell hl-shell" id="admin-shell">
+  <nav class="hl-side" aria-label="Admin">
+    <div class="hl-brand"><span class="hl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1-8.5 15a12 12 0 0 1-8.5-15a12 12 0 0 0 8.5-3"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>Admin</b><small>Healf Learning</small></span></div>
+    <div class="hl-grp">Training</div>
+    <button class="hl-nav" data-tab="joiners" onclick="switchTab('joiners', this)">Onboarding Reports</button>
+    <div class="hl-grp">Simulators</div>
+    <button class="hl-nav on" data-tab="trainees" onclick="switchTab('trainees', this)">Users</button>
+    <button class="hl-nav" data-tab="tickets" onclick="switchTab('tickets', this)">Tickets</button>
+    <button class="hl-nav" data-tab="marking" onclick="switchTab('marking', this)">Results <span id="marking-badge" class="hl-dot" style="display:none">0</span></button>
+    <div class="hl-side-foot"><a href="library.html" target="healf-library">Open the library →</a><button onclick="adminSignOut()">Sign out</button></div>
   </nav>
-
+  <main class="hl-main">
   <div class="admin-body">
     <!-- TRAINEES TAB -->
     <div id="tab-trainees">
@@ -355,6 +373,7 @@ body, input, textarea, select, button { font-family: Inter, "Helvetica Neue", Ar
       <div id="nj-root"><div class="loading">Loading onboarding reports…</div></div>
     </div>
   </div>
+  </main>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -405,8 +424,7 @@ async function adminLogin() {
 
 function showAdminShell() {
   document.getElementById('login-wrap').style.display = 'none';
-  document.getElementById('admin-shell').style.display = 'flex';
-  document.getElementById('admin-shell').style.flexDirection = 'column';
+  document.getElementById('admin-shell').style.display = 'grid';
   loadAll();
 }
 
@@ -850,8 +868,7 @@ function switchTab(name, btn) {
   ['trainees','tickets','marking','joiners'].forEach(t => {
     document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none';
   });
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  document.querySelectorAll('.hl-nav[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
 }
 
 function escHtml(str) {

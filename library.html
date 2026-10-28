@@ -44,6 +44,20 @@ a { color: inherit; text-decoration: none; }
 .signin-foot { margin-top: 16px; font-size: 12px; color: var(--hl-ink-3); text-align: center; }
 .signin-foot a { color: var(--hl-accent); }
 .who { font-size: 12px; color: var(--hl-ink-2); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.tiles .hl-card { padding: 14px 16px; }
+.tiles .v { font-family: var(--hl-serif); font-size: 28px; line-height: 1.1; }
+.tiles .l { font-size: 12px; color: var(--hl-ink-2); margin-top: 4px; }
+.ptable { overflow-x: auto; }
+.ptable table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px; }
+.ptable th { text-align: left; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--hl-ink-3); padding: 10px 16px; border-bottom: 1px solid var(--hl-line); }
+.ptable td { padding: 12px 16px; border-bottom: 1px solid var(--hl-line-2); vertical-align: middle; color: var(--hl-ink); }
+.ptable tr:last-child td { border-bottom: 0; }
+.bar { width: 120px; height: 6px; border-radius: 3px; background: var(--hl-line-2); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--hl-good); }
+.bar i.mid { background: var(--hl-warn); } .bar i.low { background: var(--hl-bad); }
+.muted { color: var(--hl-ink-3); }
+.empty { padding: 28px; text-align: center; color: var(--hl-ink-2); }
 .who b { color: var(--hl-ink); }
 </style>
 </head>
@@ -70,6 +84,8 @@ a { color: inherit; text-decoration: none; }
     <div class="hl-grp">Practise</div>
     <a class="hl-nav" href="#sim" data-page="sim">Simulators <span class="hl-count" id="c-sim"></span></a>
     <a class="hl-nav" href="#res" data-page="res">Onboarding Resources <span class="hl-count" id="c-res"></span></a>
+    <div class="hl-grp">My training</div>
+    <a class="hl-nav" href="#progress" data-page="progress">My progress</a>
     <div class="hl-side-foot"><div class="who" id="who"></div><a href="admin.html" target="healf-admin">Admin panel →</a></div>
   </nav>
   <main class="hl-main"><div class="hl-main-in" id="grid"></div></main>
@@ -86,7 +102,8 @@ const G = {
   book: '<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M5 18a2 2 0 0 1 2-2h11"/>',
   sheet: '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M5 10h14M10 10v10"/>',
   screen: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6M12 17v4"/>',
-  plus: '<path d="M12 6v12M6 12h12"/>'
+  plus: '<path d="M12 6v12M6 12h12"/>',
+  chart: '<path d="M5 19V11M12 19V5M19 19v-6"/>'
 };
 // The library is split into sections; each tool says which one it belongs to.
 // The front page shows one box per section; clicking a box opens that section's tools (#sim / #res).
@@ -124,14 +141,84 @@ const card = t => t.live ? `
 SECTIONS.forEach(x => { const n = TOOLS.filter(t => t.section === x.key && t.live).length; const el = document.getElementById('c-' + x.key); if (el) el.textContent = n; });
 let whoName = '';
 function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
+// ── My progress: built from the user's own simulator submissions, plus their onboarding week ──
+// (my_training_week only returns week + phase for the linked user; reviews and KPIs stay admin-only).
+let me = null, prog = null;
+async function loadProgress() {
+  if (!me || !me.id) return;
+  const [subs, cats, wk] = await Promise.all([
+    db.from('submissions').select('ticket_id, score, trainer_score, submitted_at, tickets(subject, category_id)').eq('trainee_id', me.id).order('submitted_at', { ascending: false }),
+    db.from('categories').select('id, name, order_index').order('order_index'),
+    db.rpc('my_training_week', { p_trainee_id: me.id }).then(r => r, () => ({ data: null }))
+  ]);
+  const eff = s => (s.trainer_score != null && s.trainer_score !== '') ? Number(s.trainer_score) : (s.score != null ? Number(s.score) : null);
+  const seen = new Set(), latest = [];
+  for (const s of (subs.data || [])) { if (seen.has(s.ticket_id)) continue; seen.add(s.ticket_id); latest.push(Object.assign({}, s, { eff: eff(s) })); }
+  const categories = (cats.data || []).filter(c => c.id !== 7);
+  const byCat = categories.map(c => {
+    const rows = latest.filter(s => s.tickets && s.tickets.category_id === c.id), scored = rows.filter(s => s.eff != null);
+    return { id: c.id, name: c.name, done: rows.length, scored: scored.length,
+      avg: scored.length ? scored.reduce((a, s) => a + s.eff, 0) / scored.length : null,
+      threes: scored.filter(s => s.eff === 3).length, last: rows[0] ? rows[0].submitted_at : null };
+  });
+  const w = Array.isArray(wk && wk.data) ? wk.data[0] : (wk && wk.data);
+  // Next up: their assigned topic if Demetra set one, else the weakest topic practised, else the first not started.
+  let next = categories.find(c => c.id === me.current_category_id);
+  if (!next) { const tried = byCat.filter(c => c.scored).sort((a, b) => a.avg - b.avg); next = (tried[0] && tried[0].avg < 2.5) ? tried[0] : byCat.find(c => !c.done) || tried[0]; }
+  prog = { latest, byCat, week: w && w.week, phase: w && w.phase, next };
+  renderLibrary();
+}
+const phaseName = p => ({ onboarding: 'Onboarding', buddying: 'Buddying', probation: 'Probation', passed: 'Probation ended' })[p] || '';
+const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function homeLine() {
+  if (!prog) return 'Practise on safe copies of the tools you\'ll use every day, and find the training documents you need along the way. Nothing in the simulators touches live customers.';
+  const bits = [];
+  if (prog.week >= 1 && prog.week <= 10) bits.push(`Week ${prog.week} of 10`);
+  if (prog.week >= 1 && prog.phase) bits.push(phaseName(prog.phase));
+  if (prog.next) bits.push(`next up: ${esc(prog.next.name)} practice`);
+  return bits.length ? bits.join(' · ') : 'Pick a simulator below to start practising.';
+}
+function progressHtml() {
+  if (!prog) return `<div class="hl-head"><div><h1 class="hl-title">My progress</h1><p class="hl-sub">Loading your practice so far…</p></div></div>`;
+  const sc = prog.latest.filter(s => s.eff != null);
+  const avg = sc.length ? (sc.reduce((a, s) => a + s.eff, 0) / sc.length).toFixed(2) : '–';
+  const pct3 = sc.length ? Math.round(100 * sc.filter(s => s.eff === 3).length / sc.length) + '%' : '–';
+  const topics = prog.byCat.filter(c => c.done).length;
+  const lvl = a => a == null ? '' : a >= 2.5 ? '' : a >= 2 ? 'mid' : 'low';
+  const rows = prog.byCat.map(c => `<tr>
+      <td><b>${esc(c.name)}</b>${prog.next && prog.next.id === c.id ? ' <span class="hl-pill">Practise next</span>' : ''}</td>
+      <td>${c.done || '<span class="muted">Not started</span>'}</td>
+      <td>${c.avg == null ? '<span class="muted">–</span>' : c.avg.toFixed(2) + ' / 3'}</td>
+      <td>${c.scored ? `<div class="bar"><i class="${lvl(c.avg)}" style="width:${Math.round(100 * c.threes / c.scored)}%"></i></div>` : ''}</td>
+      <td>${c.scored ? Math.round(100 * c.threes / c.scored) + '%' : ''}</td>
+      <td class="muted">${c.last ? new Date(c.last).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}</td></tr>`).join('');
+  const recent = prog.latest.slice(0, 8).map(s => `<tr><td>${esc(s.tickets ? s.tickets.subject : 'Ticket')}</td>
+      <td class="muted">${esc((prog.byCat.find(c => s.tickets && c.id === s.tickets.category_id) || {}).name || '')}</td>
+      <td>${s.eff == null ? '<span class="hl-pill muted">Marking</span>' : `<span class="hl-pill ${s.eff === 3 ? 'good' : s.eff === 2 ? 'warn' : 'bad'}">${s.eff} / 3</span>`}</td>
+      <td class="muted">${new Date(s.submitted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</td></tr>`).join('');
+  return `<div class="hl-head"><div><h1 class="hl-title">My progress</h1><p class="hl-sub">${homeLine()}</p></div>
+      <a class="hl-btn" href="practice.html" target="healf-gorgias">Practise now →</a></div>
+    <div class="tiles">
+      <div class="hl-card"><div class="v">${prog.latest.length}</div><div class="l">Tickets practised</div></div>
+      <div class="hl-card"><div class="v">${avg}</div><div class="l">Average score (out of 3)</div></div>
+      <div class="hl-card"><div class="v">${pct3}</div><div class="l">Tickets scored 3</div></div>
+      <div class="hl-card"><div class="v">${topics} / ${prog.byCat.length}</div><div class="l">Topics practised</div></div>
+    </div>
+    <div class="hl-h2">By topic <span>your latest attempt at each ticket</span></div>
+    <div class="hl-card ptable"><table><thead><tr><th>Topic</th><th>Tickets</th><th>Average</th><th colspan="2">Scored 3</th><th>Last practised</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="hl-h2">Recent tickets</div>
+    <div class="hl-card ptable">${recent ? `<table><thead><tr><th>Ticket</th><th>Topic</th><th>Score</th><th>Sent</th></tr></thead><tbody>${recent}</tbody></table>` : '<div class="empty">Nothing practised yet. Open the Gorgias Simulator to work your first ticket.</div>'}</div>`;
+}
 function renderLibrary() {
+  const isProg = location.hash === '#progress';
   const sec = SECTIONS.find(x => '#' + x.key === location.hash);
-  document.querySelectorAll('.hl-nav[data-page]').forEach(n => n.classList.toggle('on', n.dataset.page === (sec ? sec.key : '')));
+  document.querySelectorAll('.hl-nav[data-page]').forEach(n => n.classList.toggle('on', n.dataset.page === (isProg ? 'progress' : sec ? sec.key : '')));
+  if (isProg) { document.getElementById('grid').innerHTML = progressHtml(); window.scrollTo(0, 0); return; }
   if (!sec) {
     const first = (whoName || '').split(' ')[0];
     document.getElementById('grid').innerHTML = `<div class="hl-head"><div>
         <h1 class="hl-title">${greeting()}${first ? ', ' + first.replace(/[<>&]/g, '') : ''}</h1>
-        <p class="hl-sub">Practise on safe copies of the tools you'll use every day, and find the training documents you need along the way. Nothing in the simulators touches live customers.</p></div></div>
+        <p class="hl-sub">${homeLine()}</p></div></div>
       <div class="grid">${SECTIONS.map(x => {
         const n = TOOLS.filter(t => t.section === x.key && t.live).length;
         return `<a class="hl-card tool" href="#${x.key}">
@@ -160,6 +247,7 @@ function nextUrl() {
 function showTiles(who) {
   $id('signin').classList.add('hidden'); $id('app').classList.remove('hidden');
   whoName = String(who.name || '');
+  me = who; loadProgress();
   $id('who').innerHTML = `Signed in as <b>${whoName.replace(/[<>&]/g, '')}</b><br><button onclick="signOut()">Sign out of all tools</button>`;
   renderLibrary();
 }

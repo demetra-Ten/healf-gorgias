@@ -61,6 +61,15 @@ a { color: inherit; text-decoration: none; }
 .fortnight tr.soon td { color: var(--hl-ink-3); }
 .fortnight tr.soon b { font-weight: 500; }
 .fortnight tr.today td { background: var(--hl-accent-soft); }
+.grid.home { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.week { display: flex; align-items: center; gap: 28px; padding: 16px 20px; margin-bottom: 8px; flex-wrap: wrap; }
+.week-l { flex: 1 1 280px; min-width: 0; }
+.week-k { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--hl-ink-3); }
+.week-v { font-size: 14px; color: var(--hl-ink); margin-top: 3px; line-height: 1.45; }
+.week-n { display: flex; flex-direction: column; }
+.week-n b { font-family: var(--hl-serif); font-weight: 400; font-size: 24px; line-height: 1.1; }
+.week-n span { font-size: 11.5px; color: var(--hl-ink-2); }
+.week-go { font-weight: 600; font-size: 13px; color: var(--hl-accent); white-space: nowrap; }
 .fortnight .practise { color: var(--hl-accent); font-weight: 600; white-space: nowrap; }
 .who b { color: var(--hl-ink); }
 </style>
@@ -272,16 +281,22 @@ function renderLibrary() {
   document.querySelectorAll('.hl-nav[data-page]').forEach(n => n.classList.toggle('on', n.dataset.page === (isProg ? 'progress' : sec ? sec.key : '')));
   if (isProg) { document.getElementById('grid').innerHTML = progressHtml(); window.scrollTo(0, 0); return; }
   if (!sec) {
+    // Home: the tools themselves (one click away) and a small "this week" snapshot; the sidebar
+    // sections are for browsing everything.
     const first = (whoName || '').split(' ')[0];
+    const sc = prog ? prog.latest.filter(x => x.eff != null) : [];
+    const snap = prog ? `<a class="hl-card week" href="#progress">
+        <div class="week-l"><div class="week-k">This week</div><div class="week-v">${homeLine()}</div></div>
+        <div class="week-n"><b>${prog.latest.length}</b><span>tickets practised</span></div>
+        <div class="week-n"><b>${sc.length ? (sc.reduce((a, x) => a + x.eff, 0) / sc.length).toFixed(2) : '–'}</b><span>average score</span></div>
+        <div class="week-n"><b>${sc.length ? Math.round(100 * sc.filter(x => x.eff === 3).length / sc.length) + '%' : '–'}</b><span>scored 3</span></div>
+        <span class="week-go">My progress →</span></a>` : '';
     document.getElementById('grid').innerHTML = `<div class="hl-head"><div>
         <h1 class="hl-title">${greeting()}${first ? ', ' + first.replace(/[<>&]/g, '') : ''}</h1>
-        <p class="hl-sub">${homeLine()}</p></div></div>
-      <div class="grid">${SECTIONS.map(x => {
-        const n = TOOLS.filter(t => t.section === x.key && t.live).length;
-        return `<a class="hl-card tool" href="#${x.key}">
-          <div class="tile">${svg(x.glyph)}</div><h2>${x.title}</h2>
-          <p>${x.blurb}</p><span class="open">View ${n} ${n === 1 ? 'item' : 'items'} →</span></a>`;
-      }).join('')}</div>`;
+        <p class="hl-sub">Everything you need to practise and learn CW, one click away.</p></div></div>
+      ${snap}
+      <div class="hl-h2">Your tools</div>
+      <div class="grid home">${TOOLS.filter(t => t.live).map(card).join('')}</div>`;
   } else {
     document.getElementById('grid').innerHTML = `<div class="hl-head"><div><h1 class="hl-title">${sec.title}</h1><p class="hl-sub">${sec.sub}</p></div></div>
       <div class="grid">${TOOLS.filter(t => t.section === sec.key).map(card).join('')}</div>`;

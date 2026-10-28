@@ -58,6 +58,10 @@ a { color: inherit; text-decoration: none; }
 .bar i.mid { background: var(--hl-warn); } .bar i.low { background: var(--hl-bad); }
 .muted { color: var(--hl-ink-3); }
 .empty { padding: 28px; text-align: center; color: var(--hl-ink-2); }
+.fortnight tr.soon td { color: var(--hl-ink-3); }
+.fortnight tr.soon b { font-weight: 500; }
+.fortnight tr.today td { background: var(--hl-accent-soft); }
+.fortnight .practise { color: var(--hl-accent); font-weight: 600; white-space: nowrap; }
 .who b { color: var(--hl-ink); }
 </style>
 </head>
@@ -144,6 +148,27 @@ function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good mor
 // ── My progress: built from the user's own simulator submissions, plus their onboarding week ──
 // (my_training_week only returns week + phase for the linked user; reviews and KPIs stay admin-only).
 let me = null, prog = null;
+// Weeks 1-2 follow the CW Onboarding Calendar: one training topic a day, in simulator-category
+// order (cat = categories.id). Update here if the onboarding timetable changes.
+const ONBOARDING_DAYS = [
+  { week: 1, day: 1, label: 'Welcome to Healf, people policies and the CW platforms' },
+  { week: 1, day: 2, label: 'Stock and Fulfilment Issues', cat: 1 },
+  { week: 1, day: 3, label: 'GXO and Supplier Issues', cat: 2 },
+  { week: 1, day: 4, label: 'Returns, Gift Cards and Refunds', cat: 3 },
+  { week: 1, day: 5, label: 'Discounts', cat: 4 },
+  { week: 2, day: 1, label: 'Subscriptions', cat: 5 },
+  { week: 2, day: 2, label: 'UK Delivery Issues', cat: 6 },
+  { week: 2, day: 3, label: 'International Orders', cat: 7 },
+  { week: 2, day: 4, label: 'Ticket practice: catch up on any topic' },
+  { week: 2, day: 5, label: 'Ticket practice: catch up on any topic' },
+];
+// Where today falls in the fortnight: index into ONBOARDING_DAYS (weekends count as the next Monday).
+function onboardingIndex(week) {
+  if (!(week >= 1 && week <= 2)) return -1;
+  let d = new Date().getDay(); // 0 Sun … 6 Sat
+  if (d === 0 || d === 6) return week === 1 ? 5 : 10; // weekend after week 1 → week 2 Monday; after week 2 → done
+  return (week - 1) * 5 + (d - 1);
+}
 async function loadProgress() {
   if (!me || !me.id) return;
   const [subs, cats, wk] = await Promise.all([
@@ -165,6 +190,8 @@ async function loadProgress() {
   // Next up: their assigned topic if Demetra set one, else the weakest topic practised, else the first not started.
   let next = categories.find(c => c.id === me.current_category_id);
   if (!next) { const tried = byCat.filter(c => c.scored).sort((a, b) => a.avg - b.avg); next = (tried[0] && tried[0].avg < 2.5) ? tried[0] : byCat.find(c => !c.done) || tried[0]; }
+  const wkNo = w && w.week, oi = onboardingIndex(wkNo), today = ONBOARDING_DAYS[oi];
+  if (today && today.cat) next = byCat.find(c => c.id === today.cat) || { id: today.cat, name: today.label };
   prog = { latest, byCat, week: w && w.week, phase: w && w.phase, next, goal: w || {} };
   renderLibrary();
 }
@@ -184,8 +211,28 @@ function homeLine() {
     if (g.quality_target_pct) goal.push(`${g.quality_target_pct}% of tickets scored 3`);
     if (g.qa_mentions_max_pct) goal.push(`QA mentions under ${g.qa_mentions_max_pct}%`);
     if (goal.length) bits.push(`this week's goal: ${goal.join(', ')}`);
+  } else if (w >= 1 && w <= 2) {
+    const t = ONBOARDING_DAYS[onboardingIndex(w)];
+    if (t) bits.push(`today: ${esc(t.label)}`);
   } else if (prog.next) bits.push(`next up: ${esc(prog.next.name)} practice`);
   return bits.length ? bits.join(' · ') : 'Pick a simulator below to start practising.';
+}
+function fortnightHtml() {
+  const now = onboardingIndex(prog.week);
+  const rows = ONBOARDING_DAYS.map((d, i) => {
+    const c = d.cat ? prog.byCat.find(x => x.id === d.cat) : null;
+    const state = i < now ? 'done' : i === now ? 'today' : 'soon';
+    const practice = !d.cat ? '' : d.cat === 7 ? '<span class="muted">No practice tickets yet</span>'
+      : c && c.done ? `${c.done} ticket${c.done === 1 ? '' : 's'} · average ${c.avg == null ? '–' : c.avg.toFixed(2)}` : state === 'soon' ? '' : '<span class="muted">Not practised yet</span>';
+    return `<tr class="${state}">
+      <td class="muted">Week ${d.week} · ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][d.day - 1]}</td>
+      <td><b>${esc(d.label)}</b></td>
+      <td>${state === 'done' ? '<span class="hl-pill good">Covered</span>' : state === 'today' ? '<span class="hl-pill">Today</span>' : '<span class="hl-pill muted">Coming up</span>'}</td>
+      <td>${practice}</td>
+      <td>${d.cat && d.cat !== 7 && state !== 'soon' ? '<a class="practise" href="practice.html" target="healf-gorgias">Practise →</a>' : ''}</td></tr>`;
+  }).join('');
+  return `<div class="hl-h2">Your onboarding fortnight <span>from the CW Onboarding Calendar</span></div>
+    <div class="hl-card ptable fortnight"><table><thead><tr><th>Day</th><th>Training</th><th></th><th>Your practice</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function progressHtml() {
   if (!prog) return `<div class="hl-head"><div><h1 class="hl-title">My progress</h1><p class="hl-sub">Loading your practice so far…</p></div></div>`;
@@ -213,6 +260,7 @@ function progressHtml() {
       <div class="hl-card"><div class="v">${pct3}</div><div class="l">Tickets scored 3</div></div>
       <div class="hl-card"><div class="v">${topics} / ${prog.byCat.length}</div><div class="l">Topics practised</div></div>
     </div>
+    ${prog.week >= 1 && prog.week <= 2 ? fortnightHtml() : ''}
     <div class="hl-h2">By topic <span>your latest attempt at each ticket</span></div>
     <div class="hl-card ptable"><table><thead><tr><th>Topic</th><th>Tickets</th><th>Average</th><th colspan="2">Scored 3</th><th>Last practised</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="hl-h2">Recent tickets</div>

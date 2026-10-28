@@ -197,3 +197,41 @@ create table if not exists staging.weekly_reviews (
 alter table agents add column if not exists gorgias_user_id bigint;
 update agents set gorgias_user_id = 753709156 where name = 'Kimmy' and gorgias_user_id is null;
 update agents set gorgias_user_id = 753709540 where name = 'Glen'  and gorgias_user_id is null;
+
+-- ── 7. (2026-10-27) Ticket scores pulled from the Ticket Training Document ──
+-- One row per agent + day + ticket link, so the Monday job (n8n j9f6RwOpA7RVoU1V) can re-run safely.
+alter table ticket_scores add column if not exists ticket_link text;
+create unique index if not exists ticket_scores_agent_date_link_key on ticket_scores (agent_id, date, ticket_link);
+
+-- ── 8. (2026-10-28) My progress: link a new joiner to their simulator user ──
+-- Trainees can't read the admin-only tables, so this one function gives a signed-in user ONLY
+-- their own current week and phase (no reviews, no KPIs).
+alter table agents add column if not exists trainee_id int references trainees(id) on delete set null;
+update agents a set trainee_id = t.id from trainees t
+ where a.trainee_id is null and (
+   (a.name = 'Kimmy' and lower(t.email) = 'kimberly.lesaca@healf.com') or
+   (a.name = 'Glen'  and lower(t.email) = 'glenalyn.polbo@healf.com'));
+create or replace function my_training_week(p_trainee_id int)
+returns table (week int, phase text)
+language sql stable security definer set search_path = public as $$
+  select nj_week_of(a.start_date, current_date) as week,
+         (select k.phase from kpi_targets k where k.week = least(greatest(nj_week_of(a.start_date, current_date), 1), 11)) as phase
+    from agents a
+   where a.trainee_id = p_trainee_id and a.status not in ('passed', 'left')
+   limit 1
+$$;
+revoke all on function my_training_week(int) from public, anon;
+grant execute on function my_training_week(int) to authenticated;
+
+-- ── 9. (2026-10-28) my_training_week also returns that week's KPI goal (shown from week 3) ──
+drop function if exists my_training_week(int);
+create function my_training_week(p_trainee_id int)
+returns table (week int, phase text, goal_messages int, min_messages int, quality_target_pct numeric, qa_mentions_max_pct numeric)
+language sql stable security definer set search_path = public as $$
+  select w.week, k.phase, k.goal_messages, k.min_messages, k.quality_target_pct, k.qa_mentions_max_pct
+    from (select nj_week_of(a.start_date, current_date) as week from agents a
+           where a.trainee_id = p_trainee_id and a.status not in ('passed', 'left') limit 1) w
+    left join kpi_targets k on k.week = least(greatest(w.week, 1), 11)
+$$;
+revoke all on function my_training_week(int) from public, anon;
+grant execute on function my_training_week(int) to authenticated;

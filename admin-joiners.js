@@ -185,6 +185,7 @@ function njAgentFormHtml(a, mode) {
       <div><label>Team lead</label><input type="text" id="nja-tl" value="${njEsc(a.team_lead)}" /></div>
       <div><label>Learning style</label><input type="text" id="nja-ls" value="${njEsc(a.learning_style)}" /></div>
       <div><label>Gorgias user ID <span style="font-weight:400;color:#a3a19e">(for the weekly auto-fill)</span></label><input type="text" id="nja-gid" value="${njEsc(a.gorgias_user_id)}" placeholder="e.g. 753709540 (the number in their Gorgias profile link)" /></div>
+      <div><label>Linked user <span style="font-weight:400;color:#a3a19e">(shows their week on My progress)</span></label><select id="nja-tid"><option value="">— Not linked —</option>${(typeof trainees !== 'undefined' ? trainees : []).map(u => `<option value="${u.id}" ${String(u.id) === String(a.trainee_id) ? 'selected' : ''}>${njEsc(u.name)} · ${njEsc(u.email)}</option>`).join('')}</select></div>
       <div><label>Status</label><select id="nja-status">${NJ_STATUSES.map(s => `<option ${s === (a.status || 'onboarding') ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
     </div><button class="btn btn-primary" onclick="njSaveAgent(${mode === 'edit' ? a.id : 'null'})">${mode === 'edit' ? 'Save details' : 'Add new joiner'}</button></div>`;
 }
@@ -196,6 +197,7 @@ async function njSaveAgent(id) {
   const gid = v('nja-gid');
   if (gid && !/^\d+$/.test(gid)) { toast('Gorgias user ID should be a number'); return; }
   row.gorgias_user_id = gid ? Number(gid) : null;
+  const tid = v('nja-tid'); row.trainee_id = tid ? Number(tid) : null;
   if (!row.name || !row.start_date) { toast('Name and start date are needed'); return; }
   const res = id ? await db.from('agents').update(row).eq('id', id).select('id') : await db.from('agents').insert(row).select('id');
   if (res.error || !(res.data || []).length) { toast('Could not save: ' + ((res.error && res.error.message) || 'no permission')); return; }
@@ -338,8 +340,8 @@ function renderJoinerAgent() {
 }
 async function njEditAgent() {
   // gorgias_user_id lives on agents (not in the overview view), so read it fresh.
-  const { data } = await db.from('agents').select('gorgias_user_id').eq('id', nj.agentId).single();
-  const a = Object.assign({}, njAgent(nj.agentId), { gorgias_user_id: data && data.gorgias_user_id });
+  const { data } = await db.from('agents').select('gorgias_user_id, trainee_id').eq('id', nj.agentId).single();
+  const a = Object.assign({}, njAgent(nj.agentId), { gorgias_user_id: data && data.gorgias_user_id, trainee_id: data && data.trainee_id });
   document.getElementById('nj-edit').innerHTML = `<div class="card" style="margin-bottom:16px">${njAgentFormHtml(a, 'edit')}</div>`;
 }
 

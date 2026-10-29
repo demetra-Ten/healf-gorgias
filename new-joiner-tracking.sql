@@ -235,3 +235,33 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function my_training_week(int) from public, anon;
 grant execute on function my_training_week(int) to authenticated;
+
+-- ── 10. (2026-10-29) QA % now comes from each joiner's QA doc, not Slack ──
+-- qa_mentions = tickets in their QA doc ("Ticket guidance" tab) that they last replied to in that week.
+-- QA % stays qa_mentions / messages sent (Gorgias), as Demetra asked. agents gains qa_doc_id, so
+-- nj_agent_overview (a.*) is dropped and rebuilt unchanged; no data is touched.
+alter table agents add column if not exists qa_doc_id text;
+update agents set qa_doc_id = '1Fa8fz2o1QjsLuCv_2eKCuZ83w-wJN9M-fLiaKbzOPIE' where name = 'Kimmy' and qa_doc_id is null;
+update agents set qa_doc_id = '1DcugoLejiXWlicBzCmZbtR_mdxDNEIXds_NHgUcZkLE' where name = 'Glen'  and qa_doc_id is null;
+
+drop view if exists nj_agent_overview;
+
+create view nj_agent_overview with (security_invoker = true) as
+select a.*,
+  nj_week_of(a.start_date, current_date)                                        as current_week,
+  (select k.phase from kpi_targets k where k.week = least(greatest(nj_week_of(a.start_date, current_date), 1), 11)) as current_phase,
+  l.week            as latest_week,
+  l.rag             as latest_rag,
+  l.messages_sent   as latest_messages,
+  l.min_messages    as latest_min,
+  l.qa_pct          as latest_qa_pct,
+  l.quality_pct     as latest_quality_pct,
+  coalesce(l.week >= 5 and (
+     (l.min_messages is not null and l.messages_sent < l.min_messages)
+     or (l.qa_mentions_max_pct is not null and l.qa_pct >= l.qa_mentions_max_pct)), false) as probation_flag
+from agents a
+left join lateral (
+  select s.* from nj_week_stats s
+   where s.agent_id = a.id and s.week <= greatest(nj_week_of(a.start_date, current_date), 1)
+   order by s.week desc limit 1
+) l on true;

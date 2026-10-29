@@ -18,7 +18,7 @@ const NJ_STATUSES = ['onboarding', 'buddying', 'probation', 'passed', 'left'];
 const NJ_METRIC_FIELDS = [
   ['tickets_logged', 'Tickets logged'], ['tickets_scored', 'Tickets scored'],
   ['score_3s', 'Score 3s'], ['score_2s', 'Score 2s'], ['score_1s', 'Score 1s'],
-  ['messages_sent', 'Messages sent'], ['qa_mentions', 'QA mentions'], ['calls_done', 'Calls done'],
+  ['messages_sent', 'Messages sent'], ['qa_mentions', 'QA doc tickets'], ['calls_done', 'Calls done'],
 ];
 const NJ_REVIEW_FIELDS = [
   ['strengths', 'Strengths'], ['areas_to_improve', 'Areas to improve'],
@@ -162,13 +162,13 @@ function njKpiHtml() {
       <td>${t.calls_target ? `<b>${t.calls_target}</b>${t.week === 10 ? '<span class="nj-muted"> in total</span>' : ''}` : '<span class="nj-muted">—</span>'}</td>
       <td class="nj-muted" style="white-space:normal">${njEsc(t.notes || '')}</td></tr>`).join('');
   return `<div class="card"><table class="nj-kpi">
-      <thead><tr><th>Week</th><th>Phase</th><th>Messages a week</th><th>Quality</th><th>QA mentions</th><th>Calls</th><th>What happens</th></tr></thead>
+      <thead><tr><th>Week</th><th>Phase</th><th>Messages a week</th><th>Quality</th><th>QA tickets</th><th>Calls</th><th>What happens</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div class="card" style="padding:16px 18px"><div class="card-title" style="margin-bottom:8px">How the colours are worked out</div>
       <div class="nj-rules">
-        <div>${njRagDot('green')}<b>On target</b> · messages at or above the goal, quality at or above 90%, QA mentions under 5%</div>
+        <div>${njRagDot('green')}<b>On target</b> · messages at or above the goal, quality at or above 90%, QA tickets under 5% of messages sent</div>
         <div>${njRagDot('amber')}<b>Close</b> · messages between the minimum and the goal, or quality 80–89%</div>
-        <div>${njRagDot('red')}<b>Below</b> · messages under the minimum, quality under 80%, or QA mentions 5% or more</div>
+        <div>${njRagDot('red')}<b>Below</b> · messages under the minimum, quality under 80%, or QA tickets 5% or more</div>
         <div style="margin-top:6px" class="nj-muted">Weeks 1–2 have no KPI. Weeks run Monday to Friday; week 1 is the week someone starts. The probation flag shows when the latest week from week 5 on is below that week's minimum or QA is 5%+. Quality % = score 3s ÷ tickets scored.</div>
       </div></div>`;
 }
@@ -251,7 +251,7 @@ function njActualText(s) {
   if (!s) return '<span class="nj-muted">—</span>';
   return [s.messages_sent != null ? `<b>${s.messages_sent}</b> msgs` : '',
           s.tickets_scored != null ? `<b>${s.quality_pct ?? '–'}%</b> 3s <span class="nj-muted">(${s.score_3s ?? '–'}/${s.score_2s ?? '–'}/${s.score_1s ?? '–'} of ${s.tickets_scored})</span>` : '',
-          s.qa_pct != null && s.qa_mentions != null ? `QA <b>${s.qa_pct}%</b> <span class="nj-muted">(${s.qa_mentions})</span>` : '',
+          s.qa_pct != null && s.qa_mentions != null ? `QA <b>${s.qa_pct}%</b> <span class="nj-muted">(${s.qa_mentions} of ${s.messages_sent ?? '–'} msgs)</span>` : '',
           s.calls_done != null ? `<b>${s.calls_done}</b> calls` : ''].filter(Boolean).join(' · ') || '<span class="nj-muted">—</span>';
 }
 // Written reviews (strengths, areas to improve…) are only kept for onboarding and buddying, weeks 1–4.
@@ -357,7 +357,7 @@ function njOpenEntry(w) {
       <div style="display:flex;gap:6px;align-items:center"><select onchange="njOpenEntry(Number(this.value))" style="margin:0;width:auto;padding:4px 8px">${Array.from({ length: 11 }, (_, i) => `<option value="${i + 1}" ${i + 1 === w ? 'selected' : ''}>Week ${i + 1}</option>`).join('')}</select>
       <button class="btn btn-outline btn-sm" onclick="document.getElementById('nj-entry').innerHTML=''">Close</button></div></div>
     <div style="padding:18px">
-      <div class="marking-meta" style="margin:-4px 0 12px">Target: ${njEsc([t.goal_messages ? `${t.goal_messages} messages${t.min_messages ? ` (min ${t.min_messages})` : ''}` : 'no volume KPI', t.quality_target_pct ? `${t.quality_target_pct}% of scored tickets are 3s` : '', t.qa_mentions_max_pct ? `QA mentions under ${t.qa_mentions_max_pct}%` : '', t.calls_target ? `${t.calls_target} call${t.calls_target > 1 ? 's' : ''}${w === 10 ? ' in total' : ''}` : '', t.notes || ''].filter(Boolean).join(' · '))}</div>
+      <div class="marking-meta" style="margin:-4px 0 12px">Target: ${njEsc([t.goal_messages ? `${t.goal_messages} messages${t.min_messages ? ` (min ${t.min_messages})` : ''}` : 'no volume KPI', t.quality_target_pct ? `${t.quality_target_pct}% of scored tickets are 3s` : '', t.qa_mentions_max_pct ? `QA tickets under ${t.qa_mentions_max_pct}% of messages sent` : '', t.calls_target ? `${t.calls_target} call${t.calls_target > 1 ? 's' : ''}${w === 10 ? ' in total' : ''}` : '', t.notes || ''].filter(Boolean).join(' · '))}</div>
       ${w <= 4 ? `<div class="sub-note" style="margin-bottom:12px">${pre ? `Counts pre-filled from ${pre.n} ticket score${pre.n === 1 ? '' : 's'} logged this week. ` : ''}<a href="#" onclick="njRefill(${w});return false">Fill counts from ticket scores</a></div>` : ''}
       <div class="nj-metric-grid">${NJ_METRIC_FIELDS.map(([k, l]) => `<div><label>${l}</label><input type="number" min="0" id="njm-${k}" value="${val(k)}" oninput="njLiveCalc()" /></div>`).join('')}</div>
       <div id="nj-live" class="marking-meta" style="margin:-2px 0 14px"></div>

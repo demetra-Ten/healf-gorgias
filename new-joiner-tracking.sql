@@ -7,8 +7,8 @@
 -- the shared trainee login — new joiners must not be able to read each other's reviews, so every
 -- policy here checks for the admin account by email.
 --
--- Weeks are WORKING weeks, Monday to Friday. Week 1 is the Mon–Fri week the joiner starts in
--- (even if they start mid-week); each following Monday starts the next week.
+-- Weeks run MONDAY TO SUNDAY (changed 2026-11-04: schedules can include weekends after week 4).
+-- Week 1 is the week the joiner starts in (even mid-week); each following Monday starts the next week.
 -- Quality %, average score, QA % and RAG are always CALCULATED in the views below, never stored.
 
 -- ── 1. Tables ─────────────────────────────────────────────────────────────
@@ -265,3 +265,9 @@ left join lateral (
    where s.agent_id = a.id and s.week <= greatest(nj_week_of(a.start_date, current_date), 1)
    order by s.week desc limit 1
 ) l on true;
+
+-- ── 11. (2026-11-04) Mon–Sun weeks + answered calls — NO SQL TO RUN ──
+-- nj_week_of / nj_week_start already use whole Mon–Sun weeks (date_trunc('week')); only the n8n job
+-- (tohY5sypmt7YVDvd) counted Mon–Fri. It now counts Mon 00:00 – Sun 23:59 and recounts every week 1..last
+-- each Monday. calls_done is now filled automatically from week 7 (calls training): answered Gorgias calls
+-- (reporting scope voice-calls, displayStatus = 'answered', inbound + outbound) in that week.

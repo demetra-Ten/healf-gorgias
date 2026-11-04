@@ -3,7 +3,8 @@
 // Onboarding Report, Buddy Report, Week 5-10). Tables + views: new-joiner-tracking.sql.
 // Everything here is admin-only in the database (RLS checks the admin account), and
 // quality %, average score, QA % and RAG come from the views — they are never stored.
-// Weeks are working weeks, Mon–Fri: week 1 is the week the joiner starts in.
+// Weeks run Monday to Sunday (schedules can include weekends): week 1 is the week the joiner starts in.
+// Calls (answered Gorgias calls) only show from week 7, when calls training happens.
 
 // The "Draft summary" button posts that week's ticket feedback here (n8n → Claude) and gets
 // back {strengths, areas_to_improve, next_steps}. Separate from the simulator scorer.
@@ -27,13 +28,16 @@ const NJ_REVIEW_FIELDS = [
 
 const nj = { overview: [], targets: [], stats: [], reviews: [], scores: {}, view: 'list', agentId: null, filter: 'active', loaded: false };
 
+// Answered calls are tracked from week 7 (calls training). Week 10's target is 3 in total, so show a running total too.
+const NJ_CALLS_FROM = 7;
+const njCallsSoFar = (agentId, week) => nj.stats.filter(x => x.agent_id === agentId && x.week >= NJ_CALLS_FROM && x.week <= week).reduce((n, x) => n + (x.calls_done || 0), 0);
 const njEsc = v => escHtml(v == null ? '' : String(v));
 const njDate = s => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); };
 const njIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const njMonday = d => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x; };
 const njWeekStart = (start, week) => { const m = njMonday(njDate(start)); m.setDate(m.getDate() + (week - 1) * 7); return m; };
 const njFmt = d => d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
-const njWeekRange = (start, week) => { const a = njWeekStart(start, week); const b = new Date(a); b.setDate(b.getDate() + 4); return `${njFmt(a)} – ${njFmt(b)}`; };
+const njWeekRange = (start, week) => { const a = njWeekStart(start, week); const b = new Date(a); b.setDate(b.getDate() + 6); return `${njFmt(a)} – ${njFmt(b)}`; };
 const njTarget = w => nj.targets.find(t => t.week === Math.min(Math.max(w, 1), 11)) || {};
 const njStat = (agentId, w) => nj.stats.find(s => s.agent_id === agentId && s.week === w);
 const njReview = (agentId, w) => nj.reviews.find(r => r.agent_id === agentId && r.week === w);
@@ -53,6 +57,7 @@ function njStatSummary(s) {
   if (s.messages_sent != null) bits.push(`${s.messages_sent} msgs`);
   if (s.quality_pct != null) bits.push(`${s.quality_pct}% 3s`);
   if (s.qa_pct != null && s.week >= 5) bits.push(`QA ${s.qa_pct}%`);
+  if (s.calls_done != null && s.week >= NJ_CALLS_FROM) bits.push(`${s.calls_done} call${s.calls_done === 1 ? '' : 's'}`);
   return bits.join(' · ') || 'Review only';
 }
 
@@ -103,6 +108,7 @@ function njLatestLine(a) {
   if (s.messages_sent != null) bits.push(`<b>${s.messages_sent}</b>${t.goal_messages ? `<span class="nj-muted"> / ${t.goal_messages}</span>` : ''} msgs`);
   if (s.quality_pct != null) bits.push(`<b>${s.quality_pct}%</b>${t.quality_target_pct ? `<span class="nj-muted"> / ${t.quality_target_pct}%</span>` : ''} 3s`);
   if (s.qa_pct != null && s.week >= 5) bits.push(`QA <b>${s.qa_pct}%</b>`);
+  if (s.week >= NJ_CALLS_FROM) bits.push(`<b>${s.calls_done ?? 0}</b> call${s.calls_done === 1 ? '' : 's'}${njCallsSoFar(a.id, s.week) !== (s.calls_done ?? 0) ? `<span class="nj-muted"> (${njCallsSoFar(a.id, s.week)} total)</span>` : ''}`);
   return `${njRagDot(s.rag)}<span>Wk ${s.week} · ${bits.join(' · ') || 'review only'}</span>`;
 }
 function njPersonRow(a) {
@@ -169,7 +175,7 @@ function njKpiHtml() {
         <div>${njRagDot('green')}<b>On target</b> · messages at or above the goal, quality at or above 90%, QA tickets under 5% of messages sent</div>
         <div>${njRagDot('amber')}<b>Close</b> · messages between the minimum and the goal, or quality 80–89%</div>
         <div>${njRagDot('red')}<b>Below</b> · messages under the minimum, quality under 80%, or QA tickets 5% or more</div>
-        <div style="margin-top:6px" class="nj-muted">Weeks 1–2 have no KPI. Weeks run Monday to Friday; week 1 is the week someone starts. The probation flag shows when the latest week from week 5 on is below that week's minimum or QA is 5%+. Quality % = score 3s ÷ tickets scored.</div>
+        <div style="margin-top:6px" class="nj-muted">Weeks 1–2 have no KPI. Weeks run Monday to Sunday; week 1 is the week someone starts. Calls are answered Gorgias calls, tracked from week 7 (calls training). The probation flag shows when the latest week from week 5 on is below that week's minimum or QA is 5%+. Quality % = score 3s ÷ tickets scored.</div>
       </div></div>`;
 }
 
@@ -252,7 +258,7 @@ function njActualText(s) {
   return [s.messages_sent != null ? `<b>${s.messages_sent}</b> msgs` : '',
           s.tickets_scored != null ? `<b>${s.quality_pct ?? '–'}%</b> 3s <span class="nj-muted">(${s.score_3s ?? '–'}/${s.score_2s ?? '–'}/${s.score_1s ?? '–'} of ${s.tickets_scored})</span>` : '',
           s.qa_pct != null && s.qa_mentions != null ? `QA <b>${s.qa_pct}%</b> <span class="nj-muted">(${s.qa_mentions} of ${s.messages_sent ?? '–'} msgs)</span>` : '',
-          s.calls_done != null ? `<b>${s.calls_done}</b> calls` : ''].filter(Boolean).join(' · ') || '<span class="nj-muted">—</span>';
+          s.calls_done != null && s.week >= NJ_CALLS_FROM ? `<b>${s.calls_done}</b> answered call${s.calls_done === 1 ? '' : 's'} <span class="nj-muted">(${njCallsSoFar(s.agent_id, s.week)} so far)</span>` : ''].filter(Boolean).join(' · ') || '<span class="nj-muted">—</span>';
 }
 // Written reviews (strengths, areas to improve…) are only kept for onboarding and buddying, weeks 1–4.
 // Probation weeks (5–10) are numbers only.
@@ -445,7 +451,7 @@ function njExport() {
       <td>${s && s.tickets_scored != null ? `${s.tickets_scored} (${s.score_3s ?? '–'}/${s.score_2s ?? '–'}/${s.score_1s ?? '–'})` : ''}</td>
       <td>${s && s.quality_pct != null ? s.quality_pct + '%' : ''}${t.quality_target_pct ? ` <small>/ ${t.quality_target_pct}%</small>` : ''}</td>
       <td>${s && s.messages_sent != null ? s.messages_sent : ''}${t.goal_messages ? ` <small>/ ${t.goal_messages}${t.min_messages ? ' (min ' + t.min_messages + ')' : ''}</small>` : ''}</td>
-      <td>${s && s.qa_pct != null ? `${s.qa_mentions} (${s.qa_pct}%)` : ''}</td><td>${s && s.calls_done != null ? s.calls_done : ''}</td>
+      <td>${s && s.qa_pct != null ? `${s.qa_mentions} (${s.qa_pct}%)` : ''}</td><td>${s && s.calls_done != null && w >= NJ_CALLS_FROM ? s.calls_done : ''}</td>
       <td class="rag-${(s && s.rag) || 'none'}">${(s && s.rag) || ''}</td></tr>`;
   }).join('');
   const revs = [1, 2, 3, 4].map(w => {

@@ -271,3 +271,64 @@ left join lateral (
 -- (tohY5sypmt7YVDvd) counted Mon–Fri. It now counts Mon 00:00 – Sun 23:59 and recounts every week 1..last
 -- each Monday. calls_done is now filled automatically from week 7 (calls training): answered Gorgias calls
 -- (reporting scope voice-calls, displayStatus = 'answered', inbound + outbound) in that week.
+
+-- ── 12. (2026-11-04) Each joiner's week follows their own schedule from week 5 ──
+-- agents.week_start_dow = the day their working week starts (1 Mon … 7 Sun), set in admin.
+-- Weeks 1–4 (onboarding + buddying) stay Monday-based. Week 5 starts on their start day falling on or
+-- just before week 5's Monday (Fri 9 Oct for a Friday starter who began 14 Sept), so week 4 can be a
+-- few days short and no day is ever counted twice or lost. Every later week is 7 days from there.
+-- The n8n job (tohY5sypmt7YVDvd) uses the same rule; saving the setting in admin triggers a recount.
+alter table agents add column if not exists week_start_dow int not null default 1 check (week_start_dow between 1 and 7);
+update agents set week_start_dow = 5 where name = 'Kimmy';   -- Friday–Tuesday from week 5
+update agents set week_start_dow = 6 where name = 'Glen';    -- Saturday–Wednesday from week 5
+
+create or replace function nj_week5_start(start_date date, dow int) returns date
+language sql immutable as $$
+  select (date_trunc('week', start_date)::date + 28) - ((1 - coalesce(dow, 1) + 7) % 7)
+$$;
+
+create or replace function nj_week_of(start_date date, on_date date, dow int) returns int
+language sql immutable as $$
+  select case when on_date < nj_week5_start(start_date, dow)
+              then least(nj_week_of(start_date, on_date), 4)
+              else 5 + (on_date - nj_week5_start(start_date, dow)) / 7 end
+$$;
+
+create or replace function nj_week_start(start_date date, week int, dow int) returns date
+language sql immutable as $$
+  select case when week <= 4 then nj_week_start(start_date, week)
+              else nj_week5_start(start_date, dow) + (week - 5) * 7 end
+$$;
+
+drop view if exists nj_agent_overview;
+create view nj_agent_overview with (security_invoker = true) as
+select a.*,
+  nj_week_of(a.start_date, current_date, a.week_start_dow)                     as current_week,
+  (select k.phase from kpi_targets k where k.week = least(greatest(nj_week_of(a.start_date, current_date, a.week_start_dow), 1), 11)) as current_phase,
+  l.week            as latest_week,
+  l.rag             as latest_rag,
+  l.messages_sent   as latest_messages,
+  l.min_messages    as latest_min,
+  l.qa_pct          as latest_qa_pct,
+  l.quality_pct     as latest_quality_pct,
+  coalesce(l.week >= 5 and (
+     (l.min_messages is not null and l.messages_sent < l.min_messages)
+     or (l.qa_mentions_max_pct is not null and l.qa_pct >= l.qa_mentions_max_pct)), false) as probation_flag
+from agents a
+left join lateral (
+  select s.* from nj_week_stats s
+   where s.agent_id = a.id and s.week <= greatest(nj_week_of(a.start_date, current_date, a.week_start_dow), 1)
+   order by s.week desc limit 1
+) l on true;
+
+drop function if exists my_training_week(int);
+create function my_training_week(p_trainee_id int)
+returns table (week int, phase text, goal_messages int, min_messages int, quality_target_pct numeric, qa_mentions_max_pct numeric)
+language sql stable security definer set search_path = public as $$
+  select w.week, k.phase, k.goal_messages, k.min_messages, k.quality_target_pct, k.qa_mentions_max_pct
+    from (select nj_week_of(a.start_date, current_date, a.week_start_dow) as week from agents a
+           where a.trainee_id = p_trainee_id and a.status not in ('passed', 'left') limit 1) w
+    left join kpi_targets k on k.week = least(greatest(w.week, 1), 11)
+$$;
+revoke all on function my_training_week(int) from public, anon;
+grant execute on function my_training_week(int) to authenticated;

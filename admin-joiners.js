@@ -3,7 +3,7 @@
 // Onboarding Report, Buddy Report, Week 5-10). Tables + views: new-joiner-tracking.sql.
 // Everything here is admin-only in the database (RLS checks the admin account), and
 // quality %, average score, QA % and RAG come from the views — they are never stored.
-// Weeks run Monday to Sunday (schedules can include weekends): week 1 is the week the joiner starts in.
+// Weeks 1–4 run Mon–Sun from the week the joiner starts; from week 5 they start on the joiner's own day (week_start_dow).
 // Calls (answered Gorgias calls) only show from week 7, when calls training happens.
 
 // The "Draft summary" button posts that week's ticket feedback here (n8n → Claude) and gets
@@ -35,9 +35,20 @@ const njEsc = v => escHtml(v == null ? '' : String(v));
 const njDate = s => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); };
 const njIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const njMonday = d => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x; };
-const njWeekStart = (start, week) => { const m = njMonday(njDate(start)); m.setDate(m.getDate() + (week - 1) * 7); return m; };
+// Weeks 1–4 are Monday-based. From week 5 each joiner's week starts on their own day (agents.week_start_dow,
+// 1 Mon … 7 Sun): week 5 starts on that day on or just before week 5's Monday, so week 4 may be a few days short.
+// Same rule as nj_week_start() in new-joiner-tracking.sql and the n8n weekly job.
+const njWeekStart = (start, week, dow) => {
+  const m = njMonday(njDate(start));
+  if (week <= 4) { m.setDate(m.getDate() + (week - 1) * 7); return m; }
+  m.setDate(m.getDate() + 28 - ((1 - (dow || 1) + 7) % 7) + (week - 5) * 7); return m;
+};
+const njWeekEnd = (start, week, dow) => { const e = njWeekStart(start, week + 1, dow); e.setDate(e.getDate() - 1); return e; };
+const NJ_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+// Saving a new week start (or start date) recounts that joiner's weeks straight away (n8n weekly stats job).
+const NJ_RECOUNT_WEBHOOK = 'https://aiwellbeing.app.n8n.cloud/webhook/nj-recount';
 const njFmt = d => d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
-const njWeekRange = (start, week) => { const a = njWeekStart(start, week); const b = new Date(a); b.setDate(b.getDate() + 6); return `${njFmt(a)} – ${njFmt(b)}`; };
+const njWeekRange = (start, week, dow) => `${njFmt(njWeekStart(start, week, dow))} – ${njFmt(njWeekEnd(start, week, dow))}`;
 const njTarget = w => nj.targets.find(t => t.week === Math.min(Math.max(w, 1), 11)) || {};
 const njStat = (agentId, w) => nj.stats.find(s => s.agent_id === agentId && s.week === w);
 const njReview = (agentId, w) => nj.reviews.find(r => r.agent_id === agentId && r.week === w);
@@ -175,7 +186,7 @@ function njKpiHtml() {
         <div>${njRagDot('green')}<b>On target</b> · messages at or above the goal, quality at or above 90%, QA tickets under 5% of messages sent</div>
         <div>${njRagDot('amber')}<b>Close</b> · messages between the minimum and the goal, or quality 80–89%</div>
         <div>${njRagDot('red')}<b>Below</b> · messages under the minimum, quality under 80%, or QA tickets 5% or more</div>
-        <div style="margin-top:6px" class="nj-muted">Weeks 1–2 have no KPI. Weeks run Monday to Sunday; week 1 is the week someone starts. Calls are answered Gorgias calls, tracked from week 7 (calls training). The probation flag shows when the latest week from week 5 on is below that week's minimum or QA is 5%+. Quality % = score 3s ÷ tickets scored.</div>
+        <div style="margin-top:6px" class="nj-muted">Weeks 1–2 have no KPI. Weeks 1–4 run Monday to Sunday from the week someone starts; from week 5 each week starts on the day set in their details (their schedule). Calls are answered Gorgias calls, tracked from week 7 (calls training). The probation flag shows when the latest week from week 5 on is below that week's minimum or QA is 5%+. Quality % = score 3s ÷ tickets scored.</div>
       </div></div>`;
 }
 
@@ -192,6 +203,7 @@ function njAgentFormHtml(a, mode) {
       <div><label>Learning style</label><input type="text" id="nja-ls" value="${njEsc(a.learning_style)}" /></div>
       <div><label>Gorgias user ID <span style="font-weight:400;color:#a3a19e">(for the weekly auto-fill)</span></label><input type="text" id="nja-gid" value="${njEsc(a.gorgias_user_id)}" placeholder="e.g. 753709540 (the number in their Gorgias profile link)" /></div>
       <div><label>Linked user <span style="font-weight:400;color:#a3a19e">(shows their week on My progress)</span></label><select id="nja-tid"><option value="">— Not linked —</option>${(typeof trainees !== 'undefined' ? trainees : []).map(u => `<option value="${u.id}" ${String(u.id) === String(a.trainee_id) ? 'selected' : ''}>${njEsc(u.name)} · ${njEsc(u.email)}</option>`).join('')}</select></div>
+      <div><label>Week starts on <span style="font-weight:400;color:#a3a19e">(their schedule, from week 5)</span></label><select id="nja-dow">${NJ_DAYS.map((d, i) => `<option value="${i + 1}" ${i + 1 === (a.week_start_dow || 1) ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
       <div><label>Status</label><select id="nja-status">${NJ_STATUSES.map(s => `<option ${s === (a.status || 'onboarding') ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
     </div><button class="btn btn-primary" onclick="njSaveAgent(${mode === 'edit' ? a.id : 'null'})">${mode === 'edit' ? 'Save details' : 'Add new joiner'}</button></div>`;
 }
@@ -204,12 +216,22 @@ async function njSaveAgent(id) {
   if (gid && !/^\d+$/.test(gid)) { toast('Gorgias user ID should be a number'); return; }
   row.gorgias_user_id = gid ? Number(gid) : null;
   const tid = v('nja-tid'); row.trainee_id = tid ? Number(tid) : null;
+  row.week_start_dow = Number(v('nja-dow')) || 1;
+  const before = id ? njAgent(id) : null;
+  const recount = id && row.gorgias_user_id && before && (Number(before.week_start_dow || 1) !== row.week_start_dow || before.start_date !== row.start_date);
   if (!row.name || !row.start_date) { toast('Name and start date are needed'); return; }
   const res = id ? await db.from('agents').update(row).eq('id', id).select('id') : await db.from('agents').insert(row).select('id');
   if (res.error || !(res.data || []).length) { toast('Could not save: ' + ((res.error && res.error.message) || 'no permission')); return; }
-  toast(id ? 'Saved ✓' : 'New joiner added ✓');
+  toast(id ? (recount ? 'Saved ✓ — recounting their weeks…' : 'Saved ✓') : 'New joiner added ✓');
   if (!id) { nj.view = 'agent'; nj.agentId = res.data[0].id; }
   await loadJoiners();
+  if (recount) {
+    try {
+      const r = await fetch(NJ_RECOUNT_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent_id: id }) });
+      if (!r.ok) throw new Error(r.status);
+      await loadJoiners(); toast('Weeks recounted ✓');
+    } catch (e) { toast('Saved, but the recount failed — it will catch up on the next daily run'); }
+  }
 }
 
 // ── Agent page ──────────────────────────────────────────────────────────────
@@ -225,7 +247,7 @@ async function njLoadScores(id) {
   nj.scores[id] = data || [];
 }
 function njScoresInWeek(a, w) {
-  const from = njWeekStart(a.start_date, w), to = new Date(from); to.setDate(to.getDate() + 7);
+  const from = njWeekStart(a.start_date, w, a.week_start_dow), to = njWeekStart(a.start_date, w + 1, a.week_start_dow);
   return (nj.scores[a.id] || []).filter(s => { const d = njDate(s.date); return d >= from && d < to; });
 }
 
@@ -240,7 +262,7 @@ function njTimelineHtml(a) {
     else if (r) { main = '<span class="nj-muted">Review only</span>'; }
     cells.push(`<div class="nj-wk ${cur ? 'cur' : ''} ${future ? 'future' : ''} nj-wk-${(s && s.rag) || 'none'}" onclick="njOpenEntry(${w})" title="Enter or edit week ${w}">
       <div class="nj-wk-n">Week ${w}${cur ? '<span class="nj-now">now</span>' : ''}</div>
-      <div class="nj-wk-d">${njWeekRange(a.start_date, w)}</div>
+      <div class="nj-wk-d">${njWeekRange(a.start_date, w, a.week_start_dow)}</div>
       <div class="nj-wk-v">${main}</div><div class="nj-wk-s">${sub}${w === 5 ? (sub ? ' · ' : '') + 'TL handover' : ''}</div>
     </div>`);
   }
@@ -270,7 +292,7 @@ function njWeekRowHtml(a, w) {
   const filled = r && NJ_HAS_REVIEW(w) ? NJ_REVIEW_FIELDS.filter(([k]) => r[k]) : [];
   return `<div class="nj-wr ${NJ_HAS_REVIEW(w) ? '' : 'nj-wr-flat'}" id="nj-wr-${w}">
     <div class="nj-wr-bar" onclick="${NJ_HAS_REVIEW(w) ? `njToggleWeek(${w})` : `njOpenEntry(${w})`}">
-      <div class="nj-wr-wk"><b>Week ${w}</b><div class="nj-muted">${njWeekRange(a.start_date, w)}</div></div>
+      <div class="nj-wr-wk"><b>Week ${w}</b><div class="nj-muted">${njWeekRange(a.start_date, w, a.week_start_dow)}</div></div>
       <div class="nj-wr-ph"><span class="nj-phase nj-phase-${t.phase}">${njEsc(njPhaseLabel(w).replace(' · Probation', ''))}</span></div>
       <div class="nj-wr-t"><div class="nj-lbl">Target</div>${njEsc(njTargetText(t))}</div>
       <div class="nj-wr-a"><div class="nj-lbl">Actual</div>${njActualText(s)}</div>
@@ -322,7 +344,7 @@ function renderJoinerAgent() {
   const lastWeek = NJ_DONE(a) ? 10 : Math.min(Math.max(a.current_week, 1), 10);
   const weeks = []; for (let w = lastWeek; w >= 1; w--) weeks.push(w);
   const facts = [['Started', njFmt(njDate(a.start_date))], ['Now', NJ_DONE(a) ? (a.status === 'left' ? 'Left' : 'Passed probation') : a.current_week > 0 ? `Week ${a.current_week} · ${njPhaseLabel(a.current_week)}` : 'Starts soon'],
-    ['Cohort', a.cohort], ['Buddy', a.buddy], ['Team lead', a.team_lead], ['Learns best', a.learning_style]].filter(([, v]) => v);
+    ['Week runs', (a.week_start_dow || 1) === 1 ? '' : `${NJ_DAYS[a.week_start_dow - 1]} – ${NJ_DAYS[(a.week_start_dow + 5) % 7]} from week 5`], ['Cohort', a.cohort], ['Buddy', a.buddy], ['Team lead', a.team_lead], ['Learns best', a.learning_style]].filter(([, v]) => v);
   document.getElementById('nj-root').innerHTML = `
     <div style="margin-bottom:14px"><button class="btn btn-outline btn-sm" onclick="njBack()">← All onboarding reports</button></div>
     <div class="nj-head">
@@ -359,7 +381,7 @@ function njOpenEntry(w) {
   const val = k => s && s[k] != null ? s[k] : (pre && pre[k] != null ? pre[k] : '');
   const t = njTarget(w);
   document.getElementById('nj-entry').innerHTML = `<div class="card" id="nj-entry-card" style="margin-top:4px">
-    <div class="card-header"><span class="card-title">Week ${w} · ${njWeekRange(a.start_date, w)} · ${njEsc(njPhaseLabel(w))}</span>
+    <div class="card-header"><span class="card-title">Week ${w} · ${njWeekRange(a.start_date, w, a.week_start_dow)} · ${njEsc(njPhaseLabel(w))}</span>
       <div style="display:flex;gap:6px;align-items:center"><select onchange="njOpenEntry(Number(this.value))" style="margin:0;width:auto;padding:4px 8px">${Array.from({ length: 11 }, (_, i) => `<option value="${i + 1}" ${i + 1 === w ? 'selected' : ''}>Week ${i + 1}</option>`).join('')}</select>
       <button class="btn btn-outline btn-sm" onclick="document.getElementById('nj-entry').innerHTML=''">Close</button></div></div>
     <div style="padding:18px">
@@ -401,7 +423,7 @@ function njLiveCalc() {
 }
 async function njSaveEntry(w) {
   const a = njAgent(nj.agentId);
-  const m = { agent_id: a.id, week: w, week_start_date: njIso(njWeekStart(a.start_date, w)), updated_at: new Date().toISOString() };
+  const m = { agent_id: a.id, week: w, week_start_date: njIso(njWeekStart(a.start_date, w, a.week_start_dow)), updated_at: new Date().toISOString() };
   NJ_METRIC_FIELDS.forEach(([k]) => { const v = document.getElementById('njm-' + k).value; m[k] = v === '' ? null : Math.max(0, Math.round(Number(v))); });
   const r = { agent_id: a.id, week: w, updated_at: new Date().toISOString() };
   if (NJ_HAS_REVIEW(w)) {
@@ -447,7 +469,7 @@ function njExport() {
   const a = njAgent(nj.agentId); const e = v => njEsc(v);
   const rows = Array.from({ length: 11 }, (_, i) => i + 1).map(w => {
     const s = njStat(a.id, w), t = njTarget(w); if (!s && !njReview(a.id, w)) return '';
-    return `<tr><td>${w}</td><td>${njWeekRange(a.start_date, w)}</td><td>${e(njPhaseLabel(w))}</td>
+    return `<tr><td>${w}</td><td>${njWeekRange(a.start_date, w, a.week_start_dow)}</td><td>${e(njPhaseLabel(w))}</td>
       <td>${s && s.tickets_scored != null ? `${s.tickets_scored} (${s.score_3s ?? '–'}/${s.score_2s ?? '–'}/${s.score_1s ?? '–'})` : ''}</td>
       <td>${s && s.quality_pct != null ? s.quality_pct + '%' : ''}${t.quality_target_pct ? ` <small>/ ${t.quality_target_pct}%</small>` : ''}</td>
       <td>${s && s.messages_sent != null ? s.messages_sent : ''}${t.goal_messages ? ` <small>/ ${t.goal_messages}${t.min_messages ? ' (min ' + t.min_messages + ')' : ''}</small>` : ''}</td>
@@ -456,7 +478,7 @@ function njExport() {
   }).join('');
   const revs = [1, 2, 3, 4].map(w => {
     const r = njReview(a.id, w); if (!r) return '';
-    return `<h3>Week ${w} · ${njWeekRange(a.start_date, w)}</h3>` + NJ_REVIEW_FIELDS.filter(([k]) => r[k]).map(([k, l]) => `<p><b>${l}</b><br>${e(r[k])}</p>`).join('') + (r.reviewer ? `<p class="by">Reviewed by ${e(r.reviewer)}</p>` : '');
+    return `<h3>Week ${w} · ${njWeekRange(a.start_date, w, a.week_start_dow)}</h3>` + NJ_REVIEW_FIELDS.filter(([k]) => r[k]).map(([k, l]) => `<p><b>${l}</b><br>${e(r[k])}</p>`).join('') + (r.reviewer ? `<p class="by">Reviewed by ${e(r.reviewer)}</p>` : '');
   }).join('');
   const w = window.open('', '_blank');
   if (!w) { toast('Allow pop-ups to export'); return; }

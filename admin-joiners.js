@@ -31,6 +31,11 @@ const nj = { overview: [], targets: [], stats: [], reviews: [], scores: {}, view
 // Answered calls are tracked from week 7 (calls training). Week 10's target is 3 in total, so show a running total too.
 const NJ_CALLS_FROM = 7;
 const njCallsSoFar = (agentId, week) => nj.stats.filter(x => x.agent_id === agentId && x.week >= NJ_CALLS_FROM && x.week <= week).reduce((n, x) => n + (x.calls_done || 0), 0);
+// Volume KPI = messages sent + answered calls (Demetra 2026-11-16). The view works out total_interactions;
+// fall back to adding them here so the screen is right either way.
+const njTotal = s => s ? (s.total_interactions != null ? s.total_interactions
+  : (s.messages_sent == null && s.calls_done == null ? null : (s.messages_sent || 0) + (s.calls_done || 0))) : null;
+const njHasCalls = s => s && s.calls_done != null && s.week >= NJ_CALLS_FROM;
 const njEsc = v => escHtml(v == null ? '' : String(v));
 const njDate = s => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); };
 const njIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -65,10 +70,10 @@ function njRagChip(rag, text) {
 function njStatSummary(s) {
   if (!s) return 'No data yet';
   const bits = [];
-  if (s.messages_sent != null) bits.push(`${s.messages_sent} msgs`);
+  if (njHasCalls(s)) bits.push(`${njTotal(s)} total (${s.messages_sent ?? 0} msgs + ${s.calls_done} calls)`);
+  else if (s.messages_sent != null) bits.push(`${s.messages_sent} msgs`);
   if (s.quality_pct != null) bits.push(`${s.quality_pct}% 3s`);
   if (s.qa_pct != null && s.week >= 5) bits.push(`QA ${s.qa_pct}%`);
-  if (s.calls_done != null && s.week >= NJ_CALLS_FROM) bits.push(`${s.calls_done} call${s.calls_done === 1 ? '' : 's'}`);
   return bits.join(' · ') || 'Review only';
 }
 
@@ -116,10 +121,11 @@ function njLatestLine(a) {
   const s = a.latest_week ? njStat(a.id, a.latest_week) : null;
   if (!s) return '<span class="nj-muted">No numbers yet</span>';
   const t = njTarget(s.week), bits = [];
-  if (s.messages_sent != null) bits.push(`<b>${s.messages_sent}</b>${t.goal_messages ? `<span class="nj-muted"> / ${t.goal_messages}</span>` : ''} msgs`);
+  const goal = t.goal_messages ? `<span class="nj-muted"> / ${t.goal_messages}</span>` : '';
+  if (njHasCalls(s)) bits.push(`<b>${njTotal(s)}</b>${goal} total <span class="nj-muted">(${s.messages_sent ?? 0} msgs + ${s.calls_done} calls)</span>`);
+  else if (s.messages_sent != null) bits.push(`<b>${s.messages_sent}</b>${goal} msgs`);
   if (s.quality_pct != null) bits.push(`<b>${s.quality_pct}%</b>${t.quality_target_pct ? `<span class="nj-muted"> / ${t.quality_target_pct}%</span>` : ''} 3s`);
   if (s.qa_pct != null && s.week >= 5) bits.push(`QA <b>${s.qa_pct}%</b>`);
-  if (s.week >= NJ_CALLS_FROM) bits.push(`<b>${s.calls_done ?? 0}</b> call${s.calls_done === 1 ? '' : 's'}${njCallsSoFar(a.id, s.week) !== (s.calls_done ?? 0) ? `<span class="nj-muted"> (${njCallsSoFar(a.id, s.week)} total)</span>` : ''}`);
   return `${njRagDot(s.rag)}<span>Wk ${s.week} · ${bits.join(' · ') || 'review only'}</span>`;
 }
 function njPersonRow(a) {
@@ -179,13 +185,13 @@ function njKpiHtml() {
       <td>${t.calls_target ? `<b>${t.calls_target}</b>${t.week === 10 ? '<span class="nj-muted"> in total</span>' : ''}` : '<span class="nj-muted">—</span>'}</td>
       <td class="nj-muted" style="white-space:normal">${njEsc(t.notes || '')}</td></tr>`).join('');
   return `<div class="card"><table class="nj-kpi">
-      <thead><tr><th>Week</th><th>Phase</th><th>Messages a week</th><th>Quality</th><th>QA tickets</th><th>Calls</th><th>What happens</th></tr></thead>
+      <thead><tr><th>Week</th><th>Phase</th><th>Messages + calls a week</th><th>Quality</th><th>QA tickets</th><th>Calls</th><th>What happens</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div class="card" style="padding:16px 18px"><div class="card-title" style="margin-bottom:8px">How the colours are worked out</div>
       <div class="nj-rules">
-        <div>${njRagDot('green')}<b>On target</b> · messages at or above the goal, quality at or above 90%, QA tickets under 5% of messages sent</div>
-        <div>${njRagDot('amber')}<b>Close</b> · messages between the minimum and the goal, or quality 80–89%</div>
-        <div>${njRagDot('red')}<b>Below</b> · messages under the minimum, quality under 80%, or QA tickets 5% or more</div>
+        <div>${njRagDot('green')}<b>On target</b> · messages + answered calls at or above the goal, quality at or above 90%, QA tickets under 5% of messages sent</div>
+        <div>${njRagDot('amber')}<b>Close</b> · messages + answered calls between the minimum and the goal, or quality 80–89%</div>
+        <div>${njRagDot('red')}<b>Below</b> · messages + answered calls under the minimum, quality under 80%, or QA tickets 5% or more</div>
         <div style="margin-top:6px" class="nj-muted">Weeks 1–2 have no KPI. Weeks 1–4 run Monday to Sunday from the week someone starts; from week 5 each week starts on the day set in their details (their schedule). Calls are answered Gorgias calls, tracked from week 7 (calls training). The probation flag shows when the latest week from week 5 on is below that week's minimum or QA is 5%+. Quality % = score 3s ÷ tickets scored.</div>
       </div></div>`;
 }
@@ -277,10 +283,11 @@ function njTargetText(t) {
 }
 function njActualText(s) {
   if (!s) return '<span class="nj-muted">—</span>';
-  return [s.messages_sent != null ? `<b>${s.messages_sent}</b> msgs` : '',
+  return [njHasCalls(s) ? `<b>${njTotal(s)}</b> total <span class="nj-muted">(${s.messages_sent ?? 0} msgs + ${s.calls_done} calls)</span>`
+            : s.messages_sent != null ? `<b>${s.messages_sent}</b> msgs` : '',
           s.tickets_scored != null ? `<b>${s.quality_pct ?? '–'}%</b> 3s <span class="nj-muted">(${s.score_3s ?? '–'}/${s.score_2s ?? '–'}/${s.score_1s ?? '–'} of ${s.tickets_scored})</span>` : '',
           s.qa_pct != null && s.qa_mentions != null ? `QA <b>${s.qa_pct}%</b> <span class="nj-muted">(${s.qa_mentions} of ${s.messages_sent ?? '–'} msgs)</span>` : '',
-          s.calls_done != null && s.week >= NJ_CALLS_FROM ? `<b>${s.calls_done}</b> answered call${s.calls_done === 1 ? '' : 's'} <span class="nj-muted">(${njCallsSoFar(s.agent_id, s.week)} so far)</span>` : ''].filter(Boolean).join(' · ') || '<span class="nj-muted">—</span>';
+          njHasCalls(s) ? `<span class="nj-muted">${njCallsSoFar(s.agent_id, s.week)} answered calls so far</span>` : ''].filter(Boolean).join(' · ') || '<span class="nj-muted">—</span>';
 }
 // Written reviews (strengths, areas to improve…) are only kept for onboarding and buddying, weeks 1–4.
 // Probation weeks (5–10) are numbers only.
@@ -356,7 +363,7 @@ function renderJoinerAgent() {
         <button class="btn btn-primary" onclick="njOpenEntry(${lastWeek})">+ Weekly entry</button></div>
     </div>
     <div id="nj-edit"></div>
-    ${a.probation_flag && !NJ_DONE(a) ? `<div class="nj-flag-banner">⚑ <b>Below the probation minimum.</b> Week ${a.latest_week}: ${a.latest_messages ?? '–'} messages against a minimum of ${a.latest_min ?? '–'}${a.latest_qa_pct != null ? `, QA ${a.latest_qa_pct}%` : ''}. To pass at week 10: ${njTarget(10).min_messages} messages with QA under ${njTarget(10).qa_mentions_max_pct}%.</div>` : ''}
+    ${a.probation_flag && !NJ_DONE(a) ? `<div class="nj-flag-banner">⚑ <b>Below the probation minimum.</b> Week ${a.latest_week}: ${a.latest_total ?? a.latest_messages ?? '–'} messages${a.latest_calls ? ' + calls' : ''} against a minimum of ${a.latest_min ?? '–'}${a.latest_qa_pct != null ? `, QA ${a.latest_qa_pct}%` : ''}. To pass at week 10: ${njTarget(10).min_messages} messages + calls with QA under ${njTarget(10).qa_mentions_max_pct}%.</div>` : ''}
     <div class="card" style="padding:16px 18px">${njTimelineHtml(a)}</div>
     <div id="nj-entry"></div>
     <div class="nj-group-h">Week by week <span class="nj-muted">newest first · weeks 1–4 have a written review, click to read it</span></div>

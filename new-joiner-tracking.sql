@@ -332,3 +332,63 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function my_training_week(int) from public, anon;
 grant execute on function my_training_week(int) to authenticated;
+
+-- ── 13. (2026-11-16) Volume KPI = messages sent + answered calls ──
+-- Demetra: calls are interactions too, so the volume colour (and the probation flag) compare
+-- messages_sent + calls_done against the week's goal/minimum. The breakdown stays separate on screen,
+-- and QA % stays QA tickets ÷ messages sent. Views are dropped and rebuilt; no data is touched.
+drop view if exists nj_agent_overview;
+drop view if exists nj_week_stats;
+
+create view nj_week_stats with (security_invoker = true) as
+with base as (
+  select m.*, k.phase, k.goal_messages, k.min_messages, k.quality_target_pct, k.qa_mentions_max_pct, k.calls_target,
+    round(100.0 * m.score_3s / nullif(m.tickets_scored, 0), 1)                                         as quality_pct,
+    round((3.0 * coalesce(m.score_3s,0) + 2 * coalesce(m.score_2s,0) + coalesce(m.score_1s,0))
+          / nullif(coalesce(m.score_3s,0) + coalesce(m.score_2s,0) + coalesce(m.score_1s,0), 0), 2)    as avg_score,
+    round(100.0 * m.qa_mentions / nullif(m.messages_sent, 0), 1)                                       as qa_pct,
+    case when m.messages_sent is null and m.calls_done is null then null
+         else coalesce(m.messages_sent, 0) + coalesce(m.calls_done, 0) end                              as total_interactions
+  from weekly_metrics m join kpi_targets k on k.week = m.week
+), rags as (
+  select b.*,
+    case when b.goal_messages is null or b.total_interactions is null then null
+         when b.total_interactions >= b.goal_messages then 'green'
+         when b.min_messages is null or b.total_interactions >= b.min_messages then 'amber'
+         else 'red' end as volume_rag,
+    case when b.quality_target_pct is null or b.quality_pct is null then null
+         when b.quality_pct >= b.quality_target_pct then 'green'
+         when b.quality_pct >= b.quality_target_pct - 10 then 'amber'
+         else 'red' end as quality_rag,
+    case when b.qa_mentions_max_pct is null or b.qa_pct is null then null
+         when b.qa_pct < b.qa_mentions_max_pct then 'green'
+         else 'red' end as qa_rag
+  from base b
+)
+select r.*,
+  case when 'red'   in (r.volume_rag, r.quality_rag, r.qa_rag) then 'red'
+       when 'amber' in (r.volume_rag, r.quality_rag, r.qa_rag) then 'amber'
+       when 'green' in (r.volume_rag, r.quality_rag, r.qa_rag) then 'green' end as rag
+from rags r;
+
+create view nj_agent_overview with (security_invoker = true) as
+select a.*,
+  nj_week_of(a.start_date, current_date, a.week_start_dow)                     as current_week,
+  (select k.phase from kpi_targets k where k.week = least(greatest(nj_week_of(a.start_date, current_date, a.week_start_dow), 1), 11)) as current_phase,
+  l.week               as latest_week,
+  l.rag                as latest_rag,
+  l.messages_sent      as latest_messages,
+  l.calls_done         as latest_calls,
+  l.total_interactions as latest_total,
+  l.min_messages       as latest_min,
+  l.qa_pct             as latest_qa_pct,
+  l.quality_pct        as latest_quality_pct,
+  coalesce(l.week >= 5 and (
+     (l.min_messages is not null and l.total_interactions < l.min_messages)
+     or (l.qa_mentions_max_pct is not null and l.qa_pct >= l.qa_mentions_max_pct)), false) as probation_flag
+from agents a
+left join lateral (
+  select s.* from nj_week_stats s
+   where s.agent_id = a.id and s.week <= greatest(nj_week_of(a.start_date, current_date, a.week_start_dow), 1)
+   order by s.week desc limit 1
+) l on true;

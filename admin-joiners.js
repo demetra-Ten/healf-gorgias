@@ -21,6 +21,9 @@ const NJ_METRIC_FIELDS = [
   ['score_3s', 'Score 3s'], ['score_2s', 'Score 2s'], ['score_1s', 'Score 1s'],
   ['messages_sent', 'Messages sent'], ['qa_mentions', 'QA doc tickets'], ['calls_done', 'Calls done'],
 ];
+// Probation weeks (5–10) only collect the numbers that matter then; ticket scores stop after week 4.
+const NJ_PROBATION_FIELDS = [['messages_sent', 'Messages sent'], ['qa_mentions', 'QA mentions'], ['calls_done', 'Calls answered (in + outbound)']];
+const njEntryFields = w => w >= 5 ? NJ_PROBATION_FIELDS : NJ_METRIC_FIELDS;
 const NJ_REVIEW_FIELDS = [
   ['strengths', 'Strengths'], ['areas_to_improve', 'Areas to improve'],
   ['progress_summary', 'Progress summary'], ['next_steps', 'Next steps'],
@@ -392,9 +395,9 @@ function njOpenEntry(w) {
       <div style="display:flex;gap:6px;align-items:center"><select onchange="njOpenEntry(Number(this.value))" style="margin:0;width:auto;padding:4px 8px">${Array.from({ length: 11 }, (_, i) => `<option value="${i + 1}" ${i + 1 === w ? 'selected' : ''}>Week ${i + 1}</option>`).join('')}</select>
       <button class="btn btn-outline btn-sm" onclick="document.getElementById('nj-entry').innerHTML=''">Close</button></div></div>
     <div style="padding:18px">
-      <div class="marking-meta" style="margin:-4px 0 12px">Target: ${njEsc([t.goal_messages ? `${t.goal_messages} messages${t.min_messages ? ` (min ${t.min_messages})` : ''}` : 'no volume KPI', t.quality_target_pct ? `${t.quality_target_pct}% of scored tickets are 3s` : '', t.qa_mentions_max_pct ? `QA tickets under ${t.qa_mentions_max_pct}% of messages sent` : '', t.calls_target ? `${t.calls_target} call${t.calls_target > 1 ? 's' : ''}${w === 10 ? ' in total' : ''}` : '', t.notes || ''].filter(Boolean).join(' · '))}</div>
+      <div class="marking-meta" style="margin:-4px 0 12px">Target: ${njEsc([t.goal_messages ? `${t.goal_messages} messages${w >= NJ_CALLS_FROM ? ' + calls' : ''}${t.min_messages ? ` (min ${t.min_messages})` : ''}` : 'no volume KPI', t.quality_target_pct ? `${t.quality_target_pct}% of scored tickets are 3s` : '', t.qa_mentions_max_pct ? `QA tickets under ${t.qa_mentions_max_pct}% of messages sent` : '', t.calls_target ? `${t.calls_target} call${t.calls_target > 1 ? 's' : ''}${w === 10 ? ' in total' : ''}` : '', t.notes || ''].filter(Boolean).join(' · '))}</div>
       ${w <= 4 ? `<div class="sub-note" style="margin-bottom:12px">${pre ? `Counts pre-filled from ${pre.n} ticket score${pre.n === 1 ? '' : 's'} logged this week. ` : ''}<a href="#" onclick="njRefill(${w});return false">Fill counts from ticket scores</a></div>` : ''}
-      <div class="nj-metric-grid">${NJ_METRIC_FIELDS.map(([k, l]) => `<div><label>${l}</label><input type="number" min="0" id="njm-${k}" value="${val(k)}" oninput="njLiveCalc()" /></div>`).join('')}</div>
+      <div class="nj-metric-grid">${njEntryFields(w).map(([k, l]) => `<div><label>${l}</label><input type="number" min="0" id="njm-${k}" value="${val(k)}" oninput="njLiveCalc()" /></div>`).join('')}</div>
       <div id="nj-live" class="marking-meta" style="margin:-2px 0 14px"></div>
       ${NJ_HAS_REVIEW(w) ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div class="card-title">Review</div>
@@ -418,20 +421,23 @@ function njRefill(w) {
   njLiveCalc(); toast(`Filled from ${c.n} ticket scores`);
 }
 function njLiveCalc() {
-  const g = k => { const v = document.getElementById('njm-' + k).value; return v === '' ? null : Number(v); };
+  const g = k => { const el = document.getElementById('njm-' + k); return !el || el.value === '' ? null : Number(el.value); };
   const s3 = g('score_3s'), s2 = g('score_2s'), s1 = g('score_1s'), sc = g('tickets_scored'), ms = g('messages_sent'), qa = g('qa_mentions');
   const bits = [];
   if (sc) bits.push(`Quality ${(100 * (s3 || 0) / sc).toFixed(1)}% scored 3`);
   const n = (s3 || 0) + (s2 || 0) + (s1 || 0);
   if (n) bits.push(`average ${((3 * (s3 || 0) + 2 * (s2 || 0) + (s1 || 0)) / n).toFixed(2)}`);
   if (sc != null && n && n !== sc) bits.push(`⚠ 3s + 2s + 1s = ${n}, not ${sc} scored`);
+  const calls = g('calls_done');
+  if (calls != null && document.getElementById('njm-calls_done')) bits.push(`Total ${(ms || 0) + calls} (${ms || 0} messages + ${calls} calls)`);
   if (ms) bits.push(`QA ${(100 * (qa || 0) / ms).toFixed(1)}% of messages`);
   document.getElementById('nj-live').textContent = bits.length ? 'Calculated: ' + bits.join(' · ') : '';
 }
 async function njSaveEntry(w) {
   const a = njAgent(nj.agentId);
   const m = { agent_id: a.id, week: w, week_start_date: njIso(njWeekStart(a.start_date, w, a.week_start_dow)), updated_at: new Date().toISOString() };
-  NJ_METRIC_FIELDS.forEach(([k]) => { const v = document.getElementById('njm-' + k).value; m[k] = v === '' ? null : Math.max(0, Math.round(Number(v))); });
+  // Only the fields shown for this week are saved, so hidden ones (ticket scores in weeks 5–10) are left untouched.
+  njEntryFields(w).forEach(([k]) => { const v = document.getElementById('njm-' + k).value; m[k] = v === '' ? null : Math.max(0, Math.round(Number(v))); });
   const r = { agent_id: a.id, week: w, updated_at: new Date().toISOString() };
   if (NJ_HAS_REVIEW(w)) {
     r.reviewer = document.getElementById('njr-reviewer').value.trim() || null;

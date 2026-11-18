@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
-<script src="sim-shared.js"></script>
+<script src="sim-shared.js?v=20261118"></script>
 <style>
 /* Modelled on Healf's live Recharge merchant portal (how2go-sp.admin.rechargeapps.com, Nov 2026).
    This is a copy of the real tool: never restyle it with the Healf Learning design. */
@@ -799,7 +799,8 @@ async function logOut() {
   location.replace('library.html');
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeMenus(); } });
-init();
+// Show a failure instead of hanging on "Loading" (e.g. an old cached sim-shared.js).
+init().catch(e => { $('loading').textContent = 'Recharge could not load: ' + (e && e.message || e) + '. Try refreshing with Cmd+Shift+R.'; });
 </script>
 </body>
 </html>

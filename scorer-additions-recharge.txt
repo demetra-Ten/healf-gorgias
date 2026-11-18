@@ -1,0 +1,32 @@
+RECHARGE SIM — scorer change (DRAFT, not applied). Apply to n8n "Healf Training - Reply Scoring"
+(DHLJ1PVNIj9kEnsl) only with Demetra's OK, then PUBLISH and replay one cat-5 ticket through the
+webhook with a fake submission_id (999999) to check, as for Shopify.
+
+1) USER MESSAGE — add straight after the "Done in the SHOPIFY SIM" block:
+
+Done in the RECHARGE SIM (logged automatically: these actually happened, the trainee did not just describe them):
+{{ $('Trainee Submission').item.json.body.recharge_actions || 'nothing done in Recharge' }}
+
+2) USER MESSAGE — reword the Recharge line so it says the panel is as FOUND:
+
+Recharge subscription exactly as the trainee FOUND it (before anything they did in the Recharge sim):
+{{ $('Trainee Submission').item.json.body.recharge_state || 'No Recharge panel shown on this ticket.' }}
+
+3) SYSTEM PROMPT — add after the "=== SHOPIFY SIM ACTIONS ===" section:
+
+=== RECHARGE SIM ACTIONS ===
+Every skip, reschedule, frequency change, swap, quantity change, address edit, cancel, reactivation,
+delete and "process order now" the trainee made in the Recharge sim is logged for you above, in plain English.
+- Treat logged Recharge actions as DONE. Do not expect them written again in the Actions note, and never fault the note for leaving them out.
+- Judge them as you would a real agent's: the right change, to the right date, frequency or product. Skipping when the customer asked to cancel, cancelling when they only asked to skip or pause, or rescheduling to the wrong date is a NECESSARY improvement on the ACTIONS axis.
+- DELETE is not the same as CANCEL. Deleting a subscription instead of cancelling it is a NECESSARY improvement on the ACTIONS axis.
+- PROCESS ORDER charges the customer immediately. Using it when the customer did not ask for an early order is a NECESSARY improvement on the ACTIONS axis.
+- Refunds are made in Shopify, not Recharge. A refund the handling needed must appear in the Shopify sim actions (or the Actions note); a cancelled subscription does not refund anything on its own.
+- A swap follows the same price rule as any alternative: suitable, and no more than about £10 over what they paid.
+- A Recharge step the handling needed that was neither done in the Recharge sim nor written in the Actions note is missing.
+- The cancellation reason chosen in Recharge is still NOT marked (unchanged rule).
+- Never comment on subscription ids, charge ids, order numbers or dates the simulator generates, other than the next-order date a customer asked about.
+
+4) Also update the existing ACTIONS-note line in the system prompt:
+"their ACTIONS note (steps they would take on Shopify/Swap/Recharge)" -> keep, and add after
+"what they actually DID in the Shopify sim": ", what they actually DID in the Recharge sim".

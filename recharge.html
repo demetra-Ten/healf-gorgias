@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healf · Recharge</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111111'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22.5 12.5A7 7 0 0 0 10 10.5L8.5 12'/%3E%3Cpath d='M8.5 7.5V12H13'/%3E%3Cpath d='M9.5 19.5A7 7 0 0 0 22 21.5l1.5-1.5'/%3E%3Cpath d='M23.5 24.5V20H19'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="sim-shared.js"></script>
+<style>
+/* Modelled on Healf's live Recharge merchant portal (how2go-sp.admin.rechargeapps.com, Nov 2026).
+   This is a copy of the real tool: never restyle it with the Healf Learning design. */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f7f6f3; --side: #f7f6f3; --card: #fff; --line: #e6e3dd; --line-2: #efece7;
+  --ink: #1d1d1b; --ink-2: #5c5a55; --ink-3: #8b8882; --chip: #ebe8e2; --soft: #f5f2ee; --hover: #eeebe5;
+  --blue: #0b3df5; --blue-ink: #0a33cc; --row-sel: #dfe7ff;
+  --green: #1a9e75; --amber: #f2b33d; --red: #d92d20; --red-bg: #fbb7a5;
+}
+html, body { height: 100%; }
+body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 20px; color: var(--ink); background: var(--bg); display: flex; overflow: hidden; -webkit-font-smoothing: antialiased; }
+a { color: inherit; } button { font: inherit; color: inherit; cursor: pointer; background: none; border: none; }
+input, select, textarea { font: inherit; color: var(--ink); }
+svg { flex-shrink: 0; }
+.serif { font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; }
+.mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+/* ── sidebar ── */
+.side { width: 264px; flex-shrink: 0; display: flex; flex-direction: column; padding: 22px 12px 14px; border-right: 1px solid var(--line); background: var(--side); overflow-y: auto; }
+.brand { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 18px; }
+.brand .logo { display: flex; align-items: center; gap: 6px; color: var(--blue); font-weight: 700; font-size: 22px; letter-spacing: -.6px; font-style: italic; }
+.brand .logo i { width: 22px; height: 22px; border-radius: 50%; background: var(--blue); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-style: normal; font-size: 12px; }
+.brand .col { color: var(--ink-3); width: 18px; height: 18px; }
+.sbox { display: flex; align-items: center; gap: 10px; height: 40px; border: 1px solid #cfccc6; border-radius: 6px; background: #fff; padding: 0 12px; color: var(--ink-3); margin-bottom: 8px; cursor: text; }
+.sbox span { flex: 1; } .sbox kbd { font: inherit; font-size: 13px; color: var(--ink); }
+.nv { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 10px; border-radius: 6px; color: var(--ink); cursor: pointer; font-size: 15px; }
+.nv svg.i { width: 20px; height: 20px; color: var(--ink-2); }
+.nv .chev { margin-left: auto; width: 16px; height: 16px; color: var(--ink-2); transition: transform .15s; }
+.nv:hover { background: var(--hover); }
+.nv.on { background: var(--hover); }
+.nv.dim { cursor: default; }
+.grp.open > .nv { background: #f1eee9; border-radius: 6px 6px 0 0; }
+.grp.open > .nv .chev { transform: rotate(180deg); }
+.grp .sub { display: none; background: #f1eee9; border-radius: 0 0 6px 6px; padding: 0 4px 6px; }
+.grp.open .sub { display: block; }
+.sub .nv { height: 32px; font-size: 14.5px; padding-left: 40px; position: relative; }
+.sub .nv.on::before { content: ''; position: absolute; left: 22px; top: 6px; width: 10px; height: 10px; border-left: 1.6px solid var(--ink); border-bottom: 1.6px solid var(--ink); border-bottom-left-radius: 6px; }
+.sub .nv.on { background: #e6e2dc; }
+.sep { height: 1px; background: var(--line); margin: 10px 4px; }
+.spacer { flex: 1; min-height: 20px; }
+.store { display: flex; align-items: center; gap: 12px; background: #efece7; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; cursor: pointer; position: relative; }
+.store .av { width: 32px; height: 32px; border-radius: 50%; background: #5b62c9; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.store b { display: block; font-weight: 600; font-size: 14px; } .store small { color: var(--ink-2); font-size: 12.5px; }
+.train { margin: 0 4px 10px; padding: 10px 12px; border-radius: 6px; background: #fff8e1; border: 1px solid #f1dfa8; font-size: 12.5px; line-height: 17px; color: #5b4a12; }
+.menu { display: none; position: absolute; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(20,20,20,.14); padding: 6px; z-index: 40; min-width: 220px; }
+.menu.open { display: block; }
+.menu button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px; border-radius: 6px; font-size: 14.5px; }
+.menu button svg { width: 18px; height: 18px; color: var(--ink-2); }
+.menu button:hover { background: var(--soft); }
+.menu button.danger, .menu button.danger svg { color: var(--red); }
+.menu button.off { color: var(--ink-3); cursor: default; } .menu button.off svg { color: var(--ink-4, #bbb); } .menu button.off:hover { background: none; }
+
+/* ── main ── */
+.main { flex: 1; overflow-y: auto; }
+.page { max-width: 1210px; margin: 0 auto; padding: 26px 28px 60px; }
+.ph { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; min-height: 48px; }
+.ph h1 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; font-size: 32px; line-height: 40px; letter-spacing: -.2px; }
+.ph .back { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: #fff; display: flex; align-items: center; justify-content: center; }
+.ph .r { margin-left: auto; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid #d7d3cc; background: #fff; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.btn:hover { background: var(--soft); }
+.btn.pri { background: var(--blue); border-color: var(--blue); color: #fff; } .btn.pri:hover { background: var(--blue-ink); }
+.btn.red { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.grey { background: var(--chip); border-color: var(--chip); }
+.btn.sm { height: 30px; padding: 0 12px; font-size: 13.5px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 22px; }
+.card > .hd { display: flex; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--line); }
+.card > .hd h2 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 28px; }
+.card > .hd .r { margin-left: auto; }
+.pad { padding: 20px 24px; }
+.circ { width: 32px; height: 32px; border-radius: 50%; background: #f1eee9; display: inline-flex; align-items: center; justify-content: center; color: var(--ink); }
+.circ:hover { background: #e6e2dc; } .circ svg { width: 16px; height: 16px; transition: transform .15s; }
+.kebab { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+.kebab:hover, .kebab.lit { background: #e6e2dc; } .kebab svg { width: 18px; height: 18px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 22px; }
+.stat { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 22px 18px 18px; }
+.stat .k { font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: .3px; color: var(--ink-2); text-decoration: underline dotted; text-underline-offset: 4px; text-transform: uppercase; }
+.stat .v { font-family: 'IBM Plex Mono', monospace; font-size: 34px; line-height: 44px; margin-top: 12px; }
+.banner { display: flex; gap: 14px; background: var(--red-bg); border-radius: 12px; padding: 18px 24px; margin-bottom: 22px; }
+
+/* address card */
+.addr-h { padding: 18px 24px 0; display: flex; align-items: flex-start; gap: 12px; }
+.addr-h h3 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 30px; }
+.addr-h p { color: var(--ink); margin-top: 4px; }
+.addr-h .r { margin-left: auto; display: flex; gap: 10px; align-items: center; position: relative; }
+.pills { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px 24px 12px; border-bottom: 1px solid var(--line); }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; background: var(--chip); border-radius: 4px; font-size: 14.5px; }
+.pill b { font-weight: 600; }
+table.t { width: 100%; border-collapse: collapse; }
+table.t th { text-align: left; font-weight: 400; color: var(--ink-2); padding: 12px 12px; border-bottom: 1px solid var(--line); font-size: 14.5px; white-space: nowrap; }
+table.t td { padding: 12px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; font-size: 14.5px; }
+table.t tr:last-child td { border-bottom: none; }
+table.t th:first-child, table.t td:first-child { padding-left: 24px; }
+table.t th:last-child, table.t td:last-child { padding-right: 16px; }
+table.t tr.click { cursor: pointer; } table.t tr.click:hover td { background: #faf9f6; }
+table.t tr.sel td { background: var(--row-sel); }
+.num { text-align: right; }
+.cb { width: 18px; height: 18px; border: 1.5px solid #b9b5ae; border-radius: 4px; display: inline-block; vertical-align: middle; background: #fff; }
+.prod { display: flex; gap: 14px; align-items: center; }
+.thumb { width: 52px; height: 52px; border-radius: 4px; background: #f3f1ed; border: 1px solid var(--line-2); object-fit: contain; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-3); }
+.prod b { font-weight: 500; display: block; }
+.prod small { display: block; color: var(--ink-2); font-size: 12.5px; line-height: 16px; }
+.dot { display: inline-flex; align-items: center; gap: 8px; }
+.dot::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+.dot.ring::before { background: none; border: 1.5px solid var(--ink-2); }
+.dot.grey::before { background: #8b8882; } .dot.amber::before { background: var(--amber); } .dot.red::before { background: var(--red); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .3px; padding: 1px 6px; border-radius: 4px; background: var(--chip); color: var(--ink-2); text-transform: uppercase; }
+.chip.co { background: #0d5c46; color: #fff; }
+.chip.re { background: #e1e7ff; color: #2a3fa8; }
+.chip.red { background: #fde3dd; color: #a8261a; }
+.idlink { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; }
+.idlink .ic { width: 22px; height: 22px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; }
+.ic.sh { background: #4a8c3f; } .ic.rc { background: var(--blue); }
+.expand { background: #f6f4f0; padding: 14px 16px 16px; border-bottom: 1px solid var(--line); }
+.exp-grid { display: grid; grid-template-columns: 1fr 200px; gap: 12px; }
+.box { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.box h4 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 500; font-size: 17px; margin-bottom: 14px; }
+.sumrow { display: flex; gap: 8px; padding: 6px 0; } .sumrow span:last-child { margin-left: auto; }
+.sumrow.tot { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; font-weight: 600; }
+.meta { font-size: 12.5px; line-height: 16px; } .meta div { margin-bottom: 10px; } .meta span { display: block; color: var(--ink-2); }
+.rows { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; color: var(--ink); }
+.rows select { height: 40px; border: 1px solid #cfccc6; border-radius: 6px; padding: 0 30px 0 12px; background: #fff; }
+.rows a { text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.sbar { display: flex; gap: 14px; padding: 22px 24px 8px; flex-wrap: wrap; }
+.inp { height: 40px; border: 1px solid #cfccc6; border-radius: 6px; padding: 0 12px; background: #fff; min-width: 0; }
+.inp:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+.addf { margin: 0 24px 12px; }
+.rc-side .card .pad > .well { background: var(--soft); border-radius: 6px; padding: 14px 16px; margin-bottom: 10px; }
+.well .k { color: var(--ink-2); font-size: 14px; } .well .v { margin-top: 4px; }
+.well small { display: block; color: var(--ink-2); font-size: 13px; line-height: 18px; }
+.btn.block { width: 100%; height: 34px; }
+.tag { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; padding: 2px 6px; border-radius: 4px; background: #efece7; color: var(--ink-2); margin: 0 6px 6px 0; }
+.tl { padding: 8px 24px 14px; }
+.tl .ev { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line-2); }
+.tl .ev:last-child { border-bottom: none; }
+.tl .ev i { width: 10px; height: 10px; border-radius: 50%; background: #b9b5ae; margin-top: 5px; flex-shrink: 0; }
+.tl .ev .tx { flex: 1; } .tl .ev .when { color: var(--ink-2); font-size: 13px; text-align: right; min-width: 130px; }
+.empty { padding: 18px; text-align: center; color: var(--ink); }
+.closed > :not(.hd) { display: none; } .card.closed > .hd { border-bottom: none; } .card.closed .circ svg { transform: rotate(180deg); }
+.home-h { text-align: center; padding: 40px 0 26px; }
+.home-h small { color: var(--ink-2); font-size: 16px; } .home-h h1 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; font-size: 34px; margin-top: 6px; }
+.remi { max-width: 720px; margin: 22px auto 0; background: #fff; border: 1px solid var(--line); border-radius: 8px; height: 50px; display: flex; align-items: center; padding: 0 14px; gap: 10px; color: var(--ink-3); }
+.remi b { color: var(--ink); }
+
+/* modal */
+.ov { position: fixed; inset: 0; background: rgba(30,28,25,.35); display: flex; align-items: center; justify-content: center; z-index: 60; }
+.md { background: #fff; border-radius: 14px; width: 672px; max-width: calc(100vw - 32px); max-height: calc(100vh - 60px); display: flex; flex-direction: column; box-shadow: 0 30px 60px rgba(0,0,0,.2); }
+.md .mh { display: flex; align-items: center; padding: 26px 24px 8px; }
+.md .mh h3 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; font-size: 26px; }
+.md .mh button { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.md .mh button:hover { background: var(--soft); }
+.md .mb { padding: 8px 24px 22px; overflow-y: auto; }
+.md .mf { display: flex; justify-content: flex-end; gap: 10px; padding: 18px 24px; border-top: 1px solid var(--line); }
+.fl { display: block; font-weight: 500; margin: 14px 0 6px; }
+.fl:first-child { margin-top: 4px; }
+.md .inp, .md select.inp, .md textarea.inp { width: 100%; }
+.md textarea.inp { height: 80px; padding: 10px 12px; resize: vertical; }
+.hint { color: var(--ink-2); font-size: 13px; margin-top: 6px; }
+.warn { background: #fff4e5; border: 1px solid #f6d29b; border-radius: 8px; padding: 12px 14px; margin-top: 12px; font-size: 13.5px; color: #6b4300; }
+.pick { border: 1px solid var(--line); border-radius: 8px; margin-top: 10px; max-height: 300px; overflow-y: auto; }
+.pick .it { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.pick .it:last-child { border-bottom: none; } .pick .it:hover, .pick .it.on { background: var(--row-sel); }
+.pick .it .thumb { width: 40px; height: 40px; }
+.pick .it .p { margin-left: auto; white-space: nowrap; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1d1d1b; color: #fff; padding: 10px 16px; border-radius: 8px; opacity: 0; transition: .2s; z-index: 80; pointer-events: none; }
+.toast.on { opacity: 1; transform: translateX(-50%); }
+#loading { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; color: var(--ink-2); z-index: 90; }
+.fab { position: fixed; right: 18px; bottom: 18px; width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #5d7bff, #8a5bff); display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 4px 14px rgba(70,80,255,.35); }
+@media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .side { display: none; } .stats { grid-template-columns: 1fr; } .page { padding: 18px 16px 50px; } }
+</style>
+</head>
+<body>
+<div id="loading">Loading Recharge…</div>
+
+<aside class="side">
+  <div class="brand">
+    <span class="logo"><i>r</i>recharge</span>
+    <svg class="col" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9 4.5v15"/></svg>
+  </div>
+  <div class="sbox" onclick="go('#/customers');setTimeout(()=>$('cq')&&$('cq').focus(),50)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <span>Search</span><kbd>⌘K</kbd>
+  </div>
+  <div class="nv" data-nav="home" onclick="go('#/home')"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10.5 12 4l8 6.5V20H4z"/></svg>Home</div>
+  <div class="nv dim" onclick="soon()"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V4M8 20v-6M12 20V9M16 20v-8M20 20H3"/></svg>Analytics<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 10 5 5 5-5"/></svg></div>
+  <div class="grp open">
+    <div class="nv" data-nav="customers-grp" onclick="this.parentNode.classList.toggle('open')"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c2 .6 3.2 2.5 3.5 5.5"/></svg>Customers<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 10 5 5 5-5"/></svg></div>
+    <div class="sub">
+      <div class="nv" data-nav="customers" onclick="go('#/customers')">Customers</div>
+      <div class="nv" data-nav="subscriptions" onclick="go('#/subscriptions')">Subscriptions</div>
+      <div class="nv" data-nav="orders" onclick="go('#/orders')">Orders</div>
+      <div class="nv dim" onclick="soon()">Order errors</div>
+      <div class="nv dim" onclick="soon()">Segments</div>
+      <div class="nv dim" onclick="soon()">Credits</div>
+    </div>
+  </div>
+  <div class="nv dim" onclick="soon()"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 8 12 4l8 4v8l-8 4-8-4z"/><path d="m4 8 8 4 8-4M12 12v8"/></svg>Products<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 10 5 5 5-5"/></svg></div>
+  <div class="nv dim" onclick="soon()"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12.6 3.5H20v7.4L11 20 3.9 13z"/><circle cx="16" cy="8" r="1.3"/></svg>Discounts<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 10 5 5 5-5"/></svg></div>
+  <div class="sep"></div>
+  <div class="nv dim" onclick="soon()"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8 12 4l8 4v8l-8 4-8-4z"/><path d="M12 9v6M9 12h6"/></svg>Cross-Sell &amp; Upsell</div>
+  <div class="nv dim" onclick="soon()"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>Loyalty<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 10 5 5 5-5"/></svg></div>
+  <div class="nv dim" onclick="soon()"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="10" r="2.5"/><path d="M7.5 18c1-2.3 2.6-3.5 4.5-3.5s3.5 1.2 4.5 3.5"/></svg>Churn tools<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 10 5 5 5-5"/></svg></div>
+  <div class="spacer"></div>
+  <div class="train" id="side-train"></div>
+  <div style="position:relative">
+    <div class="store" onclick="toggleMenu(event,'acct')" title="Account">
+      <span class="av">H</span><div><b>Healf</b><small>how2go.myshopify.com</small></div>
+    </div>
+    <div class="menu" id="acct" style="left:0;bottom:64px;width:240px">
+      <div style="padding:6px 10px 10px;border-bottom:1px solid var(--line-2);margin-bottom:4px"><div style="font-weight:600" id="acct-name"></div><div style="color:var(--ink-2);font-size:13px" id="acct-email"></div></div>
+      <button onclick="window.open('practice.html','healf-gorgias')">Open the Gorgias simulator</button>
+      <button onclick="window.open('shopify.html','healf-shopify')">Open the Shopify simulator</button>
+      <button onclick="window.open('library.html','healf-library')">All training tools</button>
+      <button class="danger" onclick="logOut()">Log out</button>
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="scroll"><div class="page" id="page"></div></main>
+<button class="fab" title="Remi is not part of the training copy" onclick="soon()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg></button>
+<div id="modal-root"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// This tab is "Recharge": the Gorgias sim opens its Recharge links in the window with this name.
+window.name = 'healf-recharge';
+
+// ── State ─────────────────────────────────────────────────────────────────
+// Every customer and subscription here is built from a Subscription ticket (sim-shared.js
+// rcModel): fake names, fake ids, fake #H- order numbers. Nothing touches the real Recharge.
+let trainee = null;
+let tickets = [];        // Subscription tickets this trainee can see = the customers in this store
+let actions = [];        // this trainee's recharge_actions
+let ctxId = null;        // the ticket open in the Gorgias sim
+let tableMissing = false;
+const productCache = {};
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const $ = id => document.getElementById(id);
+const tById = id => tickets.find(t => t.id === Number(id));
+const jsq = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+const model = t => rcModel(t, actions);
+const gbp = n => '£' + (Number(n) || 0).toFixed(2) + ' GBP';
+const isoDay = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+function stamp(d) { return d ? rcDay(d) + '<br>' + d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).replace(' ', '').toUpperCase() + ' GMT' : ''; }
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 2600); }
+function soon() { toast('Not part of the Recharge training copy'); }
+
+const I = {
+  back: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m7 14.5 5-5 5 5"/></svg>',
+  down: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m7 10 5 5 5-5"/></svg>',
+  dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5.5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="18.5" r="1.7"/></svg>',
+  plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>',
+  ext: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  copy: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>',
+  pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4L9 19H5v-4z"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+  swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/><circle cx="12" cy="10" r="2"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6M15 9l-6 6"/></svg>',
+  bin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4.5 7h15M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5M14 11v5"/></svg>',
+  skip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 5.5v13l9-6.5zM18 5.5v13"/></svg>',
+  ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>',
+  gift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="m10 8.5 5 3.5-5 3.5z"/></svg>',
+  close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg>',
+  img: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>'
+};
+
+// ── Data loading ──────────────────────────────────────────────────────────
+async function loadProducts(ids) {
+  const need = [...new Set(ids.filter(Boolean).map(String))].filter(id => !productCache[id]);
+  for (let i = 0; i < need.length; i += 100) {
+    const { data } = await db.from('shop_products').select('id,title,image_url,vendor,variants').in('id', need.slice(i, i + 100));
+    (data || []).forEach(p => { productCache[String(p.id)] = p; });
+  }
+}
+async function loadActions() {
+  const { data, error } = await db.from('recharge_actions').select('*').eq('trainee_id', trainee.id).order('created_at');
+  tableMissing = !!error;
+  actions = error ? [] : (data || []);
+}
+async function init() {
+  const stored = localStorage.getItem('trainee');
+  const { data: { session } } = await db.auth.getSession();
+  if (!stored || !session) {
+    location.replace('library.html?next=' + encodeURIComponent('recharge.html' + location.search + location.hash));
+    return;
+  }
+  trainee = JSON.parse(stored);
+  $('acct-name').textContent = trainee.name; $('acct-email').textContent = trainee.email;
+  // Recharge only knows subscribers: the Subscription (category 5) tickets with an order history.
+  let q = db.from('tickets').select('*').eq('category_id', 5);
+  if (trainee.current_category_id && Number(trainee.current_category_id) !== 5) q = q.eq('id', -1);
+  const { data: tix } = await q;
+  tickets = (tix || []).filter(t => rcModel(t, []));
+  await loadActions();
+  await loadProducts(tickets.map(t => (subscribedProduct(t) || {}).productId));
+  setCtx(new URLSearchParams(location.search).get('t') || localStorage.getItem('shop_ctx'));
+  $('loading').style.display = 'none';
+  if (!location.hash) location.hash = ctxId ? '#/customers/' + ctxId : '#/customers';
+  route();
+}
+// The Gorgias sim tells us which ticket is open; follow it live (same key as the Shopify sim).
+function setCtx(id) {
+  const t = id && tById(id);
+  ctxId = t ? t.id : null;
+  const m = t && model(t);
+  $('side-train').innerHTML = t
+    ? `Training copy · working on <b>${esc(t.customer_name)}</b><br>Subscriptions as at <b>${rcDay(m.asAt)}</b>`
+    : 'Training copy of Recharge. Nothing here touches the real Recharge, but everything you do is recorded against your ticket and marked.';
+}
+window.addEventListener('storage', e => { if (e.key === 'shop_ctx') { setCtx(e.newValue); route(); } });
+
+// Every action is a row; the Gorgias sim and the scorer read the same rows.
+async function logAction(tid, kind, detail, summary) {
+  if (tableMissing) { alert('The Recharge simulator is not set up yet (recharge-sim.sql has not been run). Nothing was saved.'); return null; }
+  const { data, error } = await db.from('recharge_actions').insert({ trainee_id: trainee.id, ticket_id: tid, kind, detail, summary }).select().single();
+  if (error) { alert('Could not save: ' + error.message); return null; }
+  actions.push(data);
+  localStorage.setItem('rc_bump', String(Date.now()));   // the Gorgias sim refreshes its Recharge panel
+  closeModal(); route();
+  return data;
+}
+
+// ── Router ────────────────────────────────────────────────────────────────
+function go(h) { location.hash = h; }
+window.addEventListener('hashchange', route);
+const openRows = {};   // which order rows are expanded, by key
+function route() {
+  closeMenus();
+  const parts = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
+  const sec = parts[0] || 'customers';
+  document.querySelectorAll('.nv[data-nav]').forEach(n => n.classList.toggle('on', n.dataset.nav === sec));
+  if (sec === 'home') return viewHome();
+  if (sec === 'customers' && parts[1]) return viewCustomer(Number(parts[1]));
+  if (sec === 'subscriptions' && parts[1]) return viewSubscription(Number(parts[1]));
+  if (sec === 'subscriptions') return viewSubscriptions();
+  if (sec === 'orders') return viewOrders();
+  return viewCustomers();
+}
+function closeMenus() { document.querySelectorAll('.menu.open').forEach(m => m.classList.remove('open')); document.querySelectorAll('.kebab.lit').forEach(k => k.classList.remove('lit')); }
+function toggleMenu(e, id) {
+  e.stopPropagation();
+  const m = $(id), was = m.classList.contains('open');
+  closeMenus();
+  if (!was) { m.classList.add('open'); const k = e.currentTarget; if (k && k.classList.contains('kebab')) k.classList.add('lit'); }
+}
+document.addEventListener('click', closeMenus);
+function toggleCard(btn) { btn.closest('.card').classList.toggle('closed'); }
+
+// ── Shared bits ───────────────────────────────────────────────────────────
+function thumb(m, small) {
+  const p = m.product && m.productId && productCache[String(m.productId)];
+  return p && p.image_url ? `<img class="thumb" src="${esc(p.image_url + (p.image_url.indexOf('?') > -1 ? '&' : '?') + 'width=120')}" alt="">` : `<span class="thumb">${I.img}</span>`;
+}
+function statusDot(m) { return m.deleted ? '<span class="dot red">Deleted</span>' : m.status === 'active' ? '<span class="dot">Active</span>' : '<span class="dot grey">Cancelled</span>'; }
+function prodCell(m) {
+  const p = m.product;
+  if (!p) return '<span style="color:var(--ink-2)">No product</span>';
+  return `<div class="prod">${thumb(m)}<div><b>${esc(p.title)}</b>${p.variant ? `<small>${esc(p.variant)}</small>` : ''}<small>Variant ID: ${esc(p.variantId)}</small></div></div>`;
+}
+function shopifyOrderHref(t, number, suffix) { return 'shopify.html?t=' + t.id + '#/orders/' + t.id + '/' + encodeURIComponent(number) + (suffix || ''); }
+function openShopify(t, hash) { localStorage.setItem('shop_ctx', String(t.id)); window.open('shopify.html?t=' + t.id + hash, 'healf-shopify'); }
+
+// The address card: the address, its pills, and the subscription line(s) on it.
+function addressCard(t, m, withAdd) {
+  const a = m.address;
+  const subMenu = m.status === 'active' ? `
+      <button onclick="openReschedule(${t.id})">${I.cal}Reschedule next order</button>
+      <button onclick="openFrequency(${t.id})">${I.pen}Edit frequency</button>
+      <button onclick="openEditProduct(${t.id})">${I.pen}Edit subscription product</button>
+      <button onclick="openSwap(${t.id})">${I.swap}Swap</button>
+      <button class="off" onclick="event.stopPropagation()">${I.plus.replace('width="16" height="16" ', '')}Add add-on</button>
+      <button onclick="toast('This customer only has one address. To change it, use Edit address on the address card.')">${I.pin}Move address</button>
+      <button onclick="openCancel(${t.id})">${I.x}Cancel subscription</button>
+      <button class="danger" onclick="openDelete(${t.id})">${I.bin}Delete subscription</button>
+      <button onclick="toast('This subscription has no line item properties')">${I.pen}Edit line item properties</button>` : m.deleted ? `
+      <button class="off" onclick="event.stopPropagation()">${I.bin}This subscription was deleted</button>` : `
+      <button onclick="openActivate(${t.id})">${I.play}Activate subscription</button>
+      <button class="danger" onclick="openDelete(${t.id})">${I.bin}Delete subscription</button>`;
+  return `<div class="card">
+    <div class="addr-h"><div><h3>${esc(a.street)}</h3>
+      <p>${esc([a.cityline, 'United Kingdom', m.name].join(', '))}, #${m.addressId}</p></div>
+      <div class="r">${withAdd ? `<button class="btn" onclick="toast('Adding products is not part of the training copy')">${I.plus}Add product</button>` : ''}
+        <button class="kebab" title="Actions" onclick="toggleMenu(event,'m-addr')">${I.dots}</button>
+        <div class="menu" id="m-addr" style="right:0;top:40px">
+          <button onclick="openAddress(${t.id})">${I.pen}Edit address</button>
+          <button onclick="toast('No order note or attributes on this address')">${I.eye}View order note &amp; attributes</button>
+        </div></div></div>
+    <div class="pills">
+      <span class="pill"><b>Payment method:</b> ${esc(cardOf(t))} ${I.down}</span>
+      <span class="pill"><b>Shipping:</b> Dynamic ${I.down}</span>
+      <span class="pill"><b>Discount:</b> None ${I.down}</span>
+    </div>
+    <table class="t"><thead><tr><th style="width:44px"><span class="cb"></span></th><th>Product</th><th>Next order</th><th>Frequency</th><th>Price (GBP)</th><th style="width:48px"></th></tr></thead>
+    <tbody><tr>
+      <td><span class="cb"></span></td>
+      <td>${prodCell(m)}${m.status !== 'active' ? `<div style="margin-top:6px"><span class="chip red">${m.deleted ? 'Deleted' : 'Cancelled'}</span></div>` : ''}</td>
+      <td>${m.next ? rcDay(m.next) : ''}</td>
+      <td>${rcFreqText(m.freq)}</td>
+      <td>${m.product ? m.product.qty + ' x ' + gbp(m.product.price) : ''}</td>
+      <td style="position:relative"><button class="kebab" title="Actions" onclick="toggleMenu(event,'m-sub')">${I.dots}</button>
+        <div class="menu" id="m-sub" style="right:8px;top:44px;width:270px">${subMenu}</div></td>
+    </tr></tbody></table>
+  </div>`;
+}
+function cardOf(t) { const h = Number(t.id) * 7919; return (h % 3 === 0 ? 'Shop Pay' : ['Visa', 'Mastercard'][h % 2] + ' ••••' + String(1000 + h % 9000)); }
+
+function upcomingCard(t, m) {
+  const rows = [];
+  m.skipped.forEach((d, i) => { if (d > m.asAt) rows.push({ d, skipped: true, last: i === m.skipped.length - 1 }); });
+  if (m.next) rows.push({ d: m.next });
+  rows.sort((a, b) => a.d - b.d);
+  const total = m.product ? m.product.price * m.product.qty : 0;
+  const body = rows.length ? rows.map((r, i) => {
+    const key = 'u' + t.id + '-' + i, open = openRows[key];
+    return `<tr class="${open ? 'sel' : ''}"><td style="width:44px"><button class="circ" onclick="openRows['${key}']=!openRows['${key}'];route()">${I.chev.replace('<svg', `<svg style="transform:rotate(${open ? 0 : 180}deg)"`)}</button></td>
+      <td>${rcDay(r.d)}</td><td>${r.skipped ? '<span class="dot grey">Skipped</span>' : '<span class="dot ring">Queued</span>'}</td><td class="num">${gbp(total)}</td>
+      <td style="width:48px;position:relative"><button class="kebab" title="Actions" onclick="toggleMenu(event,'m-up${i}')">${I.dots}</button>
+        <div class="menu" id="m-up${i}" style="right:8px;top:44px;width:230px">${r.skipped
+          ? (r.last ? `<button onclick="openUnskip(${t.id})">${I.skip}Unskip delivery</button>` : `<button class="off">${I.skip}Unskip the latest skip first</button>`)
+          : `<button onclick="openSkip(${t.id})">${I.skip}Skip delivery</button>
+             <button onclick="openReschedule(${t.id})">${I.cal}Reschedule order</button>
+             <button onclick="openProcess(${t.id})">${I.ok}Process order</button>
+             <button onclick="toast('Free gifts are not part of the training copy')">${I.gift}Add free gift</button>`}</div></td></tr>
+      ${open ? `<tr><td colspan="5" style="padding:0">${chargeExpand(t, m, { date: r.d, total, type: 'Recurring', chargeId: rcId(t, 1984500000 + i * 17, 900000), upcoming: true })}</td></tr>` : ''}`;
+  }).join('') : `<tr><td colspan="5" class="empty">No orders found</td></tr>`;
+  return `<div class="card"><div class="hd"><h2>Upcoming orders</h2><span class="r"><button class="circ" onclick="toggleCard(this)">${I.chev}</button></span></div>
+    <table class="t"><thead><tr><th></th><th>Date</th><th>Status</th><th class="num">Total</th><th></th></tr></thead><tbody>${body}</tbody></table>
+    <div class="rows" style="border-top:1px solid var(--line)">Rows: <select><option>10</option></select></div></div>`;
+}
+function chargeExpand(t, m, c) {
+  const p = m.product, a = m.address;
+  const lines = p ? `<div class="prod" style="margin-bottom:14px">${thumb(m)}<div style="flex:1"><b>${esc(p.title)}</b>${p.variant ? `<small>${esc(p.variant)}</small>` : ''}<small>Variant ID: ${esc(p.variantId)}</small></div><span>${p.qty} x ${gbp(p.price)}</span></div>` : '';
+  const sub = c.total, tax = c.upcoming ? 0 : +(sub / 6).toFixed(2);
+  return `<div class="expand"><div class="exp-grid">
+    <div class="box"><h4>${c.upcoming ? 'Charge summary' : 'Order summary'}</h4>${lines}
+      <div class="sumrow" style="border-top:1px solid var(--line);padding-top:12px"><span>Subtotal</span><span style="margin-left:90px;color:var(--ink-2)">1 item</span><span>${gbp(sub)}</span></div>
+      <div class="sumrow"><span style="text-decoration:underline dotted">Taxes</span><span>${gbp(tax)}</span></div>
+      ${c.upcoming ? '' : `<div class="sumrow"><span>Shipping</span><span style="margin-left:60px;color:var(--ink-2);font-size:13px">Free Shipping (2-3 Working Days)</span><span>£0.00 GBP</span></div>`}
+      <div class="sumrow tot"><span>Total</span><span>${gbp(sub)}</span></div></div>
+    <div class="box meta">
+      <div><span>Charge type</span>${c.type}</div><div><span>Charge ID</span>${c.chargeId}</div>
+      <div><span>Charge created at</span>${rcDay(c.upcoming ? m.asAt : c.date)}</div>
+      ${c.upcoming ? '' : `<div><span>Order status</span><span class="dot" style="color:var(--ink)">Success</span></div><div><span>Payment processor</span>Shopify Payment Gateway</div>`}
+      <div><span>Shipping address (${m.addressId})</span>${esc(m.name)}<br>${esc(a.street)}<br>${esc(a.cityline)}</div></div>
+    </div>
+    ${c.upcoming ? '' : `<div style="display:flex;gap:8px;margin-top:12px"><button class="btn sm" onclick="openShopify(tById(${t.id}),'#/orders/${t.id}/${encodeURIComponent(c.number)}/refund')">Refund in Shopify ${I.ext}</button>
+      <button class="btn sm" onclick="openShopify(tById(${t.id}),'#/orders/${t.id}/${encodeURIComponent(c.number)}');toast('Orders are cancelled in Shopify')">Cancel</button></div>`}
+  </div>`;
+}
+function recentCard(t, m) {
+  const charges = m.charges.slice().reverse();
+  const body = charges.length ? charges.map((c, i) => {
+    const key = 'r' + t.id + '-' + i, open = openRows[key];
+    return `<tr class="${open ? 'sel' : ''}"><td style="width:44px"><button class="circ" onclick="openRows['${key}']=!openRows['${key}'];route()">${I.chev.replace('<svg', `<svg style="transform:rotate(${open ? 0 : 180}deg)"`)}</button></td>
+      <td style="white-space:nowrap">${rcDay(c.date)} <span class="chip ${c.type === 'CHECKOUT' ? 'co' : 're'}">${c.type === 'CHECKOUT' ? '🛒 ' : '↻ '}${c.type}</span></td>
+      <td><span class="dot${c.status === 'Success' ? '' : ' grey'}">${c.status}</span></td>
+      <td><a class="idlink" href="${shopifyOrderHref(t, c.shopifyNumber)}" target="healf-shopify" onclick="localStorage.setItem('shop_ctx','${t.id}')"><span class="ic sh">S</span>${esc(c.shopifyNumber)}</a></td>
+      <td><span class="idlink" style="text-decoration:none"><span class="ic rc">r</span>#${c.rechargeId}</span></td>
+      <td class="num">${gbp(c.total)}</td></tr>
+      ${open ? `<tr><td colspan="6" style="padding:0">${chargeExpand(t, m, { date: c.date, total: c.total, type: c.type === 'CHECKOUT' ? 'Checkout' : 'Recurring', chargeId: c.chargeId, number: c.shopifyNumber })}</td></tr>` : ''}`;
+  }).join('') : `<tr><td colspan="6" class="empty">No orders found</td></tr>`;
+  return `<div class="card"><div class="hd"><h2>Recent orders</h2><span class="r"><button class="circ" onclick="toggleCard(this)">${I.chev}</button></span></div>
+    <table class="t"><thead><tr><th></th><th>Date</th><th>Status</th><th>Shopify ID</th><th>Recharge ID</th><th class="num">Total</th></tr></thead><tbody>${body}</tbody></table>
+    <div class="rows" style="border-top:1px solid var(--line)">Rows: <select><option>25</option></select> <a onclick="go('#/orders')">View all recent orders</a></div></div>`;
+}
+function timelineCard(m, closed) {
+  const ev = m.events.slice().sort((a, b) => b.at - a.at);
+  return `<div class="card${closed ? ' closed' : ''}"><div class="hd"><h2>Timeline</h2><span class="r"><button class="circ" onclick="toggleCard(this)">${I.chev}</button></span></div>
+    <div class="pills" style="border-bottom:none;padding-bottom:0"><span class="pill"><b>Time zone:</b> GMT ${I.down}</span></div>
+    <div class="tl">${ev.map(e => `<div class="ev"><i></i><div class="tx">${esc(e.text)}</div><div class="when">${stamp(e.at)}</div></div>`).join('')}</div></div>`;
+}
+function customerOverview(t, m, extra) {
+  return `<div class="card"><div class="hd"><h2>Customer overview</h2><span class="r"><button class="kebab" onclick="soon()">${I.dots}</button></span></div>
+    <div class="pad"><div class="well" style="display:flex;align-items:center">
+      <div style="flex:1"><div style="font-weight:500">${esc(m.name)}</div>
+        <small><b style="font-weight:500;color:var(--ink-2)">Email:</b> ${esc(m.email || '—')}</small><small><b style="font-weight:500;color:var(--ink-2)">Phone:</b> ${esc(m.phone)}</small></div>
+      <button class="circ" onclick="soon()" style="width:36px;height:36px">${I.pen.replace('<svg', '<svg width="18" height="18"')}</button></div>
+      <button class="btn block" onclick="soon()">Customer portal links ${I.down}</button>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        <button class="btn grey sm" onclick="openShopify(tById(${t.id}),'#/customers/${t.id}')">View in Shopify ${I.ext}</button>
+        ${extra || ''}</div></div></div>`;
+}
+
+// ── Pages ─────────────────────────────────────────────────────────────────
+function viewHome() {
+  const ms = tickets.map(model);
+  const active = ms.filter(m => m.status === 'active').length;
+  const first = String(trainee.name || '').split(' ')[0];
+  $('page').innerHTML = `<div class="home-h"><small>Welcome back, ${esc(first)}!</small><h1>What should we look into today?</h1>
+      <div class="remi" onclick="soon()"><span style="color:#5d7bff">✦</span><b>Ask Remi:</b> Ask anything about your store</div></div>
+    <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat"><div class="k">Customers</div><div class="v">${ms.length}</div></div>
+      <div class="stat"><div class="k">Active subscribers</div><div class="v">${active}</div></div>
+      <div class="stat"><div class="k">Cancelled</div><div class="v">${ms.length - active}</div></div></div>
+    <div class="card pad" style="color:var(--ink-2)">This is the training copy of Recharge. It holds the customers from the Subscription tickets in the Gorgias simulator, as they stood on the day each customer wrote. Open <a href="#/customers" style="color:var(--blue)">Customers</a> to find one.</div>`;
+}
+let custQ = '';
+function viewCustomers() {
+  const q = custQ.trim().toLowerCase();
+  const rows = tickets.filter(t => !q || [t.customer_name, t.customer_email].join(' ').toLowerCase().indexOf(q) > -1)
+    .sort((a, b) => String(a.customer_email || '').localeCompare(String(b.customer_email || '')));
+  $('page').innerHTML = `<div class="ph"><h1>Customers</h1><span class="r"><button class="btn pri" onclick="toast('Adding customers is not part of the training copy')">${I.plus}Add customer</button></span></div>
+    <div class="card"><div class="sbar"><input class="inp" id="cq" style="width:428px" placeholder="Jane Doe, jane@doe.com, 555.555.5555" value="${esc(custQ)}" onkeydown="if(event.key==='Enter'){custQ=this.value;viewCustomers()}">
+      <button class="btn grey" onclick="custQ=$('cq').value;viewCustomers()">Search</button></div>
+      <div class="addf"><button class="btn sm" onclick="soon()">${I.plus}Add filter</button></div>
+      <table class="t"><thead><tr><th>Customer</th><th>Email</th><th>Active subscriptions</th><th>Payment status</th></tr></thead><tbody>
+      ${rows.length ? rows.map(t => { const m = model(t); return `<tr class="click" onclick="go('#/customers/${t.id}')"><td>${esc(t.customer_name)}</td><td>${esc(t.customer_email || '')}</td><td>${m.status === 'active' ? 1 : 0}</td><td><span class="dot">Valid</span></td></tr>`; }).join('')
+        : `<tr><td colspan="4" class="empty">No customers found</td></tr>`}
+      </tbody></table></div>`;
+}
+function viewCustomer(tid) {
+  const t = tById(tid); if (!t) return notFound('customer');
+  const m = model(t);
+  const spend = m.charges.reduce((s, c) => s + c.total, 0);
+  $('page').innerHTML = `<div class="ph"><button class="back" onclick="history.length>1?history.back():go('#/customers')">${I.back}</button><h1>${esc(m.name)}</h1></div>
+    <div class="grid2"><div>
+      <div class="stats">
+        <div class="stat"><div class="k">Subscription spend (GBP)</div><div class="v">£${spend.toFixed(2)}</div></div>
+        <div class="stat"><div class="k">Subscription orders</div><div class="v">${m.charges.length}</div></div>
+        <div class="stat"><div class="k">Streak count</div><div class="v">${m.status === 'active' ? m.charges.length : 0}</div></div></div>
+      ${addressCard(t, m, true)}
+      <div style="margin:-8px 0 22px"><button class="btn" onclick="toast('Adding addresses is not part of the training copy')">${I.plus}Add address</button></div>
+      <div class="card closed"><div class="hd"><h2>Errors</h2><span class="r"><button class="circ" onclick="toggleCard(this)">${I.chev}</button></span></div><div class="empty">No errors found</div></div>
+      ${upcomingCard(t, m)}
+      ${recentCard(t, m)}
+      ${timelineCard(m, true)}
+    </div>
+    <div class="rc-side">
+      ${customerOverview(t, m, `<button class="btn grey sm" onclick="go('#/subscriptions/${t.id}')">View subscription</button>`)}
+      <div class="card"><div class="hd"><h2>Communication preferences</h2></div><div class="pad">
+        <div class="well"><div class="k">Email marketing</div><div class="v"><span class="dot amber">Unsubscribed</span></div></div>
+        <div class="well"><div class="k">SMS</div><div class="v"><span class="dot grey">Marketing - never subscribed</span></div><div class="v"><span class="dot">Transactional - subscribed</span></div></div>
+        <button class="btn block" onclick="soon()">${I.pen.replace('<svg', '<svg width="15" height="15"')} Edit consent</button></div></div>
+      <div class="card"><div class="hd"><h2>Payment methods</h2></div><div class="pad">
+        <div class="well"><div>${esc(cardOf(t))}</div><small><b style="font-weight:500">Expires:</b> 0${1 + t.id % 9}/20${28 + t.id % 4}</small></div>
+        <button class="btn block" onclick="soon()">Manage payment methods</button></div></div>
+      <div class="card"><div class="hd"><h2>Segments</h2></div><div class="pad">No segments</div></div>
+      <div class="card"><div class="hd"><h2>Shopify tags</h2></div><div class="pad"><span class="tag">${m.status === 'active' ? 'ACTIVE SUBSCRIBER' : 'INACTIVE SUBSCRIBER'}</span>${m.charges.length > 1 ? '<span class="tag">REPEAT CUSTOMER</span>' : '<span class="tag">NEW</span>'}</div></div>
+      <div class="card"><div class="hd"><h2>Credits</h2></div><div class="pad">
+        <div class="well"><div class="k" style="text-decoration:underline dotted">Available balance</div><div class="v">£0.00 GBP</div></div>
+        <button class="btn block" onclick="soon()">Manage credits ${I.down}</button></div></div>
+    </div></div>`;
+}
+function viewSubscription(tid) {
+  const t = tById(tid); if (!t) return notFound('subscription');
+  const m = model(t), a = m.address;
+  $('page').innerHTML = `<div class="ph"><button class="back" onclick="history.length>1?history.back():go('#/subscriptions')">${I.back}</button><h1>Subscription #${m.subscriptionId}</h1></div>
+    <div class="grid2"><div>
+      ${addressCard(t, m, false)}
+      ${upcomingCard(t, m)}
+      ${recentCard(t, m)}
+      ${timelineCard(m, false)}
+      <div style="text-align:center;margin-top:-10px"><a style="text-decoration:underline;cursor:pointer" onclick="go('#/customers/${t.id}')">View full timeline on customer page</a></div>
+    </div>
+    <div class="rc-side">
+      ${customerOverview(t, m, `<button class="btn grey sm" onclick="go('#/customers/${t.id}')">View all subscriptions</button>`)}
+      <div class="card"><div class="hd"><h2>Shipping address</h2></div><div class="pad">
+        <div class="well"><div class="k">Address (${m.addressId})</div><div class="v">${esc(a.street)}<br>${esc(a.cityline)}<br>${esc(m.phone)}</div></div>
+        <button class="btn block" onclick="openAddress(${t.id})">Manage address ${I.down}</button></div></div>
+      <div class="card"><div class="hd"><h2>Payment method</h2></div><div class="pad">
+        <div class="well"><div>${esc(cardOf(t).split(' ••••')[0])}</div><small><b style="font-weight:500">Credit card:</b> ••••${String(1000 + (Number(t.id) * 7919) % 9000)}</small><small><b style="font-weight:500">Expires:</b> 0${1 + t.id % 9}/20${28 + t.id % 4}</small></div>
+        <button class="btn block" onclick="soon()">Update payment method</button></div></div>
+      <div class="card"><div class="hd"><h2>Subscription details</h2></div><div class="pad">
+        <div class="well"><div class="k">Status</div><div class="v">${statusDot(m)}</div></div>
+        ${m.status !== 'active' && !m.deleted ? `<div class="well"><div class="k">Cancelled date</div><div class="v">${rcDay(m.cancelledAt)}</div></div><div class="well"><div class="k">Cancellation reason</div><div class="v">${esc(m.cancelReason || '—')}</div></div>` : ''}
+        <div class="well"><div class="k">Subscription ID</div><div class="v">${m.subscriptionId}</div></div>
+        <div class="well"><div class="k">Product ID</div><div class="v" style="text-decoration:underline">${esc(m.productId || '—')}</div></div>
+        <div class="well"><div class="k">Variant ID</div><div class="v" style="text-decoration:underline">${esc(m.product ? m.product.variantId : '—')}</div></div>
+        <div class="well"><div class="k">Created date</div><div class="v">${rcDay(m.created)}</div></div></div></div>
+    </div></div>`;
+}
+let subFilter = 'all', subQ = '';
+function viewSubscriptions() {
+  const q = subQ.trim().toLowerCase();
+  const rows = tickets.map(t => ({ t, m: model(t) }))
+    .filter(r => subFilter === 'all' || (subFilter === 'active') === (r.m.status === 'active'))
+    .filter(r => !q || [r.t.customer_name, r.t.customer_email, r.m.product && r.m.product.full, r.m.subscriptionId].join(' ').toLowerCase().indexOf(q) > -1)
+    .sort((a, b) => (b.m.next || 0) - (a.m.next || 0));
+  $('page').innerHTML = `<div class="ph"><h1>Subscriptions</h1></div>
+    <div class="card" style="overflow-x:auto"><div class="sbar">
+      <select class="inp" style="width:200px" onchange="subFilter=this.value;viewSubscriptions()">${[['all', 'All'], ['active', 'Active'], ['cancelled', 'Cancelled']].map(([v, l]) => `<option value="${v}"${subFilter === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+      <input class="inp" id="sq" style="width:372px" placeholder="Jane Doe, jane@doe.com, 555.555.5555" value="${esc(subQ)}" onkeydown="if(event.key==='Enter'){subQ=this.value;viewSubscriptions()}">
+      <button class="btn grey" onclick="subQ=$('sq').value;viewSubscriptions()">Search</button></div>
+      <div class="addf" style="display:flex;gap:8px"><button class="btn sm" onclick="soon()">${I.plus}Add filter</button><button class="btn sm" onclick="soon()">Edit columns</button></div>
+      <table class="t"><thead><tr><th style="width:44px"><span class="cb"></span></th><th>Subscription ID</th><th>Product/Variant</th><th>Price</th><th>Quantity</th><th>Frequency</th><th>Next charge date</th><th>Customer</th></tr></thead><tbody>
+      ${rows.length ? rows.map(({ t, m }) => `<tr class="click" onclick="go('#/subscriptions/${t.id}')"><td><span class="cb"></span></td><td>#${m.subscriptionId}</td>
+        <td style="max-width:280px">${m.product ? esc(m.product.title) + (m.product.variant ? '<br>' + esc(m.product.variant) : '') : '—'}</td>
+        <td style="white-space:nowrap">${m.product ? gbp(m.product.price) : ''}</td><td>${m.product ? m.product.qty : ''}</td>
+        <td style="white-space:nowrap">Ships ${rcFreqText(m.freq)}<br>Charges ${rcFreqText(m.freq)}</td>
+        <td style="white-space:nowrap">${m.next ? rcDay(m.next) : m.deleted ? 'Deleted' : 'Cancelled'}</td>
+        <td>${esc(t.customer_name)}<br><small style="color:var(--ink-2)">${esc(t.customer_email || '')}</small></td></tr>`).join('')
+        : `<tr><td colspan="8" class="empty">No subscriptions found</td></tr>`}</tbody></table></div>`;
+}
+function viewOrders() {
+  const rows = [];
+  tickets.forEach(t => { const m = model(t); m.charges.forEach(c => rows.push({ t, m, c })); });
+  rows.sort((a, b) => (b.c.date || 0) - (a.c.date || 0));
+  $('page').innerHTML = `<div class="ph"><h1>Orders</h1></div>
+    <div class="card" style="overflow-x:auto"><table class="t"><thead><tr><th>Date</th><th>Status</th><th>Shopify ID</th><th>Recharge ID</th><th>Customer</th><th class="num">Total</th></tr></thead><tbody>
+    ${rows.map(({ t, m, c }) => `<tr class="click" onclick="go('#/customers/${t.id}')"><td style="white-space:nowrap">${rcDay(c.date)} <span class="chip ${c.type === 'CHECKOUT' ? 'co' : 're'}">${c.type}</span></td>
+      <td><span class="dot">${c.status}</span></td><td><span class="idlink"><span class="ic sh">S</span>${esc(c.shopifyNumber)}</span></td><td>#${c.rechargeId}</td>
+      <td>${esc(t.customer_name)}</td><td class="num">${gbp(c.total)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">No orders found</td></tr>'}</tbody></table></div>`;
+}
+function notFound(what) { $('page').innerHTML = `<div class="ph"><h1>Not found</h1></div><div class="card pad">That ${what} isn't in the training copy. <a href="#/customers" style="color:var(--blue)">Back to customers</a></div>`; }
+
+// ── Dialogs + actions ─────────────────────────────────────────────────────
+function modal(title, body, foot) {
+  $('modal-root').innerHTML = `<div class="ov" onclick="if(event.target===this)closeModal()"><div class="md">
+    <div class="mh"><h3>${title}</h3><button onclick="closeModal()" title="Close">${I.close}</button></div>
+    <div class="mb">${body}</div>${foot ? `<div class="mf">${foot}</div>` : ''}</div></div>`;
+}
+function closeModal() { $('modal-root').innerHTML = ''; }
+const pname = m => m.product ? m.product.full : 'the subscription';
+
+function openSkip(tid) {
+  const m = model(tById(tid));
+  modal('Skip delivery', `<p>Skip the order scheduled for <b>${rcDay(m.next)}</b>? The customer won't be charged for it, and the next order moves to <b>${rcDay(rcAddMonths(m.next, m.freq))}</b>.</p>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="doSkip(${tid})">Skip delivery</button>`);
+}
+function doSkip(tid) {
+  const m = model(tById(tid));
+  logAction(tid, 'skip', { date: isoDay(m.next) }, `Skipped the order due ${rcDay(m.next)} for ${pname(m)} (next order now ${rcDay(rcAddMonths(m.next, m.freq))})`);
+}
+function openUnskip(tid) {
+  const m = model(tById(tid)), d = m.skipped[m.skipped.length - 1];
+  modal('Unskip delivery', `<p>Put the skipped order on <b>${rcDay(d)}</b> back? The customer will be charged for it on that date.</p>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="doUnskip(${tid})">Unskip delivery</button>`);
+}
+function doUnskip(tid) { const m = model(tById(tid)), d = m.skipped[m.skipped.length - 1]; logAction(tid, 'unskip', { date: isoDay(d) }, `Unskipped the order due ${rcDay(d)} for ${pname(m)}`); }
+
+function openReschedule(tid) {
+  const m = model(tById(tid));
+  const min = new Date(m.asAt.getTime() + 86400000);
+  modal('Reschedule next order', `<label class="fl">Next order date</label>
+    <input class="inp" type="date" id="rs-d" min="${isoDay(min)}" value="${m.next ? isoDay(m.next) : isoDay(min)}">
+    <p class="hint">Currently ${m.next ? rcDay(m.next) : 'not scheduled'}. Future orders follow on every ${rcFreqText(m.freq)} from the new date.</p>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="doReschedule(${tid})">Save</button>`);
+}
+function doReschedule(tid) {
+  const m = model(tById(tid)), v = $('rs-d').value; if (!v) return;
+  const nd = new Date(v + 'T09:00:00');
+  if (nd <= m.asAt) { alert('Choose a date after ' + rcDay(m.asAt) + '.'); return; }
+  logAction(tid, 'reschedule', { date: v, from: m.next ? isoDay(m.next) : null }, `Rescheduled the next order for ${pname(m)} from ${m.next ? rcDay(m.next) : '—'} to ${rcDay(nd)}`);
+}
+function openFrequency(tid) {
+  const m = model(tById(tid));
+  modal('Edit frequency', `<label class="fl">Order frequency</label>
+    <div style="display:flex;gap:10px"><input class="inp" type="number" id="fq-n" min="1" max="6" value="${m.freq}" style="width:120px">
+      <select class="inp" style="width:200px"><option>Months</option></select></div>
+    <label class="fl">Charge frequency</label><div class="hint" style="margin-top:0">Charges every time it ships.</div>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="doFrequency(${tid})">Save</button>`);
+}
+function doFrequency(tid) {
+  const m = model(tById(tid)), n = Math.max(1, Math.min(6, parseInt($('fq-n').value, 10) || 1));
+  if (n === m.freq) { closeModal(); return; }
+  logAction(tid, 'frequency', { months: n, from: m.freq }, `Changed the frequency of ${pname(m)} from every ${rcFreqText(m.freq)} to every ${rcFreqText(n)}`);
+}
+function openEditProduct(tid) {
+  const m = model(tById(tid)), p = m.product;
+  modal('Edit subscription product', `<div class="prod" style="margin-bottom:6px">${thumb(m)}<div><b>${esc(p.title)}</b>${p.variant ? `<small>${esc(p.variant)}</small>` : ''}</div></div>
+    <label class="fl">Quantity</label><input class="inp" type="number" id="ep-q" min="1" max="10" value="${p.qty}" style="width:120px">
+    <label class="fl">Price (GBP)</label><input class="inp" value="${p.price.toFixed(2)}" disabled style="width:160px;background:var(--soft)">
+    <p class="hint">To change the product itself, use Swap.</p>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="doQuantity(${tid})">Save</button>`);
+}
+function doQuantity(tid) {
+  const m = model(tById(tid)), q = Math.max(1, parseInt($('ep-q').value, 10) || 1);
+  if (q === m.product.qty) { closeModal(); return; }
+  logAction(tid, 'quantity', { qty: q, from: m.product.qty }, `Changed the quantity of ${pname(m)} from ${m.product.qty} to ${q}`);
+}
+let swapPick = null;
+function openSwap(tid) {
+  const m = model(tById(tid)); swapPick = null;
+  modal('Swap', `<p style="margin-bottom:10px">Swap <b>${esc(pname(m))}</b> (${gbp(m.product.price)}) for another product. The change applies from the next order.</p>
+    <input class="inp" id="sw-q" placeholder="Search products" oninput="clearTimeout(window._sw);window._sw=setTimeout(()=>swapSearch(${tid}),250)">
+    <div class="pick" id="sw-list"><div class="empty" style="color:var(--ink-2)">Search the Healf catalogue by product name</div></div>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" id="sw-go" disabled onclick="doSwap(${tid})">Swap</button>`);
+  setTimeout(() => $('sw-q') && $('sw-q').focus(), 30);
+}
+let swapRows = [];
+async function swapSearch(tid) {
+  const q = $('sw-q').value.trim(); if (!q) return;
+  let req = db.from('shop_products').select('id,title,vendor,image_url,variants').eq('status', 'active').limit(25);
+  q.split(/\s+/).filter(Boolean).forEach(w => { req = req.ilike('title', '%' + w.replace(/[%_]/g, '') + '%'); });
+  const { data } = await req;
+  swapRows = [];
+  (data || []).forEach(p => {
+    productCache[String(p.id)] = productCache[String(p.id)] || p;
+    const vs = (p.variants || []).length ? p.variants : [{ id: null, title: 'Default Title', price: 0 }];
+    vs.forEach(v => swapRows.push({ p, v }));
+  });
+  $('sw-list').innerHTML = swapRows.length ? swapRows.map((r, i) => `<div class="it" onclick="swapPick=${i};document.querySelectorAll('#sw-list .it').forEach((e,k)=>e.classList.toggle('on',k===${i}));$('sw-go').disabled=false">
+      ${r.p.image_url ? `<img class="thumb" src="${esc(r.p.image_url)}&width=80" alt="">` : `<span class="thumb">${I.img}</span>`}
+      <div><b style="font-weight:500">${esc(r.p.title)}</b><small style="display:block;color:var(--ink-2)">${esc(r.v.title && r.v.title !== 'Default Title' ? r.v.title : r.p.vendor || '')}</small></div>
+      <span class="p">${gbp(r.v.price)}</span></div>`).join('') : '<div class="empty">No products found</div>';
+}
+function doSwap(tid) {
+  const r = swapRows[swapPick]; if (!r) return;
+  const m = model(tById(tid)), variant = r.v.title && r.v.title !== 'Default Title' ? r.v.title : '';
+  const to = variant ? r.p.title + ' - ' + variant : r.p.title;
+  logAction(tid, 'swap', { title: r.p.title, variant, price: Number(r.v.price) || 0, vendor: r.p.vendor || '', productId: String(r.p.id), variantId: r.v.id ? String(r.v.id) : null, from: m.product.full, from_price: m.product.price },
+    `Swapped the subscription from ${m.product.full} (${shopMoney(m.product.price)}) to ${to} (${shopMoney(r.v.price)}), from the next order`);
+}
+const RC_CANCEL_REASONS = ['This was an accidental subscription', 'I already have more than I need', 'I no longer use this product', 'I want a different product or variety',
+  'This is too expensive', 'The product didn\'t work for me', 'Shipping or delivery issues', 'Other reason'];
+function openCancel(tid) {
+  const m = model(tById(tid));
+  modal('Cancel subscription', `<p>Cancel <b>${esc(pname(m))}</b>? No more orders will be created${m.next ? ` (the next one was due ${rcDay(m.next)})` : ''}. Orders already placed are not cancelled or refunded here.</p>
+    <label class="fl">Cancellation reason</label><select class="inp" id="cx-r"><option value="">Select a reason</option>${RC_CANCEL_REASONS.map(r => `<option>${esc(r)}</option>`).join('')}</select>
+    <label class="fl">Cancellation notes (optional)</label><textarea class="inp" id="cx-n"></textarea>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="cx-e" checked> Send cancellation email to customer</label>`,
+    `<button class="btn" onclick="closeModal()">Go back</button><button class="btn red" onclick="doCancel(${tid})">Cancel subscription</button>`);
+}
+function doCancel(tid) {
+  const m = model(tById(tid)), r = $('cx-r').value;
+  if (!r) { $('cx-r').style.borderColor = 'var(--red)'; return; }
+  const note = $('cx-n').value.trim();
+  logAction(tid, 'cancel', { reason: r, note, email: $('cx-e').checked, next_was: m.next ? isoDay(m.next) : null },
+    `Cancelled the subscription to ${pname(m)} (reason: ${r}${note ? '; note: ' + note : ''})${m.next ? '. The order due ' + rcDay(m.next) + ' will no longer be created' : ''}`);
+}
+function openActivate(tid) {
+  const m = model(tById(tid));
+  const d = rcAddMonths(m.asAt, 0); d.setDate(d.getDate() + 1);
+  modal('Activate subscription', `<p>Reactivate <b>${esc(pname(m))}</b>? The customer will be charged on the next order date.</p>
+    <label class="fl">Next order date</label><input class="inp" type="date" id="ac-d" min="${isoDay(d)}" value="${isoDay(rcAddMonths(m.asAt, m.freq))}">`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="doActivate(${tid})">Activate</button>`);
+}
+function doActivate(tid) { const m = model(tById(tid)), v = $('ac-d').value; if (!v) return; logAction(tid, 'activate', { date: v }, `Reactivated the subscription to ${pname(m)}, next order ${rcDay(new Date(v + 'T09:00:00'))}`); }
+// Copied word for word from the live Recharge dialog.
+function openDelete(tid) {
+  modal('Delete subscription', `<p>Are you sure you want to delete this subscription?</p>`,
+    `<button class="btn" onclick="closeModal()">Cancel: keep subscription</button><button class="btn red" onclick="doDelete(${tid})">Confirm: delete subscription</button>`);
+}
+function doDelete(tid) { const m = model(tById(tid)); logAction(tid, 'delete', {}, `Deleted the subscription to ${pname(m)} (deleting removes it entirely; it is not the same as cancelling)`); }
+function openProcess(tid) {
+  const m = model(tById(tid)), amt = m.product.price * m.product.qty;
+  modal('Process order', `<p>Process the order scheduled for <b>${rcDay(m.next)}</b> now?</p>
+    <div class="warn">The customer will be charged <b>${shopMoney(amt)}</b> immediately and a new order will be sent to Shopify for fulfilment.</div>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="doProcess(${tid})">Process order</button>`);
+}
+function doProcess(tid) {
+  const m = model(tById(tid)), amt = m.product.price * m.product.qty;
+  const no = '#H-98' + String(10000 + (Date.now() % 89999)).padStart(5, '0');   // fake range, see sim-fake-order-numbers
+  logAction(tid, 'process', { order_number: no, amount: amt, was_due: isoDay(m.next) }, `Processed the order due ${rcDay(m.next)} NOW: the customer was charged ${shopMoney(amt)} immediately for ${pname(m)} (new order ${no})`);
+}
+function openAddress(tid) {
+  const t = tById(tid), m = model(t), a = m.address;
+  const city = a.cityline.split(',')[0].trim(), pc = (a.cityline.match(/[A-Z]{1,2}\d[\dA-Z]?\s*\d[A-Z]{2}/) || [''])[0];
+  const parts = m.name.split(' ');
+  modal('Edit address', `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+      <div><label class="fl">First name</label><input class="inp" id="ad-f" value="${esc(parts[0] || '')}"></div>
+      <div><label class="fl">Last name</label><input class="inp" id="ad-l" value="${esc(parts.slice(1).join(' '))}"></div></div>
+    <label class="fl">Address</label><input class="inp" id="ad-1" value="${esc(a.street)}">
+    <label class="fl">Apartment, suite, etc.</label><input class="inp" id="ad-2" value="">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+      <div><label class="fl">City</label><input class="inp" id="ad-c" value="${esc(city)}"></div>
+      <div><label class="fl">Postcode</label><input class="inp" id="ad-p" value="${esc(pc)}"></div></div>
+    <label class="fl">Country</label><select class="inp"><option>United Kingdom</option></select>
+    <p class="hint">Changes apply to future orders from this subscription. Orders already in Shopify keep their address.</p>`,
+    `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="doAddress(${tid})">Save</button>`);
+}
+function doAddress(tid) {
+  const m = model(tById(tid)), v = id => $(id).value.trim();
+  const street = [v('ad-1'), v('ad-2')].filter(Boolean).join(', ');
+  const lines = [street, v('ad-c') + ', ENG ' + v('ad-p'), 'United Kingdom'];
+  if (lines.join('|') === m.address.lines.join('|')) { closeModal(); return; }
+  logAction(tid, 'edit_address', { lines, from: m.address.lines }, `Changed the subscription address from ${m.address.lines.slice(0, 2).join(', ')} to ${lines.slice(0, 2).join(', ')}`);
+}
+
+// Gorgias, Shopify and Recharge share one login, so this signs out of all three.
+async function logOut() {
+  if (!confirm('Log out? This also signs you out of the Gorgias and Shopify simulators.')) return;
+  localStorage.removeItem('trainee');
+  try { await db.auth.signOut(); } catch (e) {}
+  location.replace('library.html');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeMenus(); } });
+init();
+</script>
+</body>
+</html>

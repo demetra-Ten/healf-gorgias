@@ -405,3 +405,137 @@ function applyShopActions(ticket, actions) {
     });
   return orders;
 }
+
+// ── Recharge sim subscription model ─────────────────────────────────────────
+// The Gorgias Recharge panel (practice.html) and the Recharge sim (recharge.html) both build
+// a ticket's subscription from here, so they always agree. Everything is derived from the
+// ticket's own (already anonymised) order history; every id is FAKE and stable per ticket.
+// The trainee's Recharge actions (recharge_actions rows) are replayed on top, oldest first.
+
+// The subscribed item is the product that recurs across the customer's orders — ignoring
+// free samples and the welcome handbook, which appear on every order.
+function subscribedProduct(ticket) {
+  const counts = {}, meta = {};
+  parseOrders(ticket).forEach(o => {
+    String(o.items || '').split('\n').forEach(ln => {
+      const m = ln.trim().match(/^\[(.+?)\]\((.*?)\)\s*\(x(\d+)\)\s*—\s*£([\d.]+)/);
+      if (!m) return;
+      const title = m[1];
+      if (/sample|welcome handbook/i.test(title)) return;
+      if (parseFloat(m[4]) === 0) return;
+      counts[title] = (counts[title] || 0) + 1;
+      // Orders are listed newest first, so keep the first price/vendor we see.
+      if (!meta[title]) {
+        // Titles are stored as "Product - Variant", which is how Recharge splits them.
+        const dash = title.lastIndexOf(' - ');
+        meta[title] = { price: '£' + m[4], qty: m[3],
+          variant: dash > -1 ? title.slice(dash + 3).trim() : '',
+          vendor: ((ln.match(/@@(.+?)\s*$/) || [])[1] || '').trim(),
+          productId: (m[2].match(/\/products\/(\d+)/) || [])[1] || null,
+          variantId: (m[2].match(/\/variants\/(\d+)/) || [])[1] || null };
+      }
+    });
+  });
+  const titles = Object.keys(counts);
+  if (!titles.length) return null;
+  titles.sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
+  return Object.assign({ title: titles[0], orders: counts[titles[0]] }, meta[titles[0]]);
+}
+
+const rcId = (t, base, span, k) => String(base + ((Number(t.id) || 0) * (k || 7919)) % span);
+function rcAddMonths(d, n) { const x = new Date(d.getTime()); const day = x.getDate(); x.setDate(1); x.setMonth(x.getMonth() + n); x.setDate(Math.min(day, new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); return x; }
+function rcFreqText(n) { return n + ' month' + (n === 1 ? '' : 's'); }
+function rcDay(d) { return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'; }
+
+function rcModel(ticket, actions) {
+  const orders = parseOrders(ticket);
+  if (!orders.length) return null;
+  const p = subscribedProduct(ticket);
+  const dash = p ? p.title.lastIndexOf(' - ') : -1;
+  const product = p ? {
+    title: dash > -1 ? p.title.slice(0, dash).trim() : p.title, variant: p.variant || '',
+    full: p.title, price: shopNum(p.price), qty: Number(p.qty) || 1, vendor: p.vendor || '',
+    productId: p.productId, variantId: p.variantId || rcId(ticket, 36800000000000, 99999999, 104729)
+  } : null;
+  const sent = sentAt(ticket);
+  // Every order carrying the subscribed product is a charge against it, oldest first.
+  const chargeOrders = orders.filter(o => !p || String(o.items || '').indexOf(p.title) !== -1)
+    .map(o => ({ o, d: shopDate(o.date) || (sent ? new Date(sent.getTime() - 3 * 86400000) : null) }))
+    .sort((a, b) => (a.d || 0) - (b.d || 0));
+  const charges = chargeOrders.map((c, i) => ({
+    date: c.d, shopifyNumber: c.o.number, rechargeId: rcId(ticket, 1531000000 + i * 1009, 900000),
+    chargeId: rcId(ticket, 1984000000 + i * 1013, 900000), type: i === 0 ? 'CHECKOUT' : 'RECURRING',
+    total: c.o.value ? shopNum(c.o.value) : (product ? product.price * product.qty : 0), status: /cancel/i.test(c.o.status) ? 'Cancelled' : 'Success'
+  }));
+  // Frequency: the typical gap between charges, in whole months (1 month if only one charge).
+  let freq = 1;
+  if (charges.length > 1) {
+    const gaps = []; for (let i = 1; i < charges.length; i++) if (charges[i].date && charges[i - 1].date) gaps.push((charges[i].date - charges[i - 1].date) / 86400000);
+    gaps.sort((a, b) => a - b);
+    if (gaps.length) freq = Math.max(1, Math.min(6, Math.round(gaps[Math.floor(gaps.length / 2)] / 30)));
+  }
+  const last = charges.length ? charges[charges.length - 1].date : null;
+  const asAt = sent || last || new Date();
+  const created = charges.length && charges[0].date ? charges[0].date : asAt;
+  const cancelledAtStart = RECHARGE_CANCELLED[Number(ticket.id)] === true;
+  // The next charge, as it stood the day the customer wrote: one frequency after the last
+  // charge, rolled forward past the sent date.
+  let next = null;
+  if (!cancelledAtStart && last) { next = rcAddMonths(last, freq); let guard = 0; while (next <= asAt && guard++ < 24) next = rcAddMonths(next, freq); }
+  const addr = custAddress(ticket);
+  const m = {
+    ticketId: ticket.id, customerId: rcId(ticket, 178500000, 99999), subscriptionId: rcId(ticket, 908700000, 99999, 6151),
+    addressId: rcId(ticket, 302700000, 99999, 4271), productId: product && product.productId,
+    name: ticket.customer_name, email: ticket.customer_email || '', phone: '+4475' + rcId(ticket, 10000000, 89999999, 15485863),
+    product, freq, next, created, asAt, charges,
+    status: cancelledAtStart ? 'cancelled' : 'active', cancelledAt: cancelledAtStart ? (last || asAt) : null,
+    cancelReason: cancelledAtStart ? 'Customer request' : '', deleted: false,
+    address: { street: addr.street, cityline: addr.cityline, lines: [addr.street, addr.cityline, 'United Kingdom'] },
+    skipped: [], processed: [], events: []
+  };
+  m.events.push({ at: created, text: `Subscription #${m.subscriptionId} Subscription item "${product ? product.full : 'item'}" was created and added to address #${m.addressId} by Customer` });
+  if (cancelledAtStart) m.events.push({ at: m.cancelledAt, text: `Subscription #${m.subscriptionId} was cancelled by Customer. Reason: Customer request` });
+  (actions || []).filter(a => a.ticket_id === ticket.id)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at) || a.id - b.id)
+    .forEach(a => {
+      const d = a.detail || {}, at = new Date(a.created_at);
+      const by = ' by Recharge admin';
+      if (a.kind === 'skip' && m.next) { m.skipped.push(m.next); const was = m.next; m.next = rcAddMonths(m.next, m.freq); m.events.push({ at, text: `Charge on ${rcDay(was)} was skipped${by}. Next charge ${rcDay(m.next)}` }); }
+      else if (a.kind === 'unskip' && m.skipped.length) { m.next = m.skipped.pop(); m.events.push({ at, text: `Skipped charge on ${rcDay(m.next)} was restored${by}` }); }
+      else if (a.kind === 'reschedule' && d.date) { m.next = new Date(d.date + 'T09:00:00'); m.events.push({ at, text: `Next charge date was changed to ${rcDay(m.next)}${by}` }); }
+      else if (a.kind === 'frequency' && d.months) { m.freq = Number(d.months); m.events.push({ at, text: `Frequency was changed to ${rcFreqText(m.freq)}${by}` }); }
+      else if (a.kind === 'swap' && d.title) {
+        const was = m.product ? m.product.full : '';
+        m.product = Object.assign({}, m.product || {}, { title: d.title, variant: d.variant || '', full: d.variant ? d.title + ' - ' + d.variant : d.title,
+          price: Number(d.price) || 0, vendor: d.vendor || '', productId: d.productId || null, variantId: d.variantId || null });
+        m.productId = m.product.productId;
+        m.events.push({ at, text: `Subscription item "${was}" was swapped to "${m.product.full}"${by}` });
+      }
+      else if (a.kind === 'quantity' && d.qty && m.product) { m.product.qty = Number(d.qty); m.events.push({ at, text: `Quantity was changed to ${d.qty}${by}` }); }
+      else if (a.kind === 'edit_address' && d.lines) { m.address = { street: d.lines[0], cityline: d.lines.slice(1, -1).join(', '), lines: d.lines.slice() }; m.events.push({ at, text: `Address #${m.addressId} was updated${by}` }); }
+      else if (a.kind === 'cancel') { m.status = 'cancelled'; m.cancelledAt = at; m.cancelReason = d.reason || ''; m.next = null; m.events.push({ at, text: `Subscription #${m.subscriptionId} was cancelled${by}. Reason: ${d.reason || '—'}` }); }
+      else if (a.kind === 'activate') { m.status = 'active'; m.cancelledAt = null; m.cancelReason = ''; m.next = d.date ? new Date(d.date + 'T09:00:00') : rcAddMonths(m.asAt, m.freq); m.events.push({ at, text: `Subscription #${m.subscriptionId} was reactivated${by}. Next charge ${rcDay(m.next)}` }); }
+      else if (a.kind === 'delete') { m.deleted = true; m.status = 'cancelled'; m.next = null; m.events.push({ at, text: `Subscription #${m.subscriptionId} was deleted${by}` }); }
+      else if (a.kind === 'process' && m.next) {
+        m.processed.push(at);
+        m.charges.push({ date: at, shopifyNumber: d.order_number || '', rechargeId: rcId(ticket, 1539000000 + m.charges.length * 1009, 900000),
+          chargeId: rcId(ticket, 1989000000 + m.charges.length * 1013, 900000), type: 'RECURRING', total: m.product ? m.product.price * m.product.qty : 0, status: 'Success', processedNow: true });
+        m.next = rcAddMonths(at, m.freq);
+        m.events.push({ at, text: `Charge was processed now${by}: the customer was charged ${shopMoney(m.product ? m.product.price * m.product.qty : 0)}. Next charge ${rcDay(m.next)}` });
+      }
+    });
+  return m;
+}
+
+// What the Recharge sim shows for this ticket, in words — the trainee saw this, so the
+// scorer is told exactly this (see practice.html rechargeStateText).
+function rcStateText(ticket, actions) {
+  const m = rcModel(ticket, actions);
+  if (!m) return 'No Shopify/Recharge match for this customer — Gorgias shows no integration panel and the Recharge sim has no customer for them.';
+  const p = m.product;
+  return 'Recharge shows subscription ' + (m.deleted ? 'DELETED' : m.status === 'active' ? 'ACTIVE' : 'CANCELLED / INACTIVE')
+    + (p ? '. Subscribed product: ' + p.full + (p.vendor ? ' (' + p.vendor + ')' : '') + ' at ' + shopMoney(p.price) + ', quantity ' + p.qty : '. No recurring product on file')
+    + ', every ' + rcFreqText(m.freq) + '.'
+    + (m.next ? ' Next charge: ' + rcDay(m.next) + '.' : ' No upcoming charge.')
+    + ' Past charges: ' + (m.charges.map(c => rcDay(c.date) + ' ' + c.type.toLowerCase() + ' ' + shopMoney(c.total) + ' (Shopify ' + c.shopifyNumber + ')').join('; ') || 'none') + '.';
+}

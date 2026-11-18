@@ -112,6 +112,7 @@ a { color: inherit; text-decoration: none; }
 const G = {
   chat: '<path d="M4 5h16v11H9l-5 4z"/>',
   bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+  cycle: '<path d="M19 9.5A7 7 0 0 0 6.5 8L5 9.5"/><path d="M5 5v4.5h4.5"/><path d="M5 14.5A7 7 0 0 0 17.5 16l1.5-1.5"/><path d="M19 19v-4.5h-4.5"/>',
   book: '<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M5 18a2 2 0 0 1 2-2h11"/>',
   sheet: '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M5 10h14M10 10v10"/>',
   screen: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6M12 17v4"/>',
@@ -122,7 +123,7 @@ const G = {
 // The front page shows one box per section; clicking a box opens that section's tools (#sim / #res).
 const SECTIONS = [
   { key: 'sim', title: 'Simulators', glyph: 'screen', sub: 'Practise safely on copies of the real tools',
-    blurb: 'Safe copies of Gorgias and Shopify, filled with real (anonymised) tickets and orders. Nothing you do touches live customers.' },
+    blurb: 'Safe copies of Gorgias, Shopify and Recharge, filled with real (anonymised) tickets and orders. Nothing you do touches live customers.' },
   { key: 'res', title: 'Onboarding Resources', glyph: 'book', sub: 'The documents and courses you use during training',
     blurb: 'Trainual and the Ticket Training Document, the places you learn the SOPs and log your practice tickets.' },
 ];
@@ -131,6 +132,8 @@ const TOOLS = [
     blurb: 'Work real customer tickets: read the thread, choose the macro, write the reply and log your actions. Every ticket is marked with feedback.' },
   { section: 'sim', name: 'Shopify Simulator', glyph: 'bag', live: true, href: 'shopify.html', tab: 'healf-shopify',
     blurb: 'Look up orders, customers, stock and ETAs as they were on the day, then cancel, refund, edit or raise Manual Orders. Opens from any Gorgias ticket too.' },
+  { section: 'sim', name: 'Recharge Simulator', glyph: 'cycle', live: true, href: 'recharge.html', tab: 'healf-recharge',
+    blurb: 'Find a customer\'s subscription, then skip, reschedule, swap, change the frequency or cancel it. Opens from the Recharge panel on any Subscription ticket.' },
   // Not a simulator: the shared Google Sheet new joiners and buddies log and score practice
   // tickets in. Kept here so it's one click away during training.
   { section: 'res', name: 'Ticket Training Document', glyph: 'sheet', live: true, tag: 'Google Sheet', open: 'Open the document',
@@ -314,7 +317,7 @@ const TRAINEE_ACCOUNT = 'trainee-access@healf.com';
 const $id = x => document.getElementById(x);
 function nextUrl() {
   const n = new URLSearchParams(location.search).get('next') || '';
-  return /^(practice|shopify|tracking)\.html([?#].*)?$/.test(n) ? n : '';
+  return /^(practice|shopify|recharge|tracking)\.html([?#].*)?$/.test(n) ? n : '';
 }
 function showTiles(who) {
   $id('signin').classList.add('hidden'); $id('app').classList.remove('hidden');

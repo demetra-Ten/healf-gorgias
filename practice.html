@@ -1000,6 +1000,7 @@ body.rsz-active, body.rsz-active * { cursor: col-resize !important; user-select:
         <div class="pm-divider"></div>
         <div class="pm-row" onclick="startTour('list', true)">Replay the walkthrough</div>
         <div class="pm-row" onclick="openShopify('#/orders')">Open the Shopify simulator</div>
+        <div class="pm-row" onclick="openRecharge('#/customers')">Open the Recharge simulator</div>
         <div class="pm-row" onclick="window.open('library.html','healf-library')">All training tools</div>
         <div class="pm-divider"></div>
         <div class="pm-row pm-signout" onclick="signOut()">Sign out</div>
@@ -1095,6 +1096,29 @@ function openShopify(hash) {
   return false;
 }
 function shopifyHref(hash) { return 'shopify.html?t=' + (activeTicketId || '') + hash; }
+// The Recharge sim (recharge.html) works the same way: its own tab, follows the open ticket
+// through the same shop_ctx key, and logs recharge_actions that this page replays.
+let rcActions = [];
+function openRecharge(hash) {
+  if (activeTicketId) localStorage.setItem('shop_ctx', String(activeTicketId));
+  window.open('recharge.html?t=' + (activeTicketId || '') + (hash || '#/customers'), 'healf-recharge');
+  return false;
+}
+function rechargeHref(hash) { return 'recharge.html?t=' + (activeTicketId || '') + hash; }
+async function loadRcActions(ticketId) {
+  if (!trainee) { rcActions = []; return; }
+  // Until recharge-sim.sql has been run the table does not exist; treat that as "nothing done".
+  try {
+    const { data, error } = await db.from('recharge_actions').select('*').eq('trainee_id', trainee.id).eq('ticket_id', ticketId).order('created_at');
+    rcActions = error ? [] : (data || []);
+  } catch (e) { rcActions = []; }
+}
+window.addEventListener('storage', async e => {
+  if (e.key !== 'rc_bump' || !activeTicketId) return;
+  await loadRcActions(activeTicketId);
+  const t = tickets.find(x => x.id === activeTicketId);
+  if (t) renderCustomerSidebar(t);
+});
 // What the Shopify sim showed for this ticket's products — stock state and pre-order date
 // as they stood the day the customer wrote — so the scorer marks against the same screen.
 const SHOP_STOCK_SAY = {
@@ -1910,7 +1934,7 @@ const TOUR_STEPS = {
     { sel: '#reply-input', title: 'Your reply',
       body: 'This is what the customer reads. You are marked on whether it answers their actual question, whether it is accurate, and the tone.' },
     { sel: '#actions-input', title: 'Actions',
-      body: 'Write what you would <b>do</b> behind the scenes — the order status, the issue, then your steps. Anything you do in the Shopify sim is recorded for you; write the Swap, Recharge and Slack steps here. The headings are fixed; type after each colon, and press Enter in Actions to add a numbered step. This is marked separately from your reply.' },
+      body: 'Write what you would <b>do</b> behind the scenes — the order status, the issue, then your steps. Anything you do in the Shopify or Recharge sim is recorded for you; write the Swap and Slack steps here. The headings are fixed; type after each colon, and press Enter in Actions to add a numbered step. This is marked separately from your reply.' },
     { sel: '.cs-cr-select', title: 'Contact reason',
       body: 'Set the contact reason before closing, the same as on a live ticket. It is part of your Actions mark.' },
     { sel: '#submit-btn', title: 'Send vs Send & Close',
@@ -2317,6 +2341,8 @@ function openTicket(id) {
   localStorage.setItem('shop_ctx', String(id));
   shopActions = [];
   loadShopActions(id).then(() => { if (activeTicketId === id && shopActions.length) renderCustomerSidebar(ticket); });
+  rcActions = [];
+  if (Number(ticket.category_id) === 5) loadRcActions(id).then(() => { if (activeTicketId === id && rcActions.length) renderCustomerSidebar(ticket); });
 }
 
 // A ticket's `message` may be a thread: segments separated by [[LOLA]] / [[AGENT]] / [[CUSTOMER]]
@@ -2729,7 +2755,7 @@ function renderReplySection(ticket, sub) {
         <div class="reply-textarea" id="reply-input" contenteditable="true" role="textbox" aria-multiline="true" data-ph="${isNote ? 'Write an internal note for the CW team…' : 'Click here to reply…'}" oninput="replyTidy(this)"></div>
         <div class="actions-note-wrap">
           <div class="drag-handle" data-target="actions-input" title="Drag to resize"></div>
-          <div class="actions-note-label"><span class="an-title">ACTIONS</span> <span class="an-hint">(fill in each line: what the order status is, what the ticket is about, then your steps. Anything you do in the Shopify sim is recorded for you; write the Swap / Recharge / Slack steps here.)</span></div>
+          <div class="actions-note-label"><span class="an-title">ACTIONS</span> <span class="an-hint">(fill in each line: what the order status is, what the ticket is about, then your steps. Anything you do in the Shopify or Recharge sim is recorded for you; write the Swap / Slack steps here.)</span></div>
           <div class="actions-doc" id="actions-input" contenteditable="true" spellcheck="true">${actionsDrafts[ticket.id] || ACTIONS_TEMPLATE_HTML}</div>
         </div>
         ${fmtToolbar()}
@@ -3097,35 +3123,8 @@ function orderBoxHtml(o, open, extra, ticket) {
         </div>
       </div>`;
 }
-// Recharge (subscriptions) integration panel — mirrors what Gorgias shows: the customer's
-// subscription is ACTIVE (amendments are made in Recharge, not here).
-// The subscribed item is the product that recurs across the customer's orders —
-// ignoring free samples and the welcome handbook, which appear on every order.
-function subscribedProduct(ticket) {
-  const counts = {}, meta = {};
-  parseOrders(ticket).forEach(o => {
-    String(o.items || '').split('\n').forEach(ln => {
-      const m = ln.trim().match(/^\[(.+?)\]\((.*?)\)\s*\(x(\d+)\)\s*—\s*£([\d.]+)/);
-      if (!m) return;
-      const title = m[1];
-      if (/sample|welcome handbook/i.test(title)) return;
-      if (parseFloat(m[4]) === 0) return;
-      counts[title] = (counts[title] || 0) + 1;
-      // Orders are listed newest first, so keep the first price/vendor we see.
-      if (!meta[title]) {
-        // Titles are stored as "Product - Variant", which is how Recharge splits them.
-        const dash = title.lastIndexOf(' - ');
-        meta[title] = { price: '£' + m[4], qty: m[3],
-          variant: dash > -1 ? title.slice(dash + 3).trim() : '',
-          vendor: ((ln.match(/@@(.+?)\s*$/) || [])[1] || '').trim() };
-      }
-    });
-  });
-  const titles = Object.keys(counts);
-  if (!titles.length) return null;
-  titles.sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
-  return Object.assign({ title: titles[0], orders: counts[titles[0]] }, meta[titles[0]]);
-}
+// subscribedProduct() and the subscription model (rcModel) live in sim-shared.js, so this
+// panel and the Recharge sim (recharge.html) always show the same subscription.
 
 // Recharge subscription state per ticket. Default is an ACTIVE subscription; list a
 // ticket here when the subscription was already cancelled BEFORE the customer wrote,
@@ -3225,65 +3224,60 @@ function rechargeStateText(ticket) {
   // trainee could have seen it. Sending it on other categories invented an "active
   // subscription" the trainee never saw, and the scorer duly faulted them for ignoring it.
   if (Number(ticket.category_id) !== 5) return 'No Recharge panel on this ticket.';
-  const orders = parseOrders(ticket);
-  if (!orders.length) return 'No Shopify/Recharge match for this customer — Gorgias shows no integration panel at all.';
-  const cancelled = RECHARGE_CANCELLED[Number(ticket.id)] === true;
-  const p = subscribedProduct(ticket);
-  return 'Recharge panel shows subscription ' + (cancelled ? 'CANCELLED / INACTIVE' : 'ACTIVE')
-    + (p ? ('. Subscribed product: ' + p.title + (p.vendor ? ' (' + p.vendor + ')' : '') + ' at ' + p.price
-            + (p.qty ? ', quantity ' + p.qty : '') + (p.variant ? ', variant ' + p.variant : '') + '.')
-         : '. No recurring product on file.');
+  // As the trainee FOUND it: what they then did in the Recharge sim goes separately as recharge_actions.
+  return rcStateText(ticket, []);
 }
 
+// Recharge (subscriptions) integration panel — mirrors what Gorgias shows. Amendments are
+// made in the Recharge sim (recharge.html); its actions are replayed here via rcModel.
 function rechargePanelHtml(ticket) {
-  const orders = parseOrders(ticket);
-  const cancelled = RECHARGE_CANCELLED[Number(ticket.id)] === true;
-  const p = subscribedProduct(ticket);
+  const m = rcModel(ticket, rcActions);
   // No orders under this email = no Shopify/Recharge match, so Gorgias would show no
   // integration at all. Render nothing rather than implying a subscription exists.
-  if (!orders.length) return '';
-  const upd = (orders[0] && orders[0].date) ? orders[0].date : '\u2014';
-  const created = (orders[orders.length - 1] && orders[orders.length - 1].date) || '\u2014';
+  if (!m) return '';
+  const p = m.product, on = m.status === 'active';
+  const sub = '#/subscriptions/' + ticket.id;
   const row = (l, v) => `<div class="cs-frow"><span class="cs-flabel">${l}</span><span class="cs-fval">${v}</span></div>`;
-  // Every order carrying the recurring product is a Recharge charge against it.
-  const charges = orders.filter(o => !p || String(o.items || '').indexOf(p.title) !== -1);
+  const last = m.events[m.events.length - 1];
+  const charges = m.charges.slice().reverse();
   return `
     <div class="cs-section">
-      <div class="cs-sechdr"><span class="recharge-mark">\u21bb</span><h5>Recharge</h5>
-        <span class="recharge-cust">${ticket.customer_name}</span>
+      <div class="cs-sechdr"><span class="recharge-mark">↻</span><h5>Recharge</h5>
+        <a class="recharge-cust" href="${rechargeHref('#/customers/' + ticket.id)}" target="healf-recharge" onclick="return openRecharge('#/customers/${ticket.id}')" title="Open this customer in Recharge">${ticket.customer_name}</a>
         <button class="cs-collapse" title="Collapse" onclick="collapseSection(this)">${ICONS.chev}</button>
       </div>
       <div class="cs-sec-body">
-        ${row('Status', `<span class="rc-badge ${cancelled ? 'off' : 'on'}">${cancelled ? 'INACTIVE' : 'ACTIVE'}</span>`)}
-        ${row('Updated at', upd)}
+        ${row('Status', `<span class="rc-badge ${on ? 'on' : 'off'}">${on ? 'ACTIVE' : 'INACTIVE'}</span>`)}
+        ${row('Updated at', rcDay(last ? last.at : m.created))}
         ${row('Processor type', 'shopify_payments')}
 
         <div class="rc-block">
           <button class="rc-subhdr" onclick="toggleCustomerFields(this)">${ICONS.chev} Subscription
-            <span class="rc-badge ${cancelled ? 'off' : 'on'}">${cancelled ? 'CANCELLED' : 'ACTIVE'}</span>
-            <span class="rc-act" title="Amendments are made in Recharge. Here, write the step in your Actions.">${cancelled ? '\u25b6 Activate' : '\u2298 Cancel'}</span>
+            <span class="rc-badge ${on ? 'on' : 'off'}">${m.deleted ? 'DELETED' : on ? 'ACTIVE' : 'CANCELLED'}</span>
+            <span class="rc-act" title="Open this subscription in Recharge" onclick="event.stopPropagation();openRecharge('${sub}')">${on ? '⊘ Cancel' : '▶ Activate'}</span>
           </button>
           <div class="cs-cf-body">
-            ${row('Created', created)}
-            ${row('Product title', p ? p.title : '\u2014')}
-            ${row('Cancellation reason', cancelled ? 'Customer request' : '-')}
-            ${row('Cancelled at', cancelled ? upd : '-')}
-            ${row('Created at', created)}
-            ${row('Quantity', p && p.qty ? p.qty : '\u2014')}
-            ${row('Price', p && p.price ? p.price.replace('\u00a3', '') : '\u2014')}
-            ${row('Variant title', p && p.variant ? p.variant : '\u2014')}
+            ${row('Created', rcDay(m.created))}
+            ${row('Product title', p ? `<a href="${rechargeHref(sub)}" target="healf-recharge" onclick="return openRecharge('${sub}')">${p.full}</a>` : '—')}
+            ${row('Cancellation reason', on ? '-' : (m.cancelReason || '-'))}
+            ${row('Cancelled at', on ? '-' : rcDay(m.cancelledAt))}
+            ${row('Next charge', m.next ? rcDay(m.next) : '-')}
+            ${row('Frequency', rcFreqText(m.freq))}
+            ${row('Quantity', p ? p.qty : '—')}
+            ${row('Price', p ? p.price.toFixed(2) : '—')}
+            ${row('Variant title', p && p.variant ? p.variant : '—')}
           </div>
         </div>
 
-        ${charges.map((o, i) => `
+        ${charges.map((c, i) => `
         <div class="rc-block">
-          <button class="rc-subhdr${i ? ' closed' : ''}" onclick="toggleCustomerFields(this)">${ICONS.chev} ${o.number}${o.value ? ' | ' + o.value : ''}
+          <button class="rc-subhdr${i ? ' closed' : ''}" onclick="toggleCustomerFields(this)">${ICONS.chev} ${c.shopifyNumber || '#' + c.rechargeId} | ${shopMoney(c.total)}
             <span class="rc-badge on">SUCCESS</span>
-            <span class="rc-act" title="Refunding is a live action. Here, write it in your Actions with the refund reason.">\u21a9 Refund</span>
+            <span class="rc-act" title="Refunds are made in Shopify" onclick="event.stopPropagation();openShopify('#/orders/${ticket.id}/${encodeURIComponent(c.shopifyNumber)}/refund')">↩ Refund</span>
           </button>
           <div class="cs-cf-body"${i ? ' style="display:none"' : ''}>
-            ${row('Created', o.date || '\u2014')}
-            ${row('Total', o.value || '\u2014')}
+            ${row('Created', rcDay(c.date))}
+            ${row('Total', shopMoney(c.total))}
           </div>
         </div>`).join('')}
       </div>
@@ -3456,6 +3450,14 @@ async function submitReply(ticketId, andClose) {
   const shopList = pendingShop || [];
   const shopifyActions = shopList.length ? shopList.map((a, i) => (i + 1) + '. ' + a.summary).join('\n') : null;
   const shopifyStock = await shopStockText(ticketId);
+  // The same for the Recharge sim (empty until recharge-sim.sql has been run).
+  let rcList = [];
+  try {
+    const { data: pendingRc, error: rcErr } = await db.from('recharge_actions').select('*')
+      .eq('trainee_id', trainee.id).eq('ticket_id', ticketId).is('submission_id', null).order('created_at');
+    rcList = rcErr ? [] : (pendingRc || []);
+  } catch (e) { rcList = []; }
+  const rechargeActions = rcList.length ? rcList.map((a, i) => (i + 1) + '. ' + a.summary).join('\n') : null;
 
   // Persist what the trainee actually chose/left, so the review view can show it and the
   // scorer's judgement on them can be audited (both are sent to the scorer either way).
@@ -3465,13 +3467,16 @@ async function submitReply(ticketId, andClose) {
     contact_reason: contactReasons[ticketId] || null,
     internal_note: notes.map(n => n.body).join('\n\n') || null,
     internal_note_at: notes.length ? notes[0].at : null,
-    shopify_actions: shopifyActions
+    shopify_actions: shopifyActions,
+    // Only sent when there is something, so a database without the column still works.
+    ...(rechargeActions ? { recharge_actions: rechargeActions } : {})
   }).select().single();
 
   if (error) { if (btn) { btn.disabled = false; btn.textContent = 'Send'; } alert('Error: ' + error.message); return; }
 
   submissions.push(data);
   if (shopList.length) await db.from('shop_actions').update({ submission_id: data.id }).in('id', shopList.map(a => a.id));
+  if (rcList.length) await db.from('recharge_actions').update({ submission_id: data.id }).in('id', rcList.map(a => a.id));
   delete actionsDrafts[ticketId];   // the ticket is answered; don't carry the note forward
   const ticket = tickets.find(t => t.id === ticketId);
   renderMessages(ticket, data);
@@ -3495,6 +3500,7 @@ async function submitReply(ticketId, andClose) {
         reply_text: reply, actions_text: actions,
         shopify_actions: shopifyActions,
         shopify_stock: shopifyStock,
+        recharge_actions: rechargeActions,
         macro_name: usedMacro ? usedMacro.name : null,
         macro_body: usedMacro ? usedMacro.body : null,
         customer_name: ticket.customer_name, message: threadText(ticket),
